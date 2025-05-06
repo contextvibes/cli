@@ -173,7 +173,7 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 		// Terraform apply errors are usually clear from its output piped by ExecuteCommand
 		errMsgForUser := "'terraform apply' command failed."
 		errMsgForError := "terraform apply command failed" // ST1005 compliant
-		presenter.Error(errMsgForUser)                    // Let user see TF output above for details
+		presenter.Error(errMsgForUser)                     // Let user see TF output above for details
 		logger.Error("Terraform apply command failed", slog.String("source_command", "deploy"), slog.String("error", err.Error()))
 		// Return a new error, as the underlying error from ExecuteCommand might not be clean
 		// and stderr was already shown to the user.
@@ -239,7 +239,7 @@ func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *s
 		// Pulumi up errors/abort are usually clear from its output piped by ExecuteCommand
 		errMsgForUser := "'pulumi up' command failed or was aborted by user during its execution."
 		errMsgForError := "pulumi up command failed or aborted" // ST1005 compliant
-		presenter.Error(errMsgForUser)                         // Let user see Pulumi output above for details
+		presenter.Error(errMsgForUser)                          // Let user see Pulumi output above for details
 		logger.Error("Pulumi up command failed or aborted", slog.String("source_command", "deploy"), slog.String("error", err.Error()))
 		// Return simpler error value
 		return errors.New(errMsgForError)
