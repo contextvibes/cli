@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.3] - 2025-05-06
+
+### Added
+
+*   **`version` command:** Displays the current CLI version. The version (`AppVersion`) is set in `cmd/root.go`.
+*   **`test` command:** Detects project type (currently Go and Python) and runs appropriate test suites (e.g., `go test ./...`, `pytest`). Forwards additional arguments to the underlying test runner.
+*   Unit tests for the `version` command using `stretchr/testify`.
+
+### Changed
+
+*   Application version (`AppVersion`) set to `0.0.3` in `cmd/root.go`.
+*   `.idx/airules.md`: Updated with instructions for local running, installation, and new command context.
+*   `README.md`: Updated key features to include `version` and `test` commands.
+*   `go.mod` and `go.sum`: Added `github.com/stretchr/testify` and its dependencies.
+
+---
+
 ## [0.0.2] - 2025-05-06
 
 ### Added
@@ -50,5 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 Link Definitions - Add the new one when tagging
 -->
-[0.0.2]: https://github.com/contextvibes/cli/.../compare/v0.0.1...v0.0.2 <!-- Adjust URL and tags -->
-[0.0.1]: https://github.com/contextvibes/cli/.../tag/v0.0.1 <!-- Adjust URL and tag path -->
+[0.0.3]: https://github.com/contextvibes/cli/.../compare/v0.0.2...v0.0.3 <!-- Adjust URL and tags -->
+[0.0.2]: https://github.com/contextvibes/cli/.../compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/contextvibes/cli/.../tag/v0.0.1

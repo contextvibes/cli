@@ -19,7 +19,7 @@
 </a>
 <!-- End Button -->
 
-Context Vibes is a command-line tool designed to streamline common development tasks and generate context for AI assistants. It provides consistent wrappers for Git workflows, Infrastructure as Code (IaC) operations, and code quality checks, focusing on clear, structured terminal output and detailed background logging.
+Context Vibes is a command-line tool designed to streamline common development tasks and generate context for AI assistants. It provides consistent wrappers for Git workflows, Infrastructure as Code (IaC) operations, code quality checks, formatting, and testing, focusing on clear, structured terminal output and detailed background logging.
 
 ## Why Context Vibes?
 
@@ -46,8 +46,12 @@ Context Vibes is a command-line tool designed to streamline common development t
     *   `plan`: Run `terraform plan -out=tfplan.out` or `pulumi preview`.
     *   `deploy`: Run `terraform apply tfplan.out` or `pulumi up`. Requires confirmation.
     *   `init`: Run `terraform init` (primarily for Terraform projects).
-*   **Code Quality:**
-    *   `quality`: Run formatters and linters (Terraform, Python support included).
+*   **Code Quality & Formatting:**
+    *   `quality`: Run formatters (in check mode), validators, and linters (Terraform, Python, Go support included).
+    *   `format`: Apply code formatting (`go fmt`, `terraform fmt`, `isort`, `black`) modifying files in place.
+*   **Project Testing & Versioning:**
+    *   `test`: Runs project-specific tests (e.g., `go test ./...`, `pytest`). Arguments are passed to the underlying test runner.
+    *   `version`: Displays the CLI version.
 
 ## Installation
 
@@ -69,7 +73,7 @@ Ensure you have Go (`1.24` or later recommended) and Git installed.
 
 **(Alternative) Installation via Releases:** Download from [GitHub Releases](https://github.com/contextvibes/cli/releases) (*Adjust URL*), make executable (`chmod +x`), move to a directory in your `PATH`.
 
-**Dependencies:** Relies on external tools being in your `PATH`: `git`, `terraform`, `pulumi`, `tflint`, `isort`, `black`, `flake8` (depending on project type and commands used).
+**Dependencies:** Relies on external tools being in your `PATH`: `git`, `terraform`, `pulumi`, `tflint`, `isort`, `black`, `flake8`, `go` (for Go project commands), `python` (for Python project commands) (depending on project type and commands used).
 
 ## Usage
 
@@ -96,8 +100,14 @@ contextvibes describe -o my_context.md
 # Show pending Git changes (overwrites contextvibes.md)
 contextvibes diff
 
+# Apply code formatting
+contextvibes format
+
 # Check code quality
 contextvibes quality
+
+# Run project tests (e.g., for a Go project, passing -v flag)
+contextvibes test -v
 
 # Plan infrastructure changes
 contextvibes plan
@@ -119,6 +129,9 @@ contextvibes wrapup
 
 # End your day non-interactively
 contextvibes wrapup -y
+
+# Display CLI version
+contextvibes version
 
 # View command options
 contextvibes commit --help

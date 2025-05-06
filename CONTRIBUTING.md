@@ -15,13 +15,16 @@ We strive to maintain a positive and welcoming environment. All participants are
     git clone https://github.com/YOUR_USERNAME/cli.git contextvibes-cli
     cd contextvibes-cli
     ```
-3.  **Build:** Ensure you can build the binary successfully:
+3.  **Build & Run:** Ensure you can build and run the binary:
     ```bash
-    go build -o contextvibes .
+    # Build the binary
+    go build -o contextvibes ./cmd/contextvibes/main.go
+    # Or run directly
+    go run cmd/contextvibes/main.go --help
     ```
-    You can also install it to your `$GOPATH/bin` for easier testing:
+    You can also install it to your `$GOPATH/bin` for easier testing during development:
     ```bash
-    go install .
+    go install ./cmd/contextvibes
     ```
 
 ## Making Changes
@@ -35,10 +38,10 @@ We strive to maintain a positive and welcoming environment. All participants are
     git checkout -b fix/issue-description # Example: fix/improve-plan-error-msg
     ```
 2.  **Implement:** Make your code changes. Keep changes focused on a single feature or bug fix per branch.
-3.  **Follow Style:** Adhere to standard Go formatting (`gofmt`) and linting practices. Use `go vet ./...` to catch common issues.
+3.  **Follow Style:** Adhere to standard Go formatting (`gofmt`) and linting practices. You can use `contextvibes format` and `contextvibes quality` to help with this. Use `go vet ./...` to catch common issues.
 4.  **Test:**
-    *   **Manual:** Run the commands you've modified in relevant test projects (e.g., a simple Git repo, a Terraform project) to ensure they behave as expected.
-    *   **Automated:** If adding new functions, especially in `internal/`, please add corresponding unit tests (`_test.go` files). Contributions to increase overall test coverage are highly encouraged. Run tests using:
+    *   **Manual:** Run the commands you've modified in relevant test projects (e.g., a simple Git repo, a Terraform project, a Go project) to ensure they behave as expected. Use the new `contextvibes test` command for running automated project tests if applicable.
+    *   **Automated:** If adding new functions, especially in `internal/`, please add corresponding unit tests (`_test.go` files). Contributions to increase overall test coverage are highly encouraged. Run Go unit tests using:
         ```bash
         go test ./...
         ```
@@ -65,11 +68,14 @@ This list tracks known bugs, planned refactorings, and potential enhancements. F
 *   **Refactor:**
     *   Improve error message in `cmd/deploy.go` when `tfplan.out` is missing (be more specific about running `plan` first).
     *   Refactor the large `RunE` function in `cmd/describe.go` into smaller helpers for better readability and testability (see also `ROADMAP.md`).
+    *   Consider refactoring type-specific logic out of `cmd/quality.go` and `cmd/format.go` into shared internal helpers or type-specific packages.
 *   **Testing:**
-    *   Add comprehensive unit tests. As per `ROADMAP.md`, a high priority is `internal/tools` (including `git.go` utilities) and `internal/project` packages. Contributions to test `internal/git.GitClient` methods are also very welcome.
+    *   Add comprehensive unit tests. As per `ROADMAP.md`, a high priority is `internal/tools` (including `tools/git.go` utilities) and `internal/project` packages. Contributions to test `internal/git.GitClient` methods are also very welcome.
+    *   Increase test coverage for `cmd` package functions, including the new `test` command's logic.
 *   **Enhancements (see `ROADMAP.md` for more details):**
     *   Add a global `--verbose` flag to show more detailed output.
     *   Implement support for a configuration file (e.g., `.contextvibes.yaml`) for settings like Git remote/main branch names.
-    *   Improve `quality` command, for example, by adding `go mod tidy` check for Go projects.
+    *   Further improve `quality` command (e.g., check `go mod tidy` for modifications).
+    *   Expand `test` command to support more project types or testing frameworks.
 
 Thank you for contributing to Context Vibes!
