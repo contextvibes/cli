@@ -22,6 +22,12 @@ go run cmd/contextvibes/main.go [command] [flags]
 
 # Example: Run the 'describe' command
 go run cmd/contextvibes/main.go describe
+
+# Example: Run the 'version' command
+go run cmd/contextvibes/main.go version
+
+# Example: Run the 'test' command (for a Go project)
+go run cmd/contextvibes/main.go test
 ```
 
 ### Installation (Latest Version from GitHub)
@@ -48,6 +54,7 @@ go install github.com/contextvibes/cli/cmd/contextvibes@latest
     *   Project-type detection logic resides in `internal/project/`.
     *   Generic helpers (non-Git command execution, file I/O, Markdown generation) are in `internal/tools/`. The `internal/tools/git.go` file also contains some supplementary Git utility functions; however, for new command-level Git features, extending `internal/git.GitClient` is preferred. Avoid adding direct terminal UI logic to `internal/tools`.
     *   The entry point `main.go` should be kept minimal, residing within a subdirectory of `cmd/` (e.g., `cmd/contextvibes/main.go`) and only calling the root command's `Execute` method.
+*   **Versioning:** The application version (`AppVersion`) is a package-level variable in `cmd/root.go`, initialized in its `init()` function. This version is displayed by the `contextvibes version` command.
 *   **Error Handling:**
     *   Use `fmt.Errorf` with the `%w` verb to wrap errors for context when returning from internal functions/methods.
     *   Check errors consistently.
@@ -64,7 +71,7 @@ go install github.com/contextvibes/cli/cmd/contextvibes@latest
 *   **Code Comments:**
     *   Comments within the code should explain the *current* logic, purpose, or "why" something is done, if not obvious from the code itself.
     *   **Avoid comments that describe historical changes or past states** (e.g., "// Removed function X", "// Previously did Y"). Version control (Git history) is the source of truth for historical changes. Comments should always reflect the current state of the code.
-*   **Dependencies:** Manage dependencies using Go modules (`go.mod`, `go.sum`). Avoid adding unnecessary external dependencies. Key deps: `spf13/cobra`, `fatih/color`, `denormal/go-gitignore`.
+*   **Dependencies:** Manage dependencies using Go modules (`go.mod`, `go.sum`). Avoid adding unnecessary external dependencies. Key deps: `spf13/cobra`, `fatih/color`, `denormal/go-gitignore`, `stretchr/testify` (for tests).
 *   **Concurrency:** Be mindful of potential race conditions if concurrency is introduced (currently minimal).
 *   **Naming:** Use clear, descriptive names following Go conventions.
 
@@ -83,7 +90,7 @@ go install github.com/contextvibes/cli/cmd/contextvibes@latest
     *   Add clear Go doc comments (`doc.go` for packages, comments for exported types/funcs).
     *   Ensure Cobra command `Short`, `Long`, and `Example` descriptions are accurate, reflect flag requirements (like `-m`), and mention the `--yes` flag where relevant.
     *   Maintain project documentation files (`README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `ROADMAP.md`). These files *do* track history and future plans.
-*   **Testing:** Aim for testable code. New functions/methods in `internal/` packages should ideally have unit tests. Leverage interfaces (like the `executor` in `internal/git`) for mocking dependencies.
+*   **Testing:** Aim for testable code. New functions/methods in `internal/` packages should ideally have unit tests. Leverage interfaces (like the `executor` in `internal/git`) for mocking dependencies. The `contextvibes test` command runs project-specific tests.
 
 ## Project context
 
@@ -95,8 +102,8 @@ go install github.com/contextvibes/cli/cmd/contextvibes@latest
     *   `internal/project`: Project type detection.
     *   `internal/tools`: Non-Git execution, file I/O, Markdown generation, and some supplementary Git utilities in `tools/git.go`.
 *   **Logging:** Dual system - `Presenter` for terminal, `slog` to `contextvibes.log` (default) for AI trace.
-*   **External Dependencies:** `cobra`, `color`, `go-gitignore`. Relies on external tools (`git`, `terraform`, `pulumi`, linters) in PATH.
+*   **External Dependencies:** `cobra`, `color`, `denormal/go-gitignore`, `stretchr/testify`. Relies on external tools (`git`, `terraform`, `pulumi`, linters) in PATH.
 *   **Environment:** Often developed within a Nix-based environment (`.idx/dev.nix`).
 *   **Output File:** `diff` overwrites `contextvibes.md`. `describe` generates `contextvibes.md` (or `-o` target). `.aiexclude` is respected by `describe`.
-*   **Key Design Choices:** Non-interactive default for `commit`, global `--yes` flag, explicit separation of terminal UI and file logging.
+*   **Key Design Choices:** Non-interactive default for `commit`, global `--yes` flag, explicit separation of terminal UI and file logging. Versioning via `AppVersion` in `cmd/root.go`, accessible via `contextvibes version`.
 *   **Deferred Features:** Management of `.idx/airules.md` itself, simpler `update` command (see `ROADMAP.md`).

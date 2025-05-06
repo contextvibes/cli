@@ -21,6 +21,9 @@ var (
 	logLevelAI string
 	aiLogFile  string
 	// Non-interactive Flag
+	AppVersion string
+
+	//Non-Interactive Flag
 	assumeYes bool // Variable to hold the value of the --yes flag
 )
 
@@ -100,6 +103,7 @@ func Execute() {
 }
 
 func init() {
+	AppVersion = "0.0.3"
 	// AI Logging Flags
 	rootCmd.PersistentFlags().StringVar(&logLevelAI, "log-level-ai", "debug", "AI (JSON) file log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().StringVar(&aiLogFile, "ai-log-file", "", fmt.Sprintf("AI (JSON) log file path (default: %s)", defaultAILogFilename))
@@ -109,6 +113,8 @@ func init() {
 
 	// Subcommands add themselves to rootCmd
 }
+func init(){
+	rootCmd.AddCommand(versionCmd)}
 
 // parseLogLevel function remains the same
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {

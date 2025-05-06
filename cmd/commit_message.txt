@@ -1,0 +1,9 @@
+feat(cli): Add version command and fix test
+
+This commit introduces a new `version` command to the CLI, allowing users to easily check the current version of the `contextvibes` tool.
+
+In addition, the commit fixes the test command, ensuring that all tests are passing.
+
+- Added `version` command.
+- Fixed test.
+- Updated version to 0.0.3.
