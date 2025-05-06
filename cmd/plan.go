@@ -49,8 +49,8 @@ command to generate an execution plan, showing expected infrastructure changes.
 			// Log actual error, return wrapped error
 			wrappedErr := fmt.Errorf("failed to get current working directory: %w", err)
 			logger.ErrorContext(ctx, "Plan: Failed getwd", slog.String("error", err.Error())) // Log original error
-			presenter.Error("Failed to get current working directory: %v", err)              // Show original error to user
-			return wrappedErr                                                                // Return wrapped error
+			presenter.Error("Failed to get current working directory: %v", err)               // Show original error to user
+			return wrappedErr                                                                 // Return wrapped error
 		}
 
 		presenter.Info("Detecting project type in %s...", presenter.Highlight(cwd))

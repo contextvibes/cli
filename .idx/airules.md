@@ -10,6 +10,33 @@ This document provides guidelines and context for an AI assistant helping with t
 *   When asked to refactor or add features, consider the existing structure and patterns (`cmd/`, `internal/git`, `internal/ui`, `internal/project`, `internal/tools`).
 *   Explain your reasoning, especially when suggesting significant changes.
 
+## Running and Installation
+
+### Running Locally (During Development)
+
+To run the CLI directly from the source code without installing, use `go run` from the root of the repository:
+
+```bash
+# General format
+go run cmd/contextvibes/main.go [command] [flags]
+
+# Example: Run the 'describe' command
+go run cmd/contextvibes/main.go describe
+```
+
+### Installation (Latest Version from GitHub)
+
+To install the latest released version of `contextvibes` directly from GitHub, use `go install`:
+
+```bash
+go install github.com/contextvibes/cli/cmd/contextvibes@latest
+```
+
+*   This command downloads the source code for the latest tagged release, compiles it, and installs the `contextvibes` binary to your `$GOPATH/bin` (usually `$HOME/go/bin`).
+*   Ensure the installation directory (`$GOPATH/bin` or `$HOME/go/bin`) is included in your system's `PATH` environment variable to run the tool directly like `contextvibes status`.
+
+---
+
 ## Coding-specific guidelines
 
 *   **Language:** Go (ensure code follows `gofmt` and `go vet` standards).
@@ -20,7 +47,7 @@ This document provides guidelines and context for an AI assistant helping with t
     *   Terminal input/output (user-facing messages, prompts) is handled exclusively by the `Presenter` in the `internal/ui` package. Commands **must** use the `Presenter` for terminal I/O.
     *   Project-type detection logic resides in `internal/project/`.
     *   Generic helpers (non-Git command execution, file I/O, Markdown generation) are in `internal/tools/`. The `internal/tools/git.go` file also contains some supplementary Git utility functions; however, for new command-level Git features, extending `internal/git.GitClient` is preferred. Avoid adding direct terminal UI logic to `internal/tools`.
-    *   Keep `main.go` minimal, only calling `cmd.Execute()`.
+    *   The entry point `main.go` should be kept minimal, residing within a subdirectory of `cmd/` (e.g., `cmd/contextvibes/main.go`) and only calling the root command's `Execute` method.
 *   **Error Handling:**
     *   Use `fmt.Errorf` with the `%w` verb to wrap errors for context when returning from internal functions/methods.
     *   Check errors consistently.
@@ -62,7 +89,7 @@ This document provides guidelines and context for an AI assistant helping with t
 
 *   **Purpose:** `contextvibes` is a Go CLI tool acting as a developer co-pilot. It wraps common commands (Git, IaC, quality checks) aiming for clear, structured terminal output and detailed background logging for AI consumption. It also generates context files (`contextvibes.md`).
 *   **Key Packages:**
-    *   `cmd`: Cobra command definitions (orchestration).
+    *   `cmd`: Cobra command definitions (orchestration). Contains the entry point `cmd/contextvibes/main.go`.
     *   `internal/git`: Primary Git interactions via `GitClient` for command workflows.
     *   `internal/ui`: Terminal I/O via `Presenter`.
     *   `internal/project`: Project type detection.
