@@ -89,7 +89,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 
 			onlyDelete := len(fileChangeSet.Operations) == 1 && fileChangeSet.Operations[0].Type == "delete_file"
 			fileExists := false
-			fileInfo, statErr := os.Stat(fileChangeSet.FilePath) // Stat once
+			fileInfo, statErr := os.Stat(fileChangeSet.FilePath)
 			if statErr == nil {
 				fileExists = true
 			} else if !os.IsNotExist(statErr) {
@@ -122,6 +122,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 
 			fileWasDeleted := false
 
+		operationsLoop: // Label for the operations loop for this file
 			for opIndex, op := range fileChangeSet.Operations {
 				totalOperationsAttempted++
 				presenter.Step("Attempting operation %d: type='%s', desc='%s'", opIndex+1, op.Type, op.Description)
@@ -133,22 +134,22 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 				case "regex_replace":
 					if fileWasDeleted {
 						presenter.Warning("Skipping regex_replace on '%s' as file was already deleted by a previous operation.", fileChangeSet.FilePath)
-						continue
+						continue // to next operation
 					}
-					if !fileExists {
+					if !fileExists { // This check might be redundant if fileWasDeleted is handled correctly
 						presenter.Error("Cannot apply regex_replace: file '%s' does not exist.", fileChangeSet.FilePath)
-						continue
+						continue // to next operation
 					}
 					if op.FindRegex == "" {
 						presenter.Warning("Skipping regex_replace for '%s': find_regex is empty.", fileChangeSet.FilePath)
 						logger.Warn("codemod: regex_replace skipped, empty find_regex", slog.String("file", fileChangeSet.FilePath))
-						continue
+						continue // to next operation
 					}
 					re, compileErr := regexp.Compile(op.FindRegex)
 					if compileErr != nil {
 						presenter.Error("Invalid regex '%s' for file '%s': %v. Skipping operation.", op.FindRegex, fileChangeSet.FilePath, compileErr)
 						logger.Error("codemod: invalid regex in script", slog.String("file", fileChangeSet.FilePath), slog.String("regex", op.FindRegex), slog.Any("error", compileErr))
-						continue
+						continue // to next operation
 					}
 
 					currentFileContent = re.ReplaceAllString(currentFileContent, op.ReplaceWith)
@@ -163,16 +164,17 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 					}
 
 				case "delete_file":
-					if !fileExists {
+					if !fileExists { // If file didn't exist at the start of processing this FileChangeSet
 						presenter.Info("File '%s' already does not exist. 'delete_file' operation considered successful.", fileChangeSet.FilePath)
 						opSucceeded = true
-						fileWasDeleted = true
-						break // Break from inner loop
+						fileWasDeleted = true // Mark as "conceptually" deleted for this changeset
+						break operationsLoop  // Exit the operations loop for this file
 					}
+					// If fileWasDeleted is true, it means a previous "delete_file" op in *this same FileChangeSet* already deleted it.
 					if fileWasDeleted {
-						presenter.Info("File '%s' already marked for deletion by previous operation.", fileChangeSet.FilePath)
-						opSucceeded = true
-						break // Break from inner loop
+						presenter.Info("File '%s' already actioned for deletion by a previous operation in this set.", fileChangeSet.FilePath)
+						opSucceeded = true // Considered success as the goal is achieved
+						break operationsLoop  // Exit the operations loop for this file
 					}
 
 					presenter.Info("Operation requests deletion of file: %s", fileChangeSet.FilePath)
@@ -186,20 +188,21 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 						if promptErr != nil {
 							presenter.Error("Error during delete confirmation for '%s': %v. Skipping deletion.", fileChangeSet.FilePath, promptErr)
 							logger.Error("codemod: delete confirmation error", slog.String("file", fileChangeSet.FilePath), slog.Any("error", promptErr))
-							continue // Skip op
+							continue // to next operation
 						}
 					}
 
 					if deleteConfirmed {
 						err := os.Remove(fileChangeSet.FilePath)
 						if err != nil {
-							if os.IsNotExist(err) {
-								presenter.Warning("File '%s' did not exist when deletion was attempted.", fileChangeSet.FilePath)
-								opSucceeded = true
-								fileWasDeleted = true
+							if os.IsNotExist(err) { // File was deleted by another process between Stat and Remove
+								presenter.Warning("File '%s' was not found during deletion attempt (possibly deleted externally).", fileChangeSet.FilePath)
+								opSucceeded = true    // Goal achieved
+								fileWasDeleted = true // Mark as deleted
 							} else {
 								presenter.Error("Failed to delete file '%s': %v", fileChangeSet.FilePath, err)
 								logger.Error("codemod: failed to delete file", slog.String("path", fileChangeSet.FilePath), slog.Any("error", err))
+								// opSucceeded remains false
 							}
 						} else {
 							presenter.Success("Successfully deleted file: %s", fileChangeSet.FilePath)
@@ -211,11 +214,12 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 					} else {
 						presenter.Info("Skipped deletion of file '%s' by user.", fileChangeSet.FilePath)
 						logger.Info("codemod: delete skipped by user", slog.String("file", fileChangeSet.FilePath))
-					}
-					if fileWasDeleted {
-						break // exit the inner operations loop for this file
+						// opSucceeded remains false
 					}
 
+					if fileWasDeleted {
+						break operationsLoop // Critical: exit the operations loop for this file after delete
+					}
 
 				default:
 					presenter.Warning("Unsupported operation type: '%s' for file '%s'. Skipping.", op.Type, fileChangeSet.FilePath)
@@ -225,32 +229,33 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 				if opSucceeded {
 					totalOperationsSucceeded++
 				}
-			} // end operations loop
+			} // end operationsLoop
 
+			// If file wasn't deleted by an operation in this set, check if content changed and needs writing
 			if !fileWasDeleted && currentFileContent != contentBeforeOpsForThisFile {
 				presenter.Info("File '%s' has pending modifications.", fileChangeSet.FilePath)
 
-				confirmed := false
+				confirmedWrite := false
 				if assumeYes {
 					presenter.Info("Writing changes to '%s' (confirmation bypassed via --yes).", fileChangeSet.FilePath)
-					confirmed = true
+					confirmedWrite = true
 				} else {
 					var promptErr error
-					confirmed, promptErr = presenter.PromptForConfirmation(fmt.Sprintf("Write modified content to '%s'?", fileChangeSet.FilePath))
+					confirmedWrite, promptErr = presenter.PromptForConfirmation(fmt.Sprintf("Write modified content to '%s'?", fileChangeSet.FilePath))
 					if promptErr != nil {
-						presenter.Error("Error during confirmation for '%s': %v. Skipping write.", fileChangeSet.FilePath, promptErr)
-						logger.Error("codemod: confirmation error", slog.String("file", fileChangeSet.FilePath), slog.Any("error", promptErr))
-						continue
+						presenter.Error("Error during write confirmation for '%s': %v. Skipping write.", fileChangeSet.FilePath, promptErr)
+						logger.Error("codemod: write confirmation error", slog.String("file", fileChangeSet.FilePath), slog.Any("error", promptErr))
+						continue // to next file in the script
 					}
 				}
 
-				if confirmed {
+				if confirmedWrite {
 					var perm os.FileMode = 0644
-					if fileInfo != nil { // Use the FileInfo from the initial Stat
+					if fileInfo != nil { // Use the FileInfo from the initial Stat if file existed
 						perm = fileInfo.Mode().Perm()
 					} else {
-						// Should only happen if file didn't exist initially, but we are somehow trying to write... defensive log.
-						logger.Warn("codemod: could not get original file permissions, using default 0644", slog.String("file", fileChangeSet.FilePath))
+						// This case should be rare if we are writing, as it implies file didn't exist but was modified.
+						logger.Warn("codemod: could not get original file permissions for '%s' (was it created by an operation?), using default 0644", slog.String("file", fileChangeSet.FilePath))
 					}
 
 					err := os.WriteFile(fileChangeSet.FilePath, []byte(currentFileContent), perm)
@@ -265,7 +270,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 					presenter.Info("Skipped writing changes to %s due to user cancellation.", fileChangeSet.FilePath)
 					logger.Info("codemod: write skipped by user", slog.String("file", fileChangeSet.FilePath))
 				}
-			} else if !fileWasDeleted {
+			} else if !fileWasDeleted { // Only print this if not deleted AND not modified from its original state for this FileChangeSet
 				presenter.Info("No effective changes made to %s after all operations.", fileChangeSet.FilePath)
 			}
 			presenter.Newline()
@@ -283,6 +288,5 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 
 func init() {
 	codemodCmd.Flags().StringVarP(&codemodScriptPath, "script", "s", "", "Path to the JSON codemod script file (default: "+defaultCodemodFilename+")")
-	// Flag is optional now
 	rootCmd.AddCommand(codemodCmd)
 }

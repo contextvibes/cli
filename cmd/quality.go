@@ -11,7 +11,6 @@ import (
 	"strings" // Added for trimming space
 
 	"github.com/contextvibes/cli/internal/project"
-	"github.com/contextvibes/cli/internal/tools" // Keep for command execution
 	"github.com/contextvibes/cli/internal/ui"    // Use Presenter
 	"github.com/spf13/cobra"
 )
@@ -86,11 +85,11 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 			presenter.Newline()
 			presenter.Header("Terraform Quality Checks")
 			tool := "terraform"
-			if tools.CommandExists(tool) {
+			if ExecClient.CommandExists(tool) {
 				// --- terraform fmt -check ---
 				presenter.Step("Checking Terraform formatting (terraform fmt -check)...")
 				logger.Info("Executing terraform fmt -check -recursive .", slog.String("source_command", "quality"))
-				errFmt := tools.ExecuteCommand(cwd, tool, "fmt", "-check", "-recursive", ".")
+				errFmt := ExecClient.Execute(ctx, cwd, tool, "fmt", "-check", "-recursive", ".")
 				if errFmt != nil {
 					errMsg := "`terraform fmt -check` failed or found files needing formatting"
 					presenter.Error(errMsg)
@@ -107,7 +106,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 				if errFmt == nil { // Skip if formatting failed
 					presenter.Step("Running terraform validate...")
 					logger.Info("Executing terraform validate", slog.String("source_command", "quality"))
-					errValidate := tools.ExecuteCommand(cwd, tool, "validate")
+					errValidate := ExecClient.Execute(ctx, cwd, tool, "validate")
 					if errValidate != nil {
 						errMsg := "`terraform validate` failed"
 						presenter.Error(errMsg)
@@ -132,10 +131,10 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 
 			// --- tflint ---
 			linter := "tflint"
-			if tools.CommandExists(linter) {
+			if ExecClient.CommandExists(linter) {
 				presenter.Step("Running %s...", linter)
 				logger.Info("Executing tflint", slog.String("source_command", "quality"))
-				errLint := tools.ExecuteCommand(cwd, linter, "--recursive", ".")
+				errLint := ExecClient.Execute(ctx, cwd, linter, "--recursive", ".")
 				if errLint != nil {
 					errMsg := fmt.Sprintf("`%s` reported issues or failed", linter)
 					presenter.Warning(errMsg)
@@ -159,10 +158,10 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 
 			// --- isort --check ---
 			toolIsort := "isort"
-			if tools.CommandExists(toolIsort) {
+			if ExecClient.CommandExists(toolIsort) {
 				presenter.Step("Checking import sorting (%s --check)...", toolIsort)
 				logger.Info("Executing isort --check", slog.String("source_command", "quality"))
-				errIsort := tools.ExecuteCommand(cwd, toolIsort, "--check", pythonDir)
+				errIsort := ExecClient.Execute(ctx, cwd, toolIsort, "--check", pythonDir)
 				if errIsort != nil {
 					errMsg := fmt.Sprintf("`%s --check` failed or found files needing sorting", toolIsort)
 					presenter.Error(errMsg)
@@ -183,7 +182,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 
 			// --- black --check ---
 			toolBlack := "black"
-			if tools.CommandExists(toolBlack) {
+			if ExecClient.CommandExists(toolBlack) {
 				isortCheckFailed := false
 				for _, e := range criticalErrors {
 					if e.Error() == "isort check failed" {
@@ -194,7 +193,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 				if !isortCheckFailed {
 					presenter.Step("Checking Python formatting (%s --check)...", toolBlack)
 					logger.Info("Executing black --check", slog.String("source_command", "quality"))
-					errBlack := tools.ExecuteCommand(cwd, toolBlack, "--check", pythonDir)
+					errBlack := ExecClient.Execute(ctx, cwd, toolBlack, "--check", pythonDir)
 					if errBlack != nil {
 						errMsg := fmt.Sprintf("`%s --check` failed or found files needing formatting", toolBlack)
 						presenter.Error(errMsg)
@@ -219,10 +218,10 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 
 			// --- flake8 ---
 			linterFlake8 := "flake8"
-			if tools.CommandExists(linterFlake8) {
+			if ExecClient.CommandExists(linterFlake8) {
 				presenter.Step("Running %s...", linterFlake8)
 				logger.Info("Executing flake8", slog.String("source_command", "quality"))
-				errFlake8 := tools.ExecuteCommand(cwd, linterFlake8, pythonDir)
+				errFlake8 := ExecClient.Execute(ctx, cwd, linterFlake8, pythonDir)
 				if errFlake8 != nil {
 					errMsg := fmt.Sprintf("`%s` reported issues or failed", linterFlake8)
 					presenter.Warning(errMsg)
@@ -245,7 +244,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 			goDir := "./..." // Target all subdirectories for Go tools
 
 			toolGo := "go"
-			if tools.CommandExists(toolGo) {
+			if ExecClient.CommandExists(toolGo) {
 
 				// --- go fmt ---
 				// Check formatting compliance by running `go fmt` and capturing output.
@@ -257,7 +256,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 				//       or if external formatters (like gofumpt -l) are adopted.
 				presenter.Step("Checking Go formatting (running go fmt)...")
 				logger.Info("Executing go fmt ./... (and checking output)", slog.String("source_command", "quality"))
-				fmtOutput, fmtStderr, errFmt := tools.CaptureCommandOutput(cwd, toolGo, "fmt", goDir)
+				fmtOutput, fmtStderr, errFmt := ExecClient.CaptureOutput(ctx, cwd, toolGo, "fmt", goDir)
 
 				// First, check for execution errors (e.g., syntax errors).
 				if errFmt != nil {
@@ -289,7 +288,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 				// Checks for suspicious constructs. Failure is critical.
 				presenter.Step("Running Go vet...")
 				logger.Info("Executing go vet ./...", slog.String("source_command", "quality"))
-				errVet := tools.ExecuteCommand(cwd, toolGo, "vet", goDir)
+				errVet := ExecClient.Execute(ctx, cwd, toolGo, "vet", goDir)
 				if errVet != nil {
 					errMsg := "`go vet` reported issues or failed"
 					presenter.Error(errMsg)
@@ -307,7 +306,7 @@ Linter issues ('tflint', 'flake8') are reported as warnings.`,
 				//       This likely requires checking git status before/after or diffing files.
 				presenter.Step("Running go mod tidy...")
 				logger.Info("Executing go mod tidy", slog.String("source_command", "quality"))
-				errTidy := tools.ExecuteCommand(cwd, toolGo, "mod", "tidy")
+				errTidy := ExecClient.Execute(ctx, cwd, toolGo, "mod", "tidy")
 				if errTidy != nil {
 					errMsg := "`go mod tidy` failed"
 					presenter.Error(errMsg)
