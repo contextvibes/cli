@@ -52,6 +52,7 @@ Context Vibes is a command-line tool designed to streamline common development t
 *   **Project Testing & Versioning:**
     *   `test`: Runs project-specific tests (e.g., `go test ./...`, `pytest`). Arguments are passed to the underlying test runner.
     *   `version`: Displays the CLI version.
+    *   `codemod`: Applies programmatic code modifications from a JSON script (e.g., `codemod.json`).
 
 ## Installation
 
@@ -135,6 +136,10 @@ contextvibes version
 
 # View command options
 contextvibes commit --help
+
+# Apply programmatic changes from a script (default: codemod.json)
+contextvibes codemod
+contextvibes codemod --script ./changes.json
 ```
 
 ## Terminal Output vs. AI Log File

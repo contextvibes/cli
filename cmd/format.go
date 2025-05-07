@@ -27,8 +27,8 @@ using available tools in PATH, modifying files in place.
 
 This command focuses only on applying formatting, unlike 'quality' which checks
 formatters, linters, and validators.`,
-	Example: `  contextvibes format  # Apply formatting to Go, Python, or Terraform files`,
-	Args:    cobra.NoArgs,
+	Example:       `  contextvibes format  # Apply formatting to Go, Python, or Terraform files`,
+	Args:          cobra.NoArgs,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {

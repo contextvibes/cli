@@ -143,7 +143,7 @@ Does NOT automatically push.`,
 
 		// --- Consolidated INFO Block ---
 		presenter.Newline()
-		presenter.InfoPrefixOnly() 
+		presenter.InfoPrefixOnly()
 
 		fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
 		fmt.Fprintf(presenter.Out(), "  Commit Message:\n    \"%s\"\n", finalCommitMessage)
@@ -193,7 +193,7 @@ Does NOT automatically push.`,
 
 		// --- Success & Advice ---
 		presenter.Newline()
-		presenter.Success("Commit created successfully locally.") 
+		presenter.Success("Commit created successfully locally.")
 		presenter.Advice("Consider syncing your changes using `contextvibes sync`.")
 		logger.InfoContext(ctx, "Commit successful", slog.String("source_command", "commit"), slog.String("commit_message", finalCommitMessage))
 		return nil

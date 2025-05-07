@@ -109,7 +109,6 @@ type execDeployClientInterface interface {
 	Execute(ctx context.Context, dir string, commandName string, args ...string) error
 }
 
-
 // executeTerraformDeploy now accepts execClient
 func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execDeployClientInterface, dir string, skipConfirm bool) error {
 	tool := "terraform"

@@ -38,7 +38,7 @@ For other project types, or if no specific test runner is found, it will indicat
   contextvibes test tests/my_specific_test.py # Passes path to pytest`,
 	// Args: cobra.ArbitraryArgs, // Keep commented out unless strictly needed and understood
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := AppLogger // From cmd/root.go
+		logger := AppLogger    // From cmd/root.go
 		if ExecClient == nil { // From cmd/root.go
 			return fmt.Errorf("internal error: executor client not initialized")
 		}

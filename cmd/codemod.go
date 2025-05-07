@@ -173,8 +173,8 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 					// If fileWasDeleted is true, it means a previous "delete_file" op in *this same FileChangeSet* already deleted it.
 					if fileWasDeleted {
 						presenter.Info("File '%s' already actioned for deletion by a previous operation in this set.", fileChangeSet.FilePath)
-						opSucceeded = true // Considered success as the goal is achieved
-						break operationsLoop  // Exit the operations loop for this file
+						opSucceeded = true   // Considered success as the goal is achieved
+						break operationsLoop // Exit the operations loop for this file
 					}
 
 					presenter.Info("Operation requests deletion of file: %s", fileChangeSet.FilePath)

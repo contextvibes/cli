@@ -26,8 +26,8 @@ command to generate an execution plan, showing expected infrastructure changes.
 
 - Terraform: Runs 'terraform plan -out=tfplan.out'
 - Pulumi: Runs 'pulumi preview'`,
-	Example: `  contextvibes plan  # Run in a Terraform or Pulumi project directory`,
-	Args:    cobra.NoArgs,
+	Example:       `  contextvibes plan  # Run in a Terraform or Pulumi project directory`,
+	Args:          cobra.NoArgs,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -202,7 +202,6 @@ type execClientInterface interface {
 	Execute(ctx context.Context, dir string, commandName string, args ...string) error
 	CaptureOutput(ctx context.Context, dir string, commandName string, args ...string) (string, string, error)
 }
-
 
 func init() {
 	rootCmd.AddCommand(planCmd)

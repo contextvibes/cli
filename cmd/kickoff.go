@@ -76,7 +76,7 @@ Requires confirmation unless -y/--yes is specified.`,
 		}
 
 		mainBranchName := client.MainBranchName() // This will now be from app config via client
-		remoteName := client.RemoteName()       // This will now be from app config via client
+		remoteName := client.RemoteName()         // This will now be from app config via client
 		presenter.Info("Using remote '%s' and main branch '%s'.", remoteName, mainBranchName)
 
 		// --- Check Prerequisites ---

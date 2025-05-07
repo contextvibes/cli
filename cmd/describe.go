@@ -85,7 +85,6 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 			gitCfg.DefaultMainBranchName = LoadedAppConfig.Git.DefaultMainBranch
 		}
 
-
 		logger.DebugContext(ctx, "Initializing GitClient for describe", slog.String("source_command", "describe"))
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
@@ -96,9 +95,13 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		cwd := client.Path()
 
 		includeRe, err := regexp.Compile(includeExtensionsRegex)
-		if err != nil { /* ... */ return err }
+		if err != nil { /* ... */
+			return err
+		}
 		excludeRe, err := regexp.Compile(excludePathsRegex)
-		if err != nil { /* ... */ return err }
+		if err != nil { /* ... */
+			return err
+		}
 		maxSizeBytes := int64(maxFileSizeKB * 1024)
 
 		var aiExcluder gitignore.GitIgnore
@@ -133,7 +136,9 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		presenter.Step("Be specific about goals, files, resources, or errors.")
 		presenter.Separator()
 		userPrompt, err := presenter.PromptForInput("> Prompt: ")
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if userPrompt == "" {
 			presenter.Error("prompt cannot be empty")
 			return errors.New("prompt cannot be empty")
@@ -207,9 +212,13 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 
 		presenter.Step("Listing and filtering project files...")
 		gitLsFilesOutput, _, listErr := client.ListTrackedAndCachedFiles(ctx)
-		if listErr != nil { return listErr }
+		if listErr != nil {
+			return listErr
+		}
 		filesToList := strings.Split(strings.TrimSpace(gitLsFilesOutput), "\n")
-		if len(filesToList) == 1 && filesToList[0] == "" { filesToList = []string{} }
+		if len(filesToList) == 1 && filesToList[0] == "" {
+			filesToList = []string{}
+		}
 		presenter.Step("Processing %d potential file(s) for inclusion...", len(filesToList))
 
 		tools.AppendSectionHeader(&outputBuffer, "Relevant Code Files Follow")
@@ -217,7 +226,9 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		filesAddedCount := 0
 
 		for _, filePath := range filesToList {
-			if filePath == "" { continue }
+			if filePath == "" {
+				continue
+			}
 			cleanPath := filepath.Clean(filePath)
 			isMatch := includeRe.MatchString(cleanPath)
 			isExcluded := excludePathsRegex != "" && excludeRe.MatchString(cleanPath)
@@ -226,7 +237,9 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 				aiExcludedMatch = aiExcluder.Match(cleanPath)
 			}
 			shouldExclude := isExcluded || (aiExcludedMatch != nil && aiExcludedMatch.Ignore())
-			if !isMatch || shouldExclude { continue }
+			if !isMatch || shouldExclude {
+				continue
+			}
 
 			// Pass ctx to appendFileContentToBuffer, though it doesn't use it yet
 			err := appendFileContentToBuffer(ctx, &outputBuffer, presenter, cwd, cleanPath, maxSizeBytes)
@@ -244,16 +257,22 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 				shouldExclude := false
 				if aiExcluder != nil {
 					match := aiExcluder.Match(cleanCriticalPath)
-					if match != nil && match.Ignore() { shouldExclude = true }
+					if match != nil && match.Ignore() {
+						shouldExclude = true
+					}
 				}
-				if shouldExclude { continue }
+				if shouldExclude {
+					continue
+				}
 
 				if _, statErr := os.Stat(fullPath); statErr == nil {
 					if !includedFiles[cleanCriticalPath] {
 						presenter.Detail("Including critical file: %s", cleanCriticalPath)
 						// Pass ctx to appendFileContentToBuffer
 						err := appendFileContentToBuffer(ctx, &outputBuffer, presenter, cwd, cleanCriticalPath, maxSizeBytes)
-						if err == nil { filesAddedCount++ }
+						if err == nil {
+							filesAddedCount++
+						}
 					}
 				} else if !os.IsNotExist(statErr) {
 					presenter.Warning("Could not check critical file %s: %v", cleanCriticalPath, statErr)
@@ -275,6 +294,8 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 
 // Updated signature to include ctx
 func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd, displayName, commandName string, args ...string) {
+	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
+	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Explicitly ignore ctx if only passed through
 	fmt.Fprintf(buf, "  %s: ", displayName)
 	logger := AppLogger // Assuming AppLogger is accessible as a package variable from cmd/root.go
@@ -286,10 +307,14 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 		parsedOutput := strings.TrimSpace(output)
 		if commandName == "go" && strings.HasPrefix(output, "go version") {
 			parts := strings.Fields(output)
-			if len(parts) >= 3 { parsedOutput = parts[2] }
+			if len(parts) >= 3 {
+				parsedOutput = parts[2]
+			}
 		} else if commandName == "git" && strings.HasPrefix(output, "git version") {
 			parts := strings.Fields(output)
-			if len(parts) >= 3 { parsedOutput = parts[2] }
+			if len(parts) >= 3 {
+				parsedOutput = parts[2]
+			}
 		} else if commandName == "gcloud" && strings.Contains(output, "Google Cloud SDK") {
 			lines := strings.Split(output, "\n")
 			sdkLineFound := false
@@ -301,7 +326,9 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 					break
 				}
 			}
-			if !sdkLineFound { parsedOutput = strings.SplitN(strings.TrimSpace(output), "\n", 2)[0] }
+			if !sdkLineFound {
+				parsedOutput = strings.SplitN(strings.TrimSpace(output), "\n", 2)[0]
+			}
 		} else {
 			parsedOutput = strings.SplitN(parsedOutput, "\n", 2)[0]
 		}
@@ -329,16 +356,29 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 	// (Parsing logic remains the same as before)
 	parsedOutput := strings.TrimSpace(output)
 	if commandName == "go" && strings.HasPrefix(output, "go version") {
-		parts := strings.Fields(output); if len(parts) >= 3 { parsedOutput = parts[2] }
+		parts := strings.Fields(output)
+		if len(parts) >= 3 {
+			parsedOutput = parts[2]
+		}
 	} else if commandName == "git" && strings.HasPrefix(output, "git version") {
-		parts := strings.Fields(output); if len(parts) >= 3 { parsedOutput = parts[2] }
+		parts := strings.Fields(output)
+		if len(parts) >= 3 {
+			parsedOutput = parts[2]
+		}
 	} else if commandName == "gcloud" && strings.Contains(output, "Google Cloud SDK") {
-		lines := strings.Split(output, "\n"); sdkLineFound := false
+		lines := strings.Split(output, "\n")
+		sdkLineFound := false
 		for _, line := range lines {
 			trimmedLine := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmedLine, "Google Cloud SDK") { parsedOutput = trimmedLine; sdkLineFound = true; break }
+			if strings.HasPrefix(trimmedLine, "Google Cloud SDK") {
+				parsedOutput = trimmedLine
+				sdkLineFound = true
+				break
+			}
 		}
-		if !sdkLineFound { parsedOutput = strings.SplitN(strings.TrimSpace(output), "\n", 2)[0] }
+		if !sdkLineFound {
+			parsedOutput = strings.SplitN(strings.TrimSpace(output), "\n", 2)[0]
+		}
 	} else {
 		parsedOutput = strings.SplitN(parsedOutput, "\n", 2)[0]
 	}
@@ -349,6 +389,8 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 
 // Updated signature to include ctx (though not used by ExecClient.CommandExists directly)
 func appendCommandAvailability(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd string, commandName string) {
+	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
+	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Explicitly ignore ctx if only passed through
 	// Renamed unused parameter from _ to cwd to match the call signature, even if not used directly by CommandExists
 	_ = cwd // Explicitly ignore cwd if CommandExists doesn't need it
@@ -368,7 +410,7 @@ func appendCommandAvailability(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 
 // Updated signature to include ctx, though not directly used by os.Stat or tools.ReadFileContent
 func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd, filePath string, maxSizeBytes int64) error {
-	_ = ctx // Explicitly ignore ctx for now if unused by current logic
+	_ = ctx // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic
 	_ = ctx // Explicitly ignore ctx for now if unused by current logic
 	_ = ctx // Explicitly ignore ctx for now
 	fullPath := filepath.Join(cwd, filePath)
@@ -376,13 +418,19 @@ func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 	logger.Debug("Attempting to append file content", slog.String("path", filePath), slog.String("full_path", fullPath))
 	info, err := os.Stat(fullPath)
 	if err != nil {
-		errMsg := ""; if os.IsNotExist(err) { errMsg = fmt.Sprintf("Skipping '%s' (does not exist)", filePath)
-		} else { errMsg = fmt.Sprintf("Skipping '%s' (cannot stat: %v)", filePath, err) }
-		p.Warning(errMsg); return errors.New(errMsg)
+		errMsg := ""
+		if os.IsNotExist(err) {
+			errMsg = fmt.Sprintf("Skipping '%s' (does not exist)", filePath)
+		} else {
+			errMsg = fmt.Sprintf("Skipping '%s' (cannot stat: %v)", filePath, err)
+		}
+		p.Warning(errMsg)
+		return errors.New(errMsg)
 	}
 	if !info.Mode().IsRegular() {
 		errMsg := fmt.Sprintf("Skipping '%s' (not a regular file)", filePath)
-		p.Warning(errMsg); return errors.New(errMsg)
+		p.Warning(errMsg)
+		return errors.New(errMsg)
 	}
 	if info.Size() == 0 {
 		logger.Debug("Skipping empty file", slog.String("path", filePath))
@@ -390,12 +438,14 @@ func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 	}
 	if info.Size() > maxSizeBytes {
 		errMsg := fmt.Sprintf("Skipping '%s' (too large: %dB > %dB limit)", filePath, info.Size(), maxSizeBytes)
-		p.Warning(errMsg); return errors.New(errMsg)
+		p.Warning(errMsg)
+		return errors.New(errMsg)
 	}
 	content, err := tools.ReadFileContent(fullPath) // tools.ReadFileContent is fine (file I/O)
 	if err != nil {
 		errMsg := fmt.Sprintf("Skipping '%s' (read error: %v)", filePath, err)
-		p.Warning(errMsg); return errors.New(errMsg)
+		p.Warning(errMsg)
+		return errors.New(errMsg)
 	}
 	tools.AppendFileMarkerHeader(buf, filePath) // markdown util
 	buf.Write(content)

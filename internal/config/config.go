@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	DefaultConfigFileName             = ".contextvibes.yaml"
-	DefaultBranchNamePattern          = `^((feature|fix|docs|format)/.+)$`
-	DefaultCommitMessagePattern     = `^(BREAKING|feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9\-_]+\))?:\s.+`
-	DefaultGitRemote                  = "origin"
-	DefaultGitMainBranch              = "main"
+	DefaultConfigFileName        = ".contextvibes.yaml"
+	DefaultBranchNamePattern     = `^((feature|fix|docs|format)/.+)$`
+	DefaultCommitMessagePattern  = `^(BREAKING|feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9\-_]+\))?:\s.+`
+	DefaultGitRemote             = "origin"
+	DefaultGitMainBranch         = "main"
 	UltimateDefaultAILogFilename = "contextvibes_ai_trace.log"
 )
 

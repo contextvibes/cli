@@ -10,8 +10,8 @@ import (
 
 type GitClientConfig struct {
 	GitExecutable         string
-	DefaultRemoteName     string // Will be set by cmd layer from LoadedAppConfig
-	DefaultMainBranchName string // Will be set by cmd layer from LoadedAppConfig
+	DefaultRemoteName     string               // Will be set by cmd layer from LoadedAppConfig
+	DefaultMainBranchName string               // Will be set by cmd layer from LoadedAppConfig
 	Logger                *slog.Logger         // Logger for GitClient's own operations
 	Executor              exec.CommandExecutor // Use the new CommandExecutor interface from internal/exec
 }

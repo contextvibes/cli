@@ -11,7 +11,7 @@ import (
 	"strings" // Added for trimming space
 
 	"github.com/contextvibes/cli/internal/project"
-	"github.com/contextvibes/cli/internal/ui"    // Use Presenter
+	"github.com/contextvibes/cli/internal/ui" // Use Presenter
 	"github.com/spf13/cobra"
 )
 

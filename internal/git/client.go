@@ -4,10 +4,10 @@ package git
 import (
 	"context"
 	"errors"
-	osexec "os/exec" // Alias for standard library exec.ExitError
 	"fmt"
 	"log/slog"
 	"os"
+	osexec "os/exec" // Alias for standard library exec.ExitError
 	"path/filepath"
 	"strings"
 
@@ -32,7 +32,7 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	if err != nil {
 		return nil, fmt.Errorf("invalid GitClientConfig: %w", err)
 	}
-	logger := validatedConfig.Logger   // This is the GitClient's own logger
+	logger := validatedConfig.Logger     // This is the GitClient's own logger
 	executor := validatedConfig.Executor // This is the exec.CommandExecutor
 
 	// Check if the configured git executable exists using the provided executor
@@ -94,11 +94,11 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	return client, nil
 }
 
-func (c *GitClient) Path() string { return c.repoPath }
-func (c *GitClient) GitDir() string { return c.gitDir }
+func (c *GitClient) Path() string           { return c.repoPath }
+func (c *GitClient) GitDir() string         { return c.gitDir }
 func (c *GitClient) MainBranchName() string { return c.config.DefaultMainBranchName }
-func (c *GitClient) RemoteName() string { return c.config.DefaultRemoteName }
-func (c *GitClient) Logger() *slog.Logger { return c.logger }
+func (c *GitClient) RemoteName() string     { return c.config.DefaultRemoteName }
+func (c *GitClient) Logger() *slog.Logger   { return c.logger }
 
 func (c *GitClient) runGit(ctx context.Context, args ...string) error {
 	// Logger().Debug(...) is already part of executor.Execute
@@ -310,7 +310,9 @@ func TruncateString(s string, maxLen int) string {
 		return s
 	}
 	if maxLen < 4 {
-		if maxLen < 0 { return "" }
+		if maxLen < 0 {
+			return ""
+		}
 		return s[:maxLen]
 	}
 	return s[:maxLen-3] + "..."

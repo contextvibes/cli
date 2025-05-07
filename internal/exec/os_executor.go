@@ -111,7 +111,7 @@ func (e *OSCommandExecutor) CaptureOutput(ctx context.Context, dir string, comma
 			slog.Any("args", args),
 			slog.String("stdout_capture_len", fmt.Sprintf("%d bytes", len(stdoutStr))),
 			slog.String("stderr_capture_len", fmt.Sprintf("%d bytes", len(stderrStr))),
-			slog.String("error", err.Error()), // Log the original simpler error
+			slog.String("error", err.Error()),     // Log the original simpler error
 			slog.String("detailed_error", errMsg)) // Log the detailed constructed error
 		return stdoutStr, stderrStr, fmt.Errorf(errMsg+": %w", err) // Wrap original error
 	}
