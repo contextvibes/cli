@@ -19,7 +19,7 @@
 </a>
 <!-- End Button -->
 
-Context Vibes is a command-line tool designed to streamline common development tasks and generate context for AI assistants. It provides consistent wrappers for Git workflows, Infrastructure as Code (IaC) operations, code quality checks, formatting, and testing, focusing on clear, structured terminal output and detailed background logging.
+Context Vibes is a command-line tool designed to streamline common development tasks and generate context for AI assistants. It provides consistent wrappers for Git workflows, Infrastructure as Code (IaC) operations, code quality checks, formatting, testing, and programmatic code modifications, focusing on clear, structured terminal output and detailed background logging.
 
 ## Why Context Vibes?
 
@@ -28,17 +28,18 @@ Context Vibes is a command-line tool designed to streamline common development t
 *   **AI Integration:**
     *   Generates a `contextvibes.md` context file (`describe`, `diff`) suitable for AI prompts.
     *   Produces structured terminal output (using `SUMMARY:`, `INFO:`, `ERROR:`, `ADVICE:`, and status prefixes like `+`, `-`, `~`, `!`) suitable for human review or direct AI parsing.
-    *   Generates a detailed JSON trace log (`contextvibes.log` by default) for deeper AI analysis or debugging, separate from terminal output.
+    *   Generates a detailed JSON trace log (default: `contextvibes_ai_trace.log`, configurable) for deeper AI analysis or debugging, separate from terminal output.
 *   **Clarity & Safety:** Uses distinct output formats for different information types and requires confirmation for state-changing operations (unless `--yes` is specified).
+*   **Configurability:** Supports a `.contextvibes.yaml` file in the project root for customizing default behaviors like Git branch/remote names, validation patterns, and default log file names.
 
 ## Key Features
 
 *   **AI Context Generation:**
     *   `describe`: Gathers project details (env, git status, files, user prompt) into `contextvibes.md`. Supports `-o` for output file customization. Respects `.gitignore` and `.aiexclude`.
     *   `diff`: Summarizes pending Git changes (staged, unstaged, untracked), **overwriting** `contextvibes.md`.
-*   **Git Workflow Automation:**
-    *   `kickoff`: Start-of-day routine (update main, create/switch daily dev branch). Requires confirmation.
-    *   `commit`: Stages all changes and commits locally. **Requires `-m <message>` flag.** Requires confirmation.
+*   **Git Workflow Automation (Configurable branch/commit rules):**
+    *   `kickoff`: Start-of-work routine (update main, create/switch new work branch). Requires confirmation. Branch name validation configurable.
+    *   `commit`: Stages all changes and commits locally. **Requires `-m <message>` flag.** Requires confirmation. Commit message format validation configurable.
     *   `sync`: Updates local branch from remote (`pull --rebase`) and pushes if ahead. Requires clean state and confirmation.
     *   `wrapup`: End-of-day routine (stages all, commits with default message if needed, pushes). Requires confirmation.
     *   `status`: Shows concise `git status --short` output.
@@ -52,7 +53,8 @@ Context Vibes is a command-line tool designed to streamline common development t
 *   **Project Testing & Versioning:**
     *   `test`: Runs project-specific tests (e.g., `go test ./...`, `pytest`). Arguments are passed to the underlying test runner.
     *   `version`: Displays the CLI version.
-    *   `codemod`: Applies programmatic code modifications from a JSON script (e.g., `codemod.json`).
+*   **Code Modification:**
+    *   `codemod`: Applies programmatic code modifications or deletions from a JSON script (e.g., `codemod.json`).
 
 ## Installation
 
@@ -62,7 +64,7 @@ Ensure you have Go (`1.24` or later recommended) and Git installed.
     ```bash
     go install github.com/contextvibes/cli/cmd/contextvibes@latest
     ```
-    Installs to `$GOPATH/bin` or `$HOME/go/bin`.
+    Installs to `$GOPATH/bin` (usually `$HOME/go/bin`).
 
 2.  **Ensure Installation Directory is in your `PATH`:**
     ```bash
@@ -72,9 +74,9 @@ Ensure you have Go (`1.24` or later recommended) and Git installed.
     ```
     Restart your shell or source the profile (`source ~/.bashrc`).
 
-**(Alternative) Installation via Releases:** Download from [GitHub Releases](https://github.com/contextvibes/cli/releases) (*Adjust URL*), make executable (`chmod +x`), move to a directory in your `PATH`.
+**(Alternative) Installation via Releases:** Download from [GitHub Releases](https://github.com/contextvibes/cli/releases) (*Adjust URL when releases are available*), make executable (`chmod +x`), move to a directory in your `PATH`.
 
-**Dependencies:** Relies on external tools being in your `PATH`: `git`, `terraform`, `pulumi`, `tflint`, `isort`, `black`, `flake8`, `go` (for Go project commands), `python` (for Python project commands) (depending on project type and commands used).
+**Dependencies:** Relies on external tools being in your `PATH`: `git`, and depending on project type and commands used: `terraform`, `pulumi`, `tflint`, `isort`, `black`, `flake8`, `go` (for Go project commands), `python` (for Python project commands).
 
 ## Usage
 
@@ -86,14 +88,14 @@ contextvibes [command] [flags] # Run a command
 **Common Flags:**
 
 *   `-y`, `--yes`: Assume 'yes' to all confirmation prompts. Useful for scripts and automation.
-*   `--ai-log-file <path>`: Specify a file path for the detailed AI JSON log (default: `contextvibes.log`).
+*   `--ai-log-file <path>`: Specify a file path for the detailed AI JSON log (overrides config default).
 *   `--log-level-ai <level>`: Set the minimum level for the AI log file (debug, info, warn, error; default: `debug`).
 
 **Examples:**
 
 ```bash
-# Start your day (interactive confirmation)
-contextvibes kickoff
+# Start a new feature branch (prompts for name if not provided via --branch)
+contextvibes kickoff --branch feature/add-user-auth
 
 # Describe the project for an AI (prompts for task description)
 contextvibes describe -o my_context.md
@@ -114,10 +116,10 @@ contextvibes test -v
 contextvibes plan
 
 # Commit work (message required, interactive confirmation)
-contextvibes commit -m "feat: Implement user login"
+contextvibes commit -m "feat(auth): Implement OTP login"
 
 # Commit work (non-interactive)
-contextvibes commit -m "fix: Correct typo in docs" -y
+contextvibes commit -m "fix(api): Correct typo in user model" -y
 
 # Sync with remote (requires confirmation)
 contextvibes sync
@@ -152,10 +154,39 @@ Context Vibes uses two distinct output mechanisms:
     *   `stdout` generally contains status information, results, and advice.
     *   `stderr` contains operational errors and interactive prompts (like confirmation).
 2.  **AI Log File (JSON):**
-    *   Written to `contextvibes.log` by default (configurable via `--ai-log-file`).
+    *   Written to `contextvibes_ai_trace.log` by default (configurable via `.contextvibes.yaml` or `--ai-log-file`).
     *   Contains a **detailed, structured trace** of the command's internal execution steps, parameters, and outcomes using `slog`.
     *   Intended for deeper analysis by AI agents or for debugging by humans.
     *   Log level controlled by `--log-level-ai` (defaults to `debug`).
+
+## Configuration (`.contextvibes.yaml`)
+
+`contextvibes` can be configured using a `.contextvibes.yaml` file placed in the root of your project. This allows for project-specific settings that can be version-controlled. If the file is not present, the CLI uses sensible built-in defaults.
+
+**Example `.contextvibes.yaml`:**
+
+```yaml
+# Git settings
+git:
+  defaultRemote: origin
+  defaultMainBranch: main # or master, develop, etc.
+
+# Logging settings
+logging:
+  defaultAILogFile: "logs/contextvibes_ai.log" # Path relative to project root
+
+# Validation rules
+validation:
+  branchName:
+    enable: true  # Default is true. Set to false to disable validation.
+    # pattern: "^(feature|fix|chore|task)/[A-Z]+-[0-9]+-.*$" # Example custom pattern
+  commitMessage:
+    enable: true # Default is true. Set to false to disable validation.
+    # pattern: "^(feat|fix|chore|docs)!?(\\(.+\\))?: .+" # Example custom pattern
+```
+
+*   If a `pattern` is not specified for an enabled validation rule, the CLI's built-in default pattern will be used.
+*   The `--ai-log-file` CLI flag will always override the `logging.defaultAILogFile` setting.
 
 ## Note on AI Context Files (`contextvibes.md`, `.idx/airules.md`, `.aiexclude`)
 

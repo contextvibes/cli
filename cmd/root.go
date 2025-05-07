@@ -151,7 +151,7 @@ var (
 
 func init() {
 	if AppVersion == "" {
-		AppVersion = "0.0.7-dev" // Or your current dev version
+		AppVersion = "v0.0.4"
 	}
 	// Use different names for flag-bound variables to avoid confusion with package vars
 	// that might be intended for direct use.

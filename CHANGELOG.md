@@ -1,39 +1,48 @@
 # Changelog
 
-All notable changes
+All notable changes to the **Context Vibes CLI** project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.0.4] - YYYY-MM-DD
+## [0.0.4] - 2025-05-07
 
 ### Added
 
-*   New `codemod` command to apply structured changes from a JSON file (initially supports `regex_replace` and `delete_file`). Looks for `codemod.json` by default.
+*   New `codemod` command (`contextvibes codemod`) to apply structured changes from a JSON script.
+    *   Initially supports `regex_replace` and `delete_file` operations.
+    *   Looks for `codemod.json` by default if `--script` flag is not provided.
+*   Configuration file support (`.contextvibes.yaml` in project root) for:
+    *   Default Git remote name (`git.defaultRemote`).
+    *   Default Git main branch name (`git.defaultMainBranch`).
+    *   Enabling/disabling and customizing regex patterns for branch name validation (`validation.branchName`).
+    *   Enabling/disabling and customizing regex patterns for commit message validation (`validation.commitMessage`).
+    *   Default AI log file name (`logging.defaultAILogFile`).
 
 ### Changed
 
-*   Refactored all external command executions to use a new central `internal/exec.ExecutorClient`.
-*   `cmd/plan.go`, `cmd/deploy.go`, `cmd/format.go`, `cmd/test.go`, `cmd/quality.go`, `cmd/describe.go` now use `ExecClient`.
-*   `internal/git.Client` now uses the `exec.CommandExecutor` interface from the `internal/exec` package.
-*   `internal/config.FindRepoRootConfigPath` now uses an `ExecClient` for `git rev-parse`.
+*   **Architectural Refactor**: Centralized all external command execution (Git and other tools) through a new `internal/exec.ExecutorClient`.
+    *   All `cmd/*.go` files (`plan`, `deploy`, `format`, `test`, `quality`, `describe`, `kickoff`, `commit`) now use this `ExecClient` for running external processes, replacing direct calls to `os/exec` or old `internal/tools` helpers.
+    *   `internal/git.Client` now uses the `exec.CommandExecutor` interface from the `internal/exec` package for its underlying Git command operations.
+    *   `internal/config.FindRepoRootConfigPath` now uses an `ExecClient` for `git rev-parse`.
 *   Default AI log file name is now configurable via `.contextvibes.yaml` (config key: `logging.defaultAILogFile`, ultimate fallback: `contextvibes_ai_trace.log`).
+*   `cmd/kickoff.go`: Branch naming logic updated. Now requires branches to start with `feature/`, `fix/`, `docs/`, or `format/` by default (configurable via `.contextvibes.yaml`). Prompts for branch name if not provided via `--branch` flag.
+*   `cmd/commit.go`: Commit message validation now enforces Conventional Commits format by default (configurable via `.contextvibes.yaml`).
 
 ### Fixed
 
 *   Corrected ineffective `break` statement in `cmd/codemod.go`'s `delete_file` operation to correctly exit the operations loop.
-*   Addressed 'unused parameter: ctx' warnings in `cmd/describe.go` helper functions by adding `_ = ctx`.
+*   Addressed 'unused parameter: ctx' warnings in `cmd/describe.go` helper functions by ensuring `ctx` is appropriately passed to `ExecClient` methods or marked as used (`_ = ctx`) if the helper itself doesn't directly consume it.
+*   Ensured all package-level variables in `cmd/root.go` (`AppLogger`, `LoadedAppConfig`, `ExecClient`, `assumeYes`, `AppVersion`, `rootCmd`) are correctly defined and accessible to all commands in the `cmd` package.
 *   Updated `.gitignore` to explicitly ignore root-level executables and common codemod script names.
 
 ### Removed
 
 *   `internal/tools/exec.go` (superseded by `internal/exec` package).
-*   Most utility functions from `internal/tools/git.go` (functionality moved to `internal/git.Client` or uses `os.Stat`). `IsGitRepo` remains, `CheckGitPrereqs` refactored.
+*   Most utility functions from `internal/tools/git.go` (functionality moved to `internal/git.Client` or uses `os.Stat`). `IsGitRepo` remains; `CheckGitPrereqs` (if previously present after refactor) is removed as its functionality is covered by `git.NewClient`.
 *   `internal/git/executor.go` (superseded by `internal/exec.CommandExecutor` interface).
-
- to the **Context Vibes CLI** project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
@@ -97,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 Link Definitions - Add the new one when tagging
 -->
-[0.0.3]: https://github.com/contextvibes/cli/.../compare/v0.0.2...v0.0.3 <!-- Adjust URL and tags -->
+[0.0.4]: https://github.com/contextvibes/cli/.../compare/v0.0.3...v0.0.4 <!-- Adjust URL and tags WHEN YOU TAG -->
+[0.0.3]: https://github.com/contextvibes/cli/.../compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/contextvibes/cli/.../compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/contextvibes/cli/.../tag/v0.0.1
