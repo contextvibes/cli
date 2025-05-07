@@ -1,5 +1,4 @@
 // cmd/root.go
-
 package cmd
 
 import (
@@ -9,116 +8,163 @@ import (
 	"os"
 	"strings"
 
+	"github.com/contextvibes/cli/internal/config"
+	"github.com/contextvibes/cli/internal/exec"
 	"github.com/spf13/cobra"
 )
 
-// AppLogger is the central logger ONLY for the AI log file.
-var AppLogger *slog.Logger
-
-// Flags
+// These are package-level variables, intended to be accessible by all files
+// within this 'cmd' package.
 var (
-	// AI Logging Flags
-	logLevelAI string
-	aiLogFile  string
-	// Non-interactive Flag
-	AppVersion string
-
-	//Non-Interactive Flag
-	assumeYes bool // Variable to hold the value of the --yes flag
+	AppLogger       *slog.Logger
+	LoadedAppConfig *config.Config
+	ExecClient      *exec.ExecutorClient // For general command execution
+	assumeYes       bool                 // For --yes flag
+	AppVersion      string               // Set in init() or by ldflags
 )
 
-const defaultAILogFilename = "contextvibes.log"
-
+// rootCmd is the base for all commands. It's also a package-level variable.
 var rootCmd = &cobra.Command{
 	Use:   "contextvibes",
 	Short: "Manages project tasks: AI context generation, Git workflow, IaC, etc.",
-	Long: `ContextVibes: Your Project Co-Pilot CLI
-(Full description here)
+	Long: `ContextVibes: Your Project Co-Pilot CLI.
+This tool helps streamline common development tasks by providing consistent wrappers
+for Git workflows, Infrastructure as Code (IaC) operations, code quality checks,
+and more. It aims for clear, structured terminal output and detailed background
+logging suitable for AI consumption.
 
-Use the --yes flag to skip interactive confirmation prompts.`, // Added help text
+Use the --yes flag to skip interactive confirmation prompts.
+Customizations for branch naming, commit message validation, default Git
+settings, and default AI log file name can be placed in a .contextvibes.yaml
+file in the project root.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// --- Initialize AI File Logging ONLY ---
-		aiLevel := parseLogLevel(logLevelAI, slog.LevelDebug)
+		tempLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-		targetAILogFile := defaultAILogFilename
-		aiLogTargetDesc := fmt.Sprintf("default file '%s'", defaultAILogFilename)
-		if aiLogFile != "" {
-			targetAILogFile = aiLogFile
-			aiLogTargetDesc = fmt.Sprintf("specified file '%s'", aiLogFile)
+		bootstrapOSExecutor := exec.NewOSCommandExecutor(slog.New(slog.NewTextHandler(io.Discard, nil)))
+		bootstrapExecClient := exec.NewClient(bootstrapOSExecutor)
+
+		defaultCfg := config.GetDefaultConfig()
+		var loadedUserConfig *config.Config
+		var configLoadErr error
+		var foundConfigPath string
+
+		repoConfigPath, findPathErr := config.FindRepoRootConfigPath(bootstrapExecClient)
+		if findPathErr != nil {
+			tempLogger.Debug("Could not find git repo root to look for .contextvibes.yaml, using defaults.", slog.String("error", findPathErr.Error()))
+			LoadedAppConfig = defaultCfg
+		} else if repoConfigPath == "" {
+			tempLogger.Debug(".contextvibes.yaml not found in repository root, using default configuration.")
+			LoadedAppConfig = defaultCfg
+		} else {
+			foundConfigPath = repoConfigPath
+			tempLogger.Debug("Attempting to load config file", slog.String("path", foundConfigPath))
+			loadedUserConfig, configLoadErr = config.LoadConfig(foundConfigPath)
+
+			if configLoadErr != nil {
+				fmt.Fprintf(os.Stderr, "[WARNING] Error loading config file '%s': %v. Using default settings.\n", foundConfigPath, configLoadErr)
+				tempLogger.Error("Failed to load or parse .contextvibes.yaml, using defaults.", slog.String("path", foundConfigPath), slog.String("error", configLoadErr.Error()))
+				LoadedAppConfig = defaultCfg
+			} else if loadedUserConfig == nil {
+				tempLogger.Info(".contextvibes.yaml was checked but not found or effectively empty, using default configuration.", slog.String("path_checked", foundConfigPath))
+				LoadedAppConfig = defaultCfg
+			} else {
+				tempLogger.Info("Successfully loaded .contextvibes.yaml.", slog.String("path", foundConfigPath))
+				LoadedAppConfig = config.MergeWithDefaults(loadedUserConfig, defaultCfg)
+			}
+		}
+
+		aiLevel := parseLogLevel(logLevelAIValue, slog.LevelDebug) // Renamed flag variable
+		targetAILogFile := LoadedAppConfig.Logging.DefaultAILogFile
+		if aiLogFileFlagValue != "" { // Renamed flag variable
+			targetAILogFile = aiLogFileFlagValue
 		}
 
 		var aiOut io.Writer = io.Discard
-		// var aiLogOpenErr error // No need to store this error currently
-
-		file, err := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
-		if err != nil {
-			// aiLogOpenErr = err // No need to store this error currently
-			// Log the error directly to stderr as the main logger might not be ready
-			fmt.Fprintf(os.Stderr, "[ERROR] Failed to open AI log file (%s): %v. AI logs will be discarded.\n", aiLogTargetDesc, err)
+		logFileHandle, errLogFile := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
+		if errLogFile != nil {
+			fmt.Fprintf(os.Stderr, "[ERROR] Failed to open AI log file '%s': %v. AI logs will be discarded.\n", targetAILogFile, errLogFile)
 		} else {
-			aiOut = file
-			// TODO: Consider adding a defer file.Close() here if the file handle needs to be closed cleanly on exit.
-			// However, since the logger might be used throughout the application's lifetime,
-			// closing it here might be premature. Managing the file handle lifecycle might require
-			// a more sophisticated shutdown mechanism if strict resource cleanup is needed.
+			aiOut = logFileHandle
 		}
-
-		// --- NO human logger setup anymore ---
-
-		// Create AI JSON handler (or discard handler)
-		var aiHandler slog.Handler
-		if aiOut != io.Discard {
-			aiHandler = slog.NewJSONHandler(aiOut, &slog.HandlerOptions{Level: aiLevel})
-		} else {
-			// Use a discard handler if the file couldn't be opened
-			aiHandler = slog.NewJSONHandler(io.Discard, nil)
-		}
+		aiHandlerOptions := &slog.HandlerOptions{Level: aiLevel}
+		aiHandler := slog.NewJSONHandler(aiOut, aiHandlerOptions)
 		AppLogger = slog.New(aiHandler)
 
-		AppLogger.Debug("AI Logger initialized",
-			slog.String("ai_log_level_set", aiLevel.String()),
-			slog.String("ai_log_target_used", targetAILogFile),
-			slog.Bool("ai_log_active", aiOut != io.Discard),
+		mainOSExecutor := exec.NewOSCommandExecutor(AppLogger)
+		ExecClient = exec.NewClient(mainOSExecutor)
+
+		AppLogger.Debug("AI Logger and main ExecutorClient initialized",
+			slog.String("log_level_set_for_ai_file", aiLevel.String()),
+			slog.String("ai_log_file_target", targetAILogFile),
+			slog.Bool("ai_log_file_active", aiOut != io.Discard),
 		)
-		// Log if non-interactive mode is active (useful for AI trace)
 		if assumeYes {
 			AppLogger.Info("Running in non-interactive mode (--yes specified)")
+		}
+
+		if LoadedAppConfig != nil {
+			AppLogger.Debug("Effective application configuration resolved",
+				slog.Group("config",
+					slog.Group("git",
+						slog.String("defaultRemote", LoadedAppConfig.Git.DefaultRemote),
+						slog.String("defaultMainBranch", LoadedAppConfig.Git.DefaultMainBranch),
+					),
+					slog.Group("logging",
+						slog.String("defaultAILogFile", LoadedAppConfig.Logging.DefaultAILogFile),
+					),
+					slog.Group("validation",
+						slog.Group("branchName",
+							slog.Bool("enable", (LoadedAppConfig.Validation.BranchName.Enable != nil && *LoadedAppConfig.Validation.BranchName.Enable) || LoadedAppConfig.Validation.BranchName.Enable == nil),
+							slog.String("pattern", LoadedAppConfig.Validation.BranchName.Pattern),
+						),
+						slog.Group("commitMessage",
+							slog.Bool("enable", (LoadedAppConfig.Validation.CommitMessage.Enable != nil && *LoadedAppConfig.Validation.CommitMessage.Enable) || LoadedAppConfig.Validation.CommitMessage.Enable == nil),
+							slog.String("pattern", LoadedAppConfig.Validation.CommitMessage.Pattern),
+						),
+					),
+				),
+			)
+		} else {
+			AppLogger.Error("CRITICAL: LoadedAppConfig is unexpectedly nil after initialization attempt.")
 		}
 		return nil
 	},
 }
 
-// Execute function remains the same
+// Execute is the main entry point for the CLI. It's made public so main.go can call it.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		// Attempt to use the AppLogger if initialized, otherwise fallback to stderr
 		if AppLogger != nil {
 			AppLogger.Error("CLI execution finished with error", slog.String("error", err.Error()))
 		} else {
-			fmt.Fprintf(os.Stderr, "[ERROR] CLI execution failed: %v (logger not initialized)\n", err)
+			fmt.Fprintf(os.Stderr, "[ERROR] CLI execution failed before logger initialization: %v\n", err)
 		}
-		// Cobra/application might handle exit code, or os.Exit(1) could be added here if needed.
-		// os.Exit(1) // Uncomment if explicit non-zero exit is desired on error
+		os.Exit(1)
 	}
 }
 
+// Flag variables should have distinct names from package-level vars if they are only for binding.
+var (
+	logLevelAIValue    string
+	aiLogFileFlagValue string
+)
+
 func init() {
-	AppVersion = "0.0.3"
-	// AI Logging Flags
-	rootCmd.PersistentFlags().StringVar(&logLevelAI, "log-level-ai", "debug", "AI (JSON) file log level (debug, info, warn, error)")
-	rootCmd.PersistentFlags().StringVar(&aiLogFile, "ai-log-file", "", fmt.Sprintf("AI (JSON) log file path (default: %s)", defaultAILogFilename))
+	if AppVersion == "" {
+		AppVersion = "v0.0.4"
+	}
+	// Use different names for flag-bound variables to avoid confusion with package vars
+	// that might be intended for direct use.
+	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "",
+		fmt.Sprintf("AI (JSON) log file path (overrides config default: see .contextvibes.yaml, fallback: %s)", config.UltimateDefaultAILogFilename))
+	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all confirmation prompts, enabling non-interactive mode")
 
-	// *** Add the non-interactive flag ***
-	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all confirmation prompts")
-
-	// Subcommands add themselves to rootCmd
+	// Subcommands (like versionCmd, kickoffCmd, codemodCmd) add themselves to rootCmd
+	// via their own init() functions. This is a standard Cobra pattern.
 }
-func init(){
-	rootCmd.AddCommand(versionCmd)}
 
-// parseLogLevel function remains the same
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {
-	// Convert input to lower case for case-insensitive comparison
 	levelStrLower := strings.ToLower(levelStr)
 	switch levelStrLower {
 	case "debug":
@@ -130,10 +176,8 @@ func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {
 	case "error", "err":
 		return slog.LevelError
 	default:
-		// Only warn if a level was provided but it wasn't valid *and* it's not the default level string representation
 		if levelStr != "" && !strings.EqualFold(levelStr, defaultLevel.String()) {
-			// Use Fprintf to stderr for consistency, as logger might not be fully set up yet.
-			fmt.Fprintf(os.Stderr, "[WARNING] Invalid AI log level '%s', using default '%s'.\n", levelStr, defaultLevel.String())
+			fmt.Fprintf(os.Stderr, "[WARNING] Invalid AI log level '%s' provided, using default '%s'.\n", levelStr, defaultLevel.String())
 		}
 		return defaultLevel
 	}

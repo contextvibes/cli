@@ -1,5 +1,19 @@
+# IDE and OS specific
 .vscode/settings.json
+.DS_Store
+
+# Generated output files & logs
 contextvibes.md
 *.log
+
+# Executable if built in the project root
+contextvibes
+contextvibes.exe
+
+# Directory for compiled binaries (recommended output location)
 bin/
-contextvibes.log
+
+# Temporary or example files
+cmd/commit_message.txt
+codemod.json
+fix_describe_unused_ctx.json

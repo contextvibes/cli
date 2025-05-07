@@ -1,23 +1,23 @@
 // cmd/deploy.go
-
 package cmd
 
 import (
-	"context" // Added for logger
-	"errors"  // Added for error creation
+	"context"
+	"errors"
 	"fmt"
-	"log/slog" // Added for logger
+	"log/slog"
 	"os"
 	"path/filepath"
-	"strings" // Added for join
+	"strings"
 
 	"github.com/contextvibes/cli/internal/project"
-	"github.com/contextvibes/cli/internal/tools" // Keep for CommandExists, ExecuteCommand, Stat
-	"github.com/contextvibes/cli/internal/ui"    // Use Presenter
+	// "github.com/contextvibes/cli/internal/tools" // Only needed for os.Stat now, if CommandExists/ExecuteCommand are removed
+	"github.com/contextvibes/cli/internal/ui" // Use Presenter
 	"github.com/spf13/cobra"
+	// Use the execClientInterface, assuming it's defined perhaps in a shared cmd/helpers.go or locally
+	// For simplicity, let's assume it's accessible or redefine it if needed. We'll use the global ExecClient for now.
+	// No direct import of internal/exec needed if using global ExecClient
 )
-
-// assumeYes defined in root.go
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
@@ -40,7 +40,11 @@ and executes the deployment after confirmation (unless -y/--yes is specified).
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := AppLogger
+		logger := AppLogger // From cmd/root.go
+		// Use global ExecClient from cmd/root.go
+		if ExecClient == nil {
+			return fmt.Errorf("internal error: executor client not initialized")
+		}
 		if logger == nil {
 			return fmt.Errorf("internal error: logger not initialized")
 		}
@@ -51,7 +55,6 @@ and executes the deployment after confirmation (unless -y/--yes is specified).
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			// Log actual error, return wrapped error
 			wrappedErr := fmt.Errorf("failed to get current working directory: %w", err)
 			logger.ErrorContext(ctx, "Deploy: Failed getwd", slog.String("error", err.Error()))
 			presenter.Error("Failed to get current working directory: %v", err)
@@ -72,11 +75,11 @@ and executes the deployment after confirmation (unless -y/--yes is specified).
 
 		switch projType {
 		case project.Terraform:
-			// Pass presenter, logger, cwd, and assumeYes flag
-			return executeTerraformDeploy(ctx, presenter, logger, cwd, assumeYes)
+			// Pass ExecClient to the helper function
+			return executeTerraformDeploy(ctx, presenter, logger, ExecClient, cwd, assumeYes)
 		case project.Pulumi:
-			// Pass presenter, logger, cwd, and assumeYes flag
-			return executePulumiDeploy(ctx, presenter, logger, cwd, assumeYes)
+			// Pass ExecClient to the helper function
+			return executePulumiDeploy(ctx, presenter, logger, ExecClient, cwd, assumeYes)
 		case project.Go:
 			presenter.Info("Deploy command is not applicable for Go projects.")
 			return nil
@@ -85,13 +88,13 @@ and executes the deployment after confirmation (unless -y/--yes is specified).
 			return nil
 		case project.Unknown:
 			errMsgForUser := "Unknown project type detected. Cannot determine deploy action."
-			errMsgForError := "unknown project type detected" // ST1005 compliant
+			errMsgForError := "unknown project type detected"
 			presenter.Error(errMsgForUser)
 			logger.Error(errMsgForUser, slog.String("source_command", "deploy"))
 			return errors.New(errMsgForError)
 		default:
 			errMsgForUser := fmt.Sprintf("Internal error: Unhandled project type '%s'", projType)
-			errMsgForError := fmt.Sprintf("internal error: unhandled project type '%s'", projType) // ST1005 compliant
+			errMsgForError := fmt.Sprintf("internal error: unhandled project type '%s'", projType)
 			presenter.Error(errMsgForUser)
 			logger.Error(errMsgForUser, slog.String("source_command", "deploy"))
 			return errors.New(errMsgForError)
@@ -99,45 +102,51 @@ and executes the deployment after confirmation (unless -y/--yes is specified).
 	},
 }
 
-// Modified to accept context, presenter, logger, dir, and assumeYes flag
-func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, dir string, skipConfirm bool) error {
+// Define an interface matching the methods used by the helpers below.
+// This makes the helpers testable independently of the global ExecClient.
+type execDeployClientInterface interface {
+	CommandExists(commandName string) bool
+	Execute(ctx context.Context, dir string, commandName string, args ...string) error
+}
+
+// executeTerraformDeploy now accepts execClient
+func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execDeployClientInterface, dir string, skipConfirm bool) error {
 	tool := "terraform"
 	planFile := "tfplan.out"
 	planFilePath := filepath.Join(dir, planFile)
-	args := []string{"apply", "-auto-approve", planFile} // Use -auto-approve as confirmation is handled here
+	args := []string{"apply", "-auto-approve", planFile}
 
-	if !tools.CommandExists(tool) {
+	if !execClient.CommandExists(tool) { // Use execClient
 		errMsgForUser := fmt.Sprintf("Command '%s' not found. Please ensure Terraform is installed and in your PATH.", tool)
-		errMsgForError := fmt.Sprintf("command '%s' not found", tool) // ST1005 compliant
+		errMsgForError := fmt.Sprintf("command '%s' not found", tool)
 		presenter.Error(errMsgForUser)
 		logger.Error("Terraform deploy prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
 		return errors.New(errMsgForError)
 	}
 
-	// Check for plan file
+	// Check for plan file using standard os.Stat - this doesn't involve executing a command
 	logger.DebugContext(ctx, "Checking for Terraform plan file", slog.String("path", planFilePath))
 	if _, err := os.Stat(planFilePath); os.IsNotExist(err) {
 		errMsgForUser := fmt.Sprintf("Terraform plan file '%s' not found.", planFile)
-		errMsgForError := "terraform plan file not found" // ST1005 compliant
+		errMsgForError := "terraform plan file not found"
 		presenter.Error(errMsgForUser)
 		presenter.Advice("Please run `contextvibes plan` first to generate the plan file.")
 		logger.Error("Terraform deploy prerequisite failed: plan file missing", slog.String("plan_file", planFile))
 		return errors.New(errMsgForError)
 	} else if err != nil {
-		// Wrap the original error, the base message should be conventional
 		errMsgForUser := fmt.Sprintf("Error checking for plan file '%s': %v", planFilePath, err)
-		errMsgForErrorBase := "error checking for plan file" // ST1005 compliant base
-		presenter.Error(errMsgForUser)                       // Show detailed error to user
+		errMsgForErrorBase := "error checking for plan file"
+		presenter.Error(errMsgForUser)
 		logger.Error("Terraform deploy: error stating plan file", slog.String("plan_file", planFilePath), slog.String("error", err.Error()))
-		return fmt.Errorf("%s %s: %w", errMsgForErrorBase, planFilePath, err) // Wrap original error
+		return fmt.Errorf("%s %s: %w", errMsgForErrorBase, planFilePath, err)
 	}
 	presenter.Info("Using Terraform plan file: %s", presenter.Highlight(planFile))
 
-	// Confirmation
+	// Confirmation logic remains the same
 	presenter.Newline()
 	presenter.Info("Proposed Deploy Action:")
 	presenter.Detail("Apply the Terraform plan '%s' using command:", planFile)
-	presenter.Detail("  %s %s", tool, strings.Join(args, " ")) // Show exact command
+	presenter.Detail("  %s %s", tool, strings.Join(args, " "))
 	presenter.Newline()
 
 	confirmed := false
@@ -149,7 +158,6 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 		var promptErr error
 		confirmed, promptErr = presenter.PromptForConfirmation("Proceed with Terraform deployment?")
 		if promptErr != nil {
-			// Error reading confirmation is likely internal or IO, return it directly
 			logger.ErrorContext(ctx, "Error reading deploy confirmation", slog.String("tool", tool), slog.String("error", promptErr.Error()))
 			return promptErr
 		}
@@ -158,25 +166,25 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 	if !confirmed {
 		presenter.Info("Terraform deployment aborted by user.")
 		logger.InfoContext(ctx, "Deploy aborted by user confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", false))
-		return nil // Not an error
+		return nil
 	}
 	logger.DebugContext(ctx, "Proceeding after deploy confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", true))
 
-	// Execution
+	// Execution using execClient
 	presenter.Newline()
 	presenter.Info("Starting Terraform apply...")
 	logger.Info("Executing terraform apply", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Any("args", args))
 
-	// tools.ExecuteCommand pipes output.
-	err := tools.ExecuteCommand(dir, tool, args...) // TODO: Pass ctx if ExecuteCommand supports it
+	// Use execClient.Execute - terraform apply pipes its own output
+	err := execClient.Execute(ctx, dir, tool, args...) // Use execClient
 	if err != nil {
-		// Terraform apply errors are usually clear from its output piped by ExecuteCommand
+		// Error message from Execute should contain exit code info.
+		// User will see the piped output from terraform apply itself.
 		errMsgForUser := "'terraform apply' command failed."
-		errMsgForError := "terraform apply command failed" // ST1005 compliant
-		presenter.Error(errMsgForUser)                     // Let user see TF output above for details
+		errMsgForError := "terraform apply command failed"
+		presenter.Error(errMsgForUser)
 		logger.Error("Terraform apply command failed", slog.String("source_command", "deploy"), slog.String("error", err.Error()))
-		// Return a new error, as the underlying error from ExecuteCommand might not be clean
-		// and stderr was already shown to the user.
+		// Return a simpler error type, as the underlying error from Execute might not be needed by caller
 		return errors.New(errMsgForError)
 	}
 
@@ -186,20 +194,20 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 	return nil
 }
 
-// Modified to accept context, presenter, logger, dir, and assumeYes flag
-func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, dir string, skipConfirm bool) error {
+// executePulumiDeploy now accepts execClient
+func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execDeployClientInterface, dir string, skipConfirm bool) error {
 	tool := "pulumi"
 	args := []string{"up"}
 
-	if !tools.CommandExists(tool) {
+	if !execClient.CommandExists(tool) { // Use execClient
 		errMsgForUser := fmt.Sprintf("Command '%s' not found. Please ensure Pulumi is installed and in your PATH.", tool)
-		errMsgForError := fmt.Sprintf("command '%s' not found", tool) // ST1005 compliant
+		errMsgForError := fmt.Sprintf("command '%s' not found", tool)
 		presenter.Error(errMsgForUser)
 		logger.Error("Pulumi deploy prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
 		return errors.New(errMsgForError)
 	}
 
-	// Confirmation (for contextvibes wrapper - pulumi up has its own internal confirm)
+	// Confirmation logic remains the same
 	presenter.Newline()
 	presenter.Info("Proposed Deploy Action:")
 	presenter.Detail("Run '%s %s'.", tool, strings.Join(args, " "))
@@ -213,35 +221,34 @@ func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *s
 		confirmed = true
 	} else {
 		var promptErr error
-		// Ask if user wants to proceed *to* the pulumi up command
 		confirmed, promptErr = presenter.PromptForConfirmation("Proceed to run 'pulumi up'?")
 		if promptErr != nil {
 			logger.ErrorContext(ctx, "Error reading deploy confirmation", slog.String("tool", tool), slog.String("error", promptErr.Error()))
-			return promptErr // Likely internal/IO error
+			return promptErr
 		}
 	}
 
 	if !confirmed {
 		presenter.Info("'pulumi up' command aborted by user (before execution).")
 		logger.InfoContext(ctx, "Deploy aborted by user confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", false))
-		return nil // Not an error
+		return nil
 	}
 	logger.DebugContext(ctx, "Proceeding after deploy confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", true))
 
-	// Execution
+	// Execution using execClient
 	presenter.Newline()
 	presenter.Info("Starting Pulumi execution ('%s %s')...", tool, strings.Join(args, " "))
 	logger.Info("Executing pulumi up", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Any("args", args))
 
-	// tools.ExecuteCommand pipes output.
-	err := tools.ExecuteCommand(dir, tool, args...) // TODO: Pass ctx if ExecuteCommand supports it
+	// Use execClient.Execute - pulumi up pipes its own output
+	err := execClient.Execute(ctx, dir, tool, args...) // Use execClient
 	if err != nil {
-		// Pulumi up errors/abort are usually clear from its output piped by ExecuteCommand
+		// Error message from Execute should contain exit code info.
+		// User will see the piped output from pulumi up itself.
 		errMsgForUser := "'pulumi up' command failed or was aborted by user during its execution."
-		errMsgForError := "pulumi up command failed or aborted" // ST1005 compliant
-		presenter.Error(errMsgForUser)                          // Let user see Pulumi output above for details
+		errMsgForError := "pulumi up command failed or aborted"
+		presenter.Error(errMsgForUser)
 		logger.Error("Pulumi up command failed or aborted", slog.String("source_command", "deploy"), slog.String("error", err.Error()))
-		// Return simpler error value
 		return errors.New(errMsgForError)
 	}
 

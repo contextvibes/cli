@@ -2,7 +2,7 @@
 package cmd
 
 import (
-	"context"
+	"context" // Ensure this is imported
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,12 +10,19 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/project"
-	"github.com/contextvibes/cli/internal/tools" // For CommandExists and ExecuteCommand
-	"github.com/contextvibes/cli/internal/ui"    // Use Presenter
+	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
+	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed
 )
 
-// testCmd represents the test command
+// Define an interface matching the methods used by the helpers below.
+// This makes the helpers testable independently of the global ExecClient.
+type execTestClientInterface interface {
+	CommandExists(commandName string) bool
+	Execute(ctx context.Context, dir string, commandName string, args ...string) error
+	// CaptureOutput might be needed if specific test runners' output needs parsing (not used by current test helpers)
+}
+
 var testCmd = &cobra.Command{
 	Use:   "test [args...]",
 	Short: "Runs project-specific tests (e.g., go test, pytest).",
@@ -29,14 +36,17 @@ For other project types, or if no specific test runner is found, it will indicat
 	Example: `  contextvibes test
   contextvibes test -v  # Passes '-v' to 'go test' or 'pytest'
   contextvibes test tests/my_specific_test.py # Passes path to pytest`,
-	// Args: cobra.ArbitraryArgs, // Allow arbitrary arguments to pass to the underlying test command
+	// Args: cobra.ArbitraryArgs, // Keep commented out unless strictly needed and understood
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := AppLogger
+		logger := AppLogger    // From cmd/root.go
+		if ExecClient == nil { // From cmd/root.go
+			return fmt.Errorf("internal error: executor client not initialized")
+		}
 		if logger == nil {
 			return fmt.Errorf("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin)
-		ctx := context.Background()
+		ctx := context.Background() // Get context
 
 		presenter.Summary("Running project tests.")
 
@@ -65,16 +75,17 @@ For other project types, or if no specific test runner is found, it will indicat
 		switch projType {
 		case project.Go:
 			presenter.Header("Go Project Tests")
-			testErr = executeGoTests(ctx, presenter, logger, cwd, args)
+			// The codemod should have changed this call to include ExecClient
+			testErr = executeGoTests(ctx, presenter, logger, ExecClient, cwd, args)
 			testExecuted = true
 		case project.Python:
 			presenter.Header("Python Project Tests")
-			testErr = executePythonTests(ctx, presenter, logger, cwd, args)
+			// The codemod should have changed this call to include ExecClient
+			testErr = executePythonTests(ctx, presenter, logger, ExecClient, cwd, args)
 			testExecuted = true
 		case project.Terraform, project.Pulumi:
 			presenter.Info("Automated testing for %s projects is not yet implemented in this command.", projType)
 			presenter.Advice("Consider using tools like Terratest or language-specific test frameworks manually.")
-			// TODO: Add support for Terraform/Pulumi testing frameworks if desired
 		case project.Unknown:
 			presenter.Warning("Unknown project type. Cannot determine how to run tests.")
 		default:
@@ -88,11 +99,9 @@ For other project types, or if no specific test runner is found, it will indicat
 		}
 
 		if testErr != nil {
-			// The underlying tool (go test, pytest) should have printed its own errors.
-			// The presenter.Error here just summarizes that the test suite failed.
 			presenter.Error("Project tests failed.")
 			logger.Error("Test command finished with errors", slog.String("source_command", "test"), slog.String("error", testErr.Error()))
-			return testErr // Return the specific error from the test execution
+			return testErr
 		}
 
 		presenter.Success("Project tests completed successfully.")
@@ -101,42 +110,42 @@ For other project types, or if no specific test runner is found, it will indicat
 	},
 }
 
-func executeGoTests(_ context.Context, presenter *ui.Presenter, logger *slog.Logger, dir string, passThroughArgs []string) error {
+// Manually updated signature: accepts ctx, execClient
+func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execTestClientInterface, dir string, passThroughArgs []string) error {
 	tool := "go"
-	if !tools.CommandExists(tool) {
+	// This should have been updated by codemod
+	if !execClient.CommandExists(tool) {
 		errMsgForUser := fmt.Sprintf("'%s' command not found. Ensure Go is installed and in your PATH.", tool)
-		errMsgForError := "go command not found"
 		presenter.Error(errMsgForUser)
 		logger.Error("Go test prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
-		return errors.New(errMsgForError)
+		return errors.New("go command not found")
 	}
 
-	// Base arguments for go test
 	testArgs := []string{"test", "./..."}
-	// Append any passthrough arguments
 	testArgs = append(testArgs, passThroughArgs...)
 
 	presenter.Info("Executing: %s %s", tool, strings.Join(testArgs, " "))
 	logger.Info("Executing go test", slog.String("source_command", "test"), slog.String("tool", tool), slog.Any("args", testArgs))
 
-	// tools.ExecuteCommand pipes stdio directly
-	err := tools.ExecuteCommand(dir, tool, testArgs...)
+	// This should have been updated by codemod
+	err := execClient.Execute(ctx, dir, tool, testArgs...)
 	if err != nil {
-		// No need for presenter.Error here, as go test output is already on stderr.
-		// tools.ExecuteCommand already wraps the error with exit code info.
 		return fmt.Errorf("go test failed: %w", err)
 	}
 	return nil
 }
 
-func executePythonTests(_ context.Context, presenter *ui.Presenter, logger *slog.Logger, dir string, passThroughArgs []string) error {
+// Manually updated signature: accepts ctx, execClient
+func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execTestClientInterface, dir string, passThroughArgs []string) error {
 	pytestTool := "pytest"
-	pythonTool := "python" // Or python3
+	pythonTool := "python"
 
-	if tools.CommandExists(pytestTool) {
+	// This should have been updated by codemod
+	if execClient.CommandExists(pytestTool) {
 		presenter.Info("Executing: %s %s", pytestTool, strings.Join(passThroughArgs, " "))
 		logger.Info("Executing pytest", slog.String("source_command", "test"), slog.String("tool", pytestTool), slog.Any("args", passThroughArgs))
-		err := tools.ExecuteCommand(dir, pytestTool, passThroughArgs...)
+		// This should have been updated by codemod
+		err := execClient.Execute(ctx, dir, pytestTool, passThroughArgs...)
 		if err != nil {
 			return fmt.Errorf("pytest failed: %w", err)
 		}
@@ -144,16 +153,14 @@ func executePythonTests(_ context.Context, presenter *ui.Presenter, logger *slog
 	}
 
 	presenter.Info("`pytest` not found. Attempting `python -m unittest discover`...")
-	if tools.CommandExists(pythonTool) {
-		// Base arguments for unittest
+	// This should have been updated by codemod
+	if execClient.CommandExists(pythonTool) {
 		unittestArgs := []string{"-m", "unittest", "discover"}
-		// Append any passthrough arguments (though unittest discover has fewer common ones)
-		// For simplicity, we might not pass all args here or make it conditional.
-		// unittestArgs = append(unittestArgs, passThroughArgs...) // Be cautious with this
 
 		presenter.Info("Executing: %s %s", pythonTool, strings.Join(unittestArgs, " "))
 		logger.Info("Executing python unittest", slog.String("source_command", "test"), slog.String("tool", pythonTool), slog.Any("args", unittestArgs))
-		err := tools.ExecuteCommand(dir, pythonTool, unittestArgs...)
+		// This should have been updated by codemod
+		err := execClient.Execute(ctx, dir, pythonTool, unittestArgs...)
 		if err != nil {
 			return fmt.Errorf("python -m unittest discover failed: %w", err)
 		}
@@ -161,19 +168,11 @@ func executePythonTests(_ context.Context, presenter *ui.Presenter, logger *slog
 	}
 
 	errMsgForUser := "Neither `pytest` nor `python` found. Cannot run Python tests."
-	errMsgForError := "no python test runner found"
 	presenter.Error(errMsgForUser)
 	logger.Error("Python test prerequisite failed", slog.String("reason", errMsgForUser))
-	return errors.New(errMsgForError)
+	return errors.New("no python test runner found")
 }
 
 func init() {
-	// Allow arbitrary arguments for the test command by setting this
-	// after the command has been defined and before adding to root.
-	// However, Cobra's handling of arbitrary args can be tricky with subcommands
-	// if not careful. For simple passthrough, it's often easier to just
-	// iterate over cmd.Flags().Args() directly if cobra.ArbitraryArgs is not behaving as expected.
-	// For now, we'll rely on `args` passed to RunE.
-	// testCmd.Args = cobra.ArbitraryArgs
 	rootCmd.AddCommand(testCmd)
 }
