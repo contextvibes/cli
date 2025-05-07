@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.5] - 2025-05-07
+
+### Changed
+*   **`commit` command:** Now fully supports configurable commit message validation via `.contextvibes.yaml`.
+    *   Respects `validation.commitMessage.enable` to toggle validation.
+    *   Uses `validation.commitMessage.pattern` for custom regex, falling back to the default Conventional Commits pattern if enabled and no custom pattern is provided.
+    *   User feedback and help text updated to reflect active validation rules.
+*   **`cmd/root.go`:** Improved the main help text (`Long` description) for the CLI to be more descriptive and structured.
+*   Internal: Default AI log filename constant in `internal/config/config.go` (UltimateDefaultAILogFilename) aligned to `contextvibes_ai_trace.log` to match README documentation.
+*   Internal: Default codemod script filename constant in `internal/config/config.go` (DefaultCodemodFilename) aligned to `codemod.json` for consistency.
+
+### Fixed
+*   **Commit Message Validation Regex:** The default commit message validation pattern (`DefaultCommitMessagePattern` in `internal/config/config.go`) now correctly allows `/` characters within the scope (e.g., `feat(cmd/commit): ...`), ensuring compatibility with common scope naming conventions.
+
+---
+
 ## [0.0.4] - 2025-05-07
 
 ### Added
@@ -27,9 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     *   All `cmd/*.go` files (`plan`, `deploy`, `format`, `test`, `quality`, `describe`, `kickoff`, `commit`) now use this `ExecClient` for running external processes, replacing direct calls to `os/exec` or old `internal/tools` helpers.
     *   `internal/git.Client` now uses the `exec.CommandExecutor` interface from the `internal/exec` package for its underlying Git command operations.
     *   `internal/config.FindRepoRootConfigPath` now uses an `ExecClient` for `git rev-parse`.
-*   Default AI log file name is now configurable via `.contextvibes.yaml` (config key: `logging.defaultAILogFile`, ultimate fallback: `contextvibes_ai_trace.log`).
+*   Default AI log file name is now configurable via `.contextvibes.yaml` (config key: `logging.defaultAILogFile`, ultimate fallback: `contextvibes_ai_trace.log`). <!-- Note: The constant was `contextvibes.log` but user docs aimed for `_ai_trace.log`. v0.0.5 internal constants align to `_ai_trace.log` now. -->
 *   `cmd/kickoff.go`: Branch naming logic updated. Now requires branches to start with `feature/`, `fix/`, `docs/`, or `format/` by default (configurable via `.contextvibes.yaml`). Prompts for branch name if not provided via `--branch` flag.
-*   `cmd/commit.go`: Commit message validation now enforces Conventional Commits format by default (configurable via `.contextvibes.yaml`).
+*   `cmd/commit.go`: Commit message validation now enforces Conventional Commits format by default (configurable via `.contextvibes.yaml`). *(Note: Full configurability implemented in 0.0.5)*
 
 ### Fixed
 
@@ -106,7 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 Link Definitions - Add the new one when tagging
 -->
-[0.0.4]: https://github.com/contextvibes/cli/.../compare/v0.0.3...v0.0.4 <!-- Adjust URL and tags WHEN YOU TAG -->
-[0.0.3]: https://github.com/contextvibes/cli/.../compare/v0.0.2...v0.0.3
-[0.0.2]: https://github.com/contextvibes/cli/.../compare/v0.0.1...v0.0.2
-[0.0.1]: https://github.com/contextvibes/cli/.../tag/v0.0.1
+[0.0.5]: https://github.com/contextvibes/cli/.../compare/v0.0.4...v0.0.5 <!-- Adjust URL and tags WHEN YOU TAG -->
+[0.0.4]: https://github.com/contextvibes/cli/compare/v0.0.3...v0.0.4
+[0.0.3]: https://github.com/contextvibes/cli/compare/v0.0.2...v0.0.3
+[0.0.2]: https://github.com/contextvibes/cli/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/contextvibes/cli/tag/v0.0.1
