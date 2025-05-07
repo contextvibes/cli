@@ -1,4 +1,3 @@
-// internal/codemod/types.go
 package codemod
 
 // Operation defines a single modification to be performed on a file.

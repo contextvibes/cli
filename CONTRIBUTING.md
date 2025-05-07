@@ -61,21 +61,8 @@ We strive to maintain a positive and welcoming environment. All participants are
 3.  **Describe:** Fill out the Pull Request template, clearly describing the problem you're solving and the changes you've made. Link to any relevant issues.
 4.  **Review:** Respond to any feedback or code review comments. The maintainers will review your PR and merge it if it meets the project's standards.
 
-## Known Issues & TODOs
+## Finding Ways to Contribute
 
-This list tracks known bugs, planned refactorings, and potential enhancements. Feel free to tackle one of these or suggest additions! For a broader view of future plans, see the [ROADMAP.md](ROADMAP.md).
-
-*   **Refactor:**
-    *   Improve error message in `cmd/deploy.go` when `tfplan.out` is missing (be more specific about running `plan` first).
-    *   Refactor the large `RunE` function in `cmd/describe.go` into smaller helpers for better readability and testability (see also `ROADMAP.md`).
-    *   Consider refactoring type-specific logic out of `cmd/quality.go` and `cmd/format.go` into shared internal helpers or type-specific packages.
-*   **Testing:**
-    *   Add comprehensive unit tests. As per `ROADMAP.md`, a high priority is `internal/tools` (including `tools/git.go` utilities) and `internal/project` packages. Contributions to test `internal/git.GitClient` methods are also very welcome.
-    *   Increase test coverage for `cmd` package functions, including the new `test` command's logic.
-*   **Enhancements (see `ROADMAP.md` for more details):**
-    *   Add a global `--verbose` flag to show more detailed output.
-    *   Implement support for a configuration file (e.g., `.contextvibes.yaml`) for settings like Git remote/main branch names.
-    *   Further improve `quality` command (e.g., check `go mod tidy` for modifications).
-    *   Expand `test` command to support more project types or testing frameworks.
+For a detailed list of known bugs, planned refactorings, potential enhancements, and other ideas for contributions, please see our [ROADMAP.md](ROADMAP.md). We welcome contributions to items listed there or your own suggestions that align with the project's goals!
 
 Thank you for contributing to Context Vibes!
