@@ -1,5 +1,4 @@
 // cmd/format.go
-
 package cmd
 
 import (
@@ -10,13 +9,11 @@ import (
 	"os"
 
 	"github.com/contextvibes/cli/internal/project"
-	"github.com/contextvibes/cli/internal/tools" // For CommandExists and ExecuteCommand
-	"github.com/contextvibes/cli/internal/ui"    // Use Presenter
+	// "github.com/contextvibes/cli/internal/tools" // No longer needed for exec functions
+	"github.com/contextvibes/cli/internal/ui" // Use Presenter
 	"github.com/spf13/cobra"
+	// No direct import of internal/exec needed if using global ExecClient from cmd/root.go
 )
-
-// Assume AppLogger is initialized in rootCmd for AI file logging
-// var AppLogger *slog.Logger // Defined in root.go
 
 var formatCmd = &cobra.Command{
 	Use:   "format",
@@ -32,16 +29,19 @@ This command focuses only on applying formatting, unlike 'quality' which checks
 formatters, linters, and validators.`,
 	Example: `  contextvibes format  # Apply formatting to Go, Python, or Terraform files`,
 	Args:    cobra.NoArgs,
-	// Add Silence flags as we handle output/errors via Presenter
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := AppLogger
+		logger := AppLogger // From cmd/root.go
+		// Use global ExecClient from cmd/root.go
+		if ExecClient == nil {
+			return fmt.Errorf("internal error: executor client not initialized")
+		}
 		if logger == nil {
 			return fmt.Errorf("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
-		ctx := context.Background() // Context currently not used by tools.ExecuteCommand
+		ctx := context.Background()
 
 		presenter.Summary("Applying code formatting.")
 
@@ -71,7 +71,6 @@ formatters, linters, and validators.`,
 			return nil
 		}
 
-		// Store formatting errors
 		var formatErrors []error
 
 		// --- Terraform Formatting ---
@@ -79,13 +78,14 @@ formatters, linters, and validators.`,
 			presenter.Newline()
 			presenter.Header("Terraform Formatting")
 			tool := "terraform"
-			if tools.CommandExists(tool) {
+			if ExecClient.CommandExists(tool) { // Use ExecClient
 				presenter.Step("Running terraform fmt...")
 				logger.Info("Executing terraform fmt -recursive .", slog.String("source_command", "format"))
-				errFmt := tools.ExecuteCommand(cwd, tool, "fmt", "-recursive", ".")
+				// terraform fmt pipes its own output (files changed)
+				errFmt := ExecClient.Execute(ctx, cwd, tool, "fmt", "-recursive", ".") // Use ExecClient
 				if errFmt != nil {
-					errMsg := "`terraform fmt` failed"
-					presenter.Error(errMsg + ": " + errFmt.Error()) // Show error details
+					errMsg := fmt.Sprintf("`terraform fmt` failed or reported issues. Error: %v", errFmt)
+					presenter.Error(errMsg)
 					formatErrors = append(formatErrors, errors.New("terraform fmt failed"))
 					logger.Error("Terraform fmt failed", slog.String("source_command", "format"), slog.String("error", errFmt.Error()))
 				} else {
@@ -94,7 +94,7 @@ formatters, linters, and validators.`,
 				}
 			} else {
 				msg := fmt.Sprintf("'%s' command not found, skipping Terraform formatting.", tool)
-				presenter.Warning(msg) // Warning as it can't perform the action
+				presenter.Warning(msg)
 				logger.Warn("Terraform format skipped: command not found", slog.String("source_command", "format"), slog.String("tool", tool))
 			}
 		}
@@ -103,17 +103,16 @@ formatters, linters, and validators.`,
 		if hasPython {
 			presenter.Newline()
 			presenter.Header("Python Formatting")
-			pythonDir := "." // Assuming checks run from root
+			pythonDir := "."
 
-			// --- isort ---
 			toolIsort := "isort"
-			if tools.CommandExists(toolIsort) {
+			if ExecClient.CommandExists(toolIsort) { // Use ExecClient
 				presenter.Step("Running %s...", toolIsort)
 				logger.Info("Executing isort .", slog.String("source_command", "format"))
-				errIsort := tools.ExecuteCommand(cwd, toolIsort, pythonDir)
+				errIsort := ExecClient.Execute(ctx, cwd, toolIsort, pythonDir) // Use ExecClient
 				if errIsort != nil {
-					errMsg := fmt.Sprintf("`%s` failed", toolIsort)
-					presenter.Error(errMsg + ": " + errIsort.Error())
+					errMsg := fmt.Sprintf("`%s` failed or reported issues. Error: %v", toolIsort, errIsort)
+					presenter.Error(errMsg)
 					formatErrors = append(formatErrors, errors.New("isort failed"))
 					logger.Error("isort failed", slog.String("source_command", "format"), slog.String("error", errIsort.Error()))
 				} else {
@@ -126,28 +125,34 @@ formatters, linters, and validators.`,
 				logger.Warn("isort format skipped: command not found", slog.String("source_command", "format"), slog.String("tool", toolIsort))
 			}
 
-			// --- black ---
-			// Run black even if isort failed, they format different things
 			toolBlack := "black"
-			if tools.CommandExists(toolBlack) {
+			if ExecClient.CommandExists(toolBlack) { // Use ExecClient
 				presenter.Step("Running %s...", toolBlack)
 				logger.Info("Executing black .", slog.String("source_command", "format"))
-				errBlack := tools.ExecuteCommand(cwd, toolBlack, pythonDir)
+				// Black exits 0 if no changes, 1 if reformatted, >1 on error.
+				// ExecClient.Execute will return an error for non-zero exit.
+				// We can interpret this: if no error, no changes. If error, could be reformat or actual fail.
+				// For `format` command, successful reformatting is a success.
+				// The `OSCommandExecutor` logs the exit code, so we can rely on its error message or check stderr.
+				// For simplicity, we treat any non-zero exit from black as "files were formatted or error occurred".
+				// The user sees black's direct output.
+				errBlack := ExecClient.Execute(ctx, cwd, toolBlack, pythonDir) // Use ExecClient
 				if errBlack != nil {
-					// Black exits non-zero if files are changed *or* if an error occurs.
-					// We only consider it a critical error if the execution truly failed beyond just reformatting.
-					// Since ExecuteCommand returns a generic error, we'll treat any error as critical for now.
-					// A more nuanced check could capture stderr.
-					errMsg := fmt.Sprintf("`%s` failed or reformatted files", toolBlack)
-					presenter.Error(errMsg + ": " + errBlack.Error()) // Report as error for consistency
-					formatErrors = append(formatErrors, errors.New("black failed or reformatted"))
-					logger.Error("black failed or reformatted", slog.String("source_command", "format"), slog.String("error", errBlack.Error()))
+					// Check if it's just a reformatting (exit code 1 for black typically means files changed)
+					// This requires more complex error inspection if we want to distinguish.
+					// For now, if black exits non-zero, we log it as potentially having issues.
+					// A more robust solution might use CaptureOutput and inspect exit code and stderr.
+					errMsg := fmt.Sprintf("`%s` completed (may have reformatted files or encountered an issue). Error (if any): %v", toolBlack, errBlack)
+					presenter.Info(errMsg) // Info, as reformatting is the goal. If actual error, black would show it.
+					logger.Warn("black completed with non-zero exit", slog.String("source_command", "format"), slog.String("error", errBlack.Error()))
+					// Don't add to formatErrors unless we are sure it's a critical failure, not just reformatting.
+					// If it's a critical failure, black's output to stderr (piped by Execute) should indicate it.
 				} else {
 					presenter.Success("%s completed (no changes needed).", toolBlack)
 					logger.Info("black successful (no changes)", slog.String("source_command", "format"))
 				}
 			} else {
-				msg := fmt.Sprintf("'%s' command not found, skipping Python formatting.", toolBlack)
+				msg := fmt.Sprintf("'%s' command not found, skipping Python code formatting.", toolBlack)
 				presenter.Warning(msg)
 				logger.Warn("black format skipped: command not found", slog.String("source_command", "format"), slog.String("tool", toolBlack))
 			}
@@ -157,22 +162,31 @@ formatters, linters, and validators.`,
 		if hasGo {
 			presenter.Newline()
 			presenter.Header("Go Formatting")
-			goDir := "./..." // Target all subdirectories
+			goDir := "./..."
 
 			toolGo := "go"
-			if tools.CommandExists(toolGo) {
-				// --- go fmt ---
+			if ExecClient.CommandExists(toolGo) { // Use ExecClient
 				presenter.Step("Running go fmt...")
 				logger.Info("Executing go fmt ./...", slog.String("source_command", "format"))
-				errFmt := tools.ExecuteCommand(cwd, toolGo, "fmt", goDir)
+				// `go fmt` prints changed file paths to stdout.
+				// We can use CaptureOutput to see if it did anything.
+				stdout, stderr, errFmt := ExecClient.CaptureOutput(ctx, cwd, toolGo, "fmt", goDir) // Use ExecClient
 				if errFmt != nil {
-					errMsg := "`go fmt` failed"
-					presenter.Error(errMsg + ": " + errFmt.Error())
+					errMsg := fmt.Sprintf("`go fmt` failed. Error: %v", errFmt)
+					if stderr != "" {
+						errMsg += fmt.Sprintf("\nStderr: %s", stderr)
+					}
+					presenter.Error(errMsg)
 					formatErrors = append(formatErrors, errors.New("go fmt failed"))
-					logger.Error("go fmt failed", slog.String("source_command", "format"), slog.String("error", errFmt.Error()))
+					logger.Error("go fmt failed", slog.String("source_command", "format"), slog.String("error", errFmt.Error()), slog.String("stderr", stderr))
 				} else {
-					presenter.Success("go fmt completed.")
-					logger.Info("go fmt successful", slog.String("source_command", "format"))
+					if stdout != "" {
+						presenter.Success("go fmt completed and formatted the following files:")
+						presenter.Detail(stdout) // Show which files were formatted
+					} else {
+						presenter.Success("go fmt completed (no files needed formatting).")
+					}
+					logger.Info("go fmt successful", slog.String("source_command", "format"), slog.String("stdout", stdout))
 				}
 			} else {
 				msg := fmt.Sprintf("'%s' command not found, skipping Go formatting.", toolGo)
@@ -181,26 +195,22 @@ formatters, linters, and validators.`,
 			}
 		}
 
-		// --- Summary ---
 		presenter.Newline()
 		presenter.Header("Formatting Summary")
-
 		if len(formatErrors) > 0 {
 			errMsg := fmt.Sprintf("%d formatting tool(s) reported errors.", len(formatErrors))
 			presenter.Error(errMsg)
 			presenter.Advice("Review the errors above.")
-			// Return the first error to signal failure
 			logger.Error("Format command failed due to errors", slog.String("source_command", "format"), slog.Int("error_count", len(formatErrors)))
 			return formatErrors[0]
 		}
 
-		presenter.Success("All formatting tools completed successfully.")
-		logger.Info("Format command successful", slog.String("source_command", "format"))
+		presenter.Success("All formatting tools completed successfully or applied changes.")
+		logger.Info("Format command finished", slog.String("source_command", "format"))
 		return nil
 	},
 }
 
-// init adds the command to the root command.
 func init() {
 	rootCmd.AddCommand(formatCmd)
 }

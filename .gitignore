@@ -3,3 +3,4 @@ contextvibes.md
 *.log
 bin/
 contextvibes.log
+cmd/commit_message.txt
