@@ -1,4 +1,3 @@
-// cmd/root.go
 package cmd
 
 import (
@@ -50,7 +49,7 @@ Output & Logging for Clarity and AI:
     semantic prefixes (SUMMARY, INFO, ERROR, ADVICE, +, ~, !) and colors,
     all managed by an internal UI presenter.
   * Detailed AI Trace Log: Generates a separate, comprehensive JSON log
-    (default: 'contextvibes.log', configurable) capturing in-depth
+    (default: 'contextvibes_ai_trace.log', configurable) capturing in-depth
     execution details, ideal for AI analysis or advanced debugging.
 
 Global Features for Control & Customization:
@@ -63,9 +62,8 @@ Global Features for Control & Customization:
 
 For detailed information on any command, use 'contextvibes [command] --help'.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Temporary logger for bootstrap phase, before full config is loaded
-		// This logger should ideally not write to the final AI log file yet.
-		// Using os.Stderr for bootstrap messages.
+		// Temporary logger for bootstrap phase, before full config is loaded.
+		// This logger writes to stderr for messages during the configuration loading process.
 		tempLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 		// Minimal executor for finding config file, uses a discard logger
@@ -78,10 +76,11 @@ For detailed information on any command, use 'contextvibes [command] --help'.`,
 		var configLoadErr error
 		var foundConfigPath string
 
-		// Attempt to find and load config file
+		// Attempt to find and load config file. The config is loaded from the repository root
+		// or defaults to the CLI's internal configuration if none is found or there is an error during loading.
 		repoConfigPath, findPathErr := config.FindRepoRootConfigPath(bootstrapExecClient)
 		if findPathErr != nil {
-			// Log to tempLogger (stderr) if finding path fails
+			// Log to tempLogger (stderr) if finding path fails. The application will continue with default settings.
 			tempLogger.Debug("Could not find git repo root to look for .contextvibes.yaml, using defaults.", slog.String("error", findPathErr.Error()))
 			LoadedAppConfig = defaultCfg
 		} else if repoConfigPath == "" {
@@ -109,8 +108,10 @@ For detailed information on any command, use 'contextvibes [command] --help'.`,
 			}
 		}
 
-		// Determine AI log level and file path
-		// Flag values take precedence over config, config takes precedence over defaults.
+		// Determine AI log level and file path.
+		// 1. Command-line flags take precedence over everything.
+		// 2. If no flag is provided, the configuration file settings take precedence over the defaults.
+		// 3. If neither a flag nor a config file setting is present, the built-in default values are used.
 		aiLevel := parseLogLevel(logLevelAIValue, slog.LevelDebug) // logLevelAIValue is from the flag
 
 		targetAILogFile := LoadedAppConfig.Logging.DefaultAILogFile // From merged config (or default if no user config)
@@ -118,7 +119,7 @@ For detailed information on any command, use 'contextvibes [command] --help'.`,
 			targetAILogFile = aiLogFileFlagValue // Flag overrides config
 		}
 
-		// Initialize AppLogger (the main AI trace logger)
+		// Initialize AppLogger (the main AI trace logger).
 		var aiOut io.Writer = io.Discard // Default to discard if file opening fails
 		logFileHandle, errLogFile := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
 		if errLogFile != nil {
@@ -132,11 +133,11 @@ For detailed information on any command, use 'contextvibes [command] --help'.`,
 		aiHandler := slog.NewJSONHandler(aiOut, aiHandlerOptions)
 		AppLogger = slog.New(aiHandler)
 
-		// Initialize the main ExecutorClient with the now-configured AppLogger
+		// Initialize the main ExecutorClient with the now-configured AppLogger.
 		mainOSExecutor := exec.NewOSCommandExecutor(AppLogger)
 		ExecClient = exec.NewClient(mainOSExecutor)
 
-		// Log initial setup to the now active AppLogger
+		// Log initial setup to the now active AppLogger.
 		AppLogger.Debug("AI Logger and main ExecutorClient initialized",
 			slog.String("log_level_set_for_ai_file", aiLevel.String()),
 			slog.String("ai_log_file_target", targetAILogFile),
@@ -147,10 +148,11 @@ For detailed information on any command, use 'contextvibes [command] --help'.`,
 		}
 
 		if LoadedAppConfig != nil {
-			// Log the effective configuration that the application will use
-			// Ensure Enable fields are dereferenced correctly for logging
-			branchNameValidationEnabled := (LoadedAppConfig.Validation.BranchName.Enable != nil && *LoadedAppConfig.Validation.BranchName.Enable) || LoadedAppConfig.Validation.BranchName.Enable == nil
-			commitMsgValidationEnabled := (LoadedAppConfig.Validation.CommitMessage.Enable != nil && *LoadedAppConfig.Validation.CommitMessage.Enable) || LoadedAppConfig.Validation.CommitMessage.Enable == nil
+			// Log the effective configuration that the application will use.
+			// Correctly determine the effective boolean value for validation settings:
+			// Enabled if nil (not set by user, use default=true) OR if set to true by user.
+			branchNameValidationEnabled := LoadedAppConfig.Validation.BranchName.Enable == nil || *LoadedAppConfig.Validation.BranchName.Enable
+			commitMsgValidationEnabled := LoadedAppConfig.Validation.CommitMessage.Enable == nil || *LoadedAppConfig.Validation.CommitMessage.Enable
 
 			AppLogger.Debug("Effective application configuration resolved",
 				slog.Group("config",
@@ -212,6 +214,7 @@ func init() {
 	// Define persistent flags available to all commands.
 	// Use different names for flag-bound variables (logLevelAIValue, aiLogFileFlagValue)
 	// to avoid confusion with package-level variables that might be intended for direct use or derived values.
+	// These flags bind to the variables logLevelAIValue and aiLogFileFlagValue, and take precedence over config file settings.
 	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "",
 		fmt.Sprintf("AI (JSON) log file path (overrides config default: see .contextvibes.yaml, fallback: %s)", config.UltimateDefaultAILogFilename))
