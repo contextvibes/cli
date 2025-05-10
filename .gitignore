@@ -17,3 +17,6 @@ bin/
 cmd/commit_message.txt
 codemod.json
 fix_describe_unused_ctx.json
+my_kickoff_prompt_for_describe.txt
+notes.txt
+.contextvibes.yaml
