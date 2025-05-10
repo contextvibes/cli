@@ -9,7 +9,7 @@ import (
 // ExecutorClient provides a high-level interface for running external commands.
 // It uses an underlying CommandExecutor for the actual execution.
 type ExecutorClient struct {
-	executor CommandExecutor
+	executor CommandExecutor // unexported field
 }
 
 // NewClient creates a new ExecutorClient with the given CommandExecutor.
@@ -35,4 +35,10 @@ func (c *ExecutorClient) CommandExists(commandName string) bool {
 // Logger returns the logger from the underlying executor.
 func (c *ExecutorClient) Logger() *slog.Logger {
 	return c.executor.Logger()
+}
+
+// UnderlyingExecutor returns the CommandExecutor used by this client.
+// This allows passing the raw executor to other components if needed.
+func (c *ExecutorClient) UnderlyingExecutor() CommandExecutor { // New Exported Getter
+	return c.executor
 }

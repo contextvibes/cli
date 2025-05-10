@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Removed
+
+---
+
+## [0.1.0] - 2025-05-10
+
+### Added
+- **Enhanced `kickoff` Command (Dual Mode Functionality):**
+    - **Strategic Kickoff Prompt Generation Mode** (via `contextvibes kickoff --strategic` or on first run in a new project):
+        - Conducts a brief interactive session to gather initial project details (name, type, stage) and user preferences for CLI interaction styles (`ai.collaborationPreferences`).
+        - Generates a comprehensive master prompt file (`STRATEGIC_KICKOFF_PROTOCOL_FOR_AI.md`) by embedding and parameterizing a detailed protocol template (from `internal/kickoff/assets/strategic_kickoff_protocol_template.md`).
+        - The generated master prompt is designed for the user to take to an external AI assistant (e.g., Gemini, Claude). It instructs the AI to guide the user through a strategic kickoff checklist, request further context via `contextvibes` commands, and generate structured YAML for specified configurations.
+        - Saves gathered `ai.collaborationPreferences` to `.contextvibes.yaml` after the initial setup questions (before master prompt generation and also when marking complete).
+    - **Mechanism to Mark Strategic Kickoff as Complete:**
+        - New `contextvibes kickoff --mark-strategic-complete` flag.
+        - This command updates `.contextvibes.yaml` by setting `projectState.strategicKickoffCompleted: true` and `projectState.lastStrategicKickoffDate`. It also ensures any `ai.collaborationPreferences` gathered during a preceding `--strategic` run's setup phase are persisted.
+    - **Daily Git Workflow Mode:**
+        - Becomes the default for `contextvibes kickoff` (without `--strategic`) once a strategic kickoff has been marked complete for the project.
+        - Includes logic for prerequisite checks (clean working directory, on main branch), prompting for/validating branch name (respecting `.contextvibes.yaml`), and executing Git operations (pull rebase, new branch, push upstream).
+        - Respects the global `--yes` flag for non-interactive operation.
+- **New Configuration Options in `.contextvibes.yaml`:**
+    - `projectState` section:
+        - `strategicKickoffCompleted` (boolean, default: `false`)
+        - `lastStrategicKickoffDate` (string, RFC3339 timestamp)
+    - `ai.collaborationPreferences` section:
+        - `codeProvisioningStyle` (string, default: "bash_cat_eof")
+        - `markdownDocsStyle` (string, default: "raw_markdown")
+        - `detailedTaskMode` (string, default: "mode_b")
+        - `proactiveDetailLevel` (string, default: "detailed_explanations" or "concise_unless_asked" based on taskMode)
+        - `aiProactivity` (string, default: "proactive_suggestions")
+- **New Internal Package `internal/kickoff`:**
+    - Contains `Orchestrator` to manage all `kickoff` command logic (strategic and daily).
+    - Includes embedded master kickoff protocol template (`internal/kickoff/assets/strategic_kickoff_protocol_template.md`).
+- **New Documentation:**
+    - `docs/PROJECT_KICKOFF_GUIDE.md` explaining the new strategic kickoff workflow.
+    - Initial `DEVELOPMENT.md` and `CONTRIBUTING.md`.
+- **Sample `.contextvibes.yaml`:** Added to the project root as an example.
+
+### Changed
+- **`cmd/kickoff.go`:** Major refactor to use the new `internal/kickoff.Orchestrator` and handle new flags (`--strategic`, `--mark-strategic-complete`).
+- **`internal/config/config.go`:**
+    - `Config` struct extended with `ProjectState` and `AISettings`.
+    - `GetDefaultConfig()` updated with defaults for new AI collaboration preferences and project state.
+    - `MergeWithDefaults()` updated to correctly handle merging of new nested structs (field-by-field for `AICollaborationPreferences`).
+    - `UpdateAndSaveConfig()` now uses an atomic write pattern (write to temp file then rename) for improved robustness.
+- **`internal/kickoff/orchestrator.go`:** `assumeYes` flag handling refined to be a field within the `Orchestrator` struct, initialized from the global flag.
+
+### Fixed
+- Various minor compilation and linter issues encountered during the development of the enhanced kickoff feature.
+- Ensured `assumeYes` is correctly plumbed from `cmd/root.go` to `internal/kickoff.Orchestrator` and respected in daily Git workflows.
+
+---
+
 ## [0.0.5] - 2025-05-07
 
 ### Changed
@@ -43,9 +102,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     *   All `cmd/*.go` files (`plan`, `deploy`, `format`, `test`, `quality`, `describe`, `kickoff`, `commit`) now use this `ExecClient` for running external processes, replacing direct calls to `os/exec` or old `internal/tools` helpers.
     *   `internal/git.Client` now uses the `exec.CommandExecutor` interface from the `internal/exec` package for its underlying Git command operations.
     *   `internal/config.FindRepoRootConfigPath` now uses an `ExecClient` for `git rev-parse`.
-*   Default AI log file name is now configurable via `.contextvibes.yaml` (config key: `logging.defaultAILogFile`, ultimate fallback: `contextvibes_ai_trace.log`). <!-- Note: The constant was `contextvibes.log` but user docs aimed for `_ai_trace.log`. v0.0.5 internal constants align to `_ai_trace.log` now. -->
+*   Default AI log file name is now configurable via `.contextvibes.yaml` (config key: `logging.defaultAILogFile`, ultimate fallback: `contextvibes_ai_trace.log`).
 *   `cmd/kickoff.go`: Branch naming logic updated. Now requires branches to start with `feature/`, `fix/`, `docs/`, or `format/` by default (configurable via `.contextvibes.yaml`). Prompts for branch name if not provided via `--branch` flag.
-*   `cmd/commit.go`: Commit message validation now enforces Conventional Commits format by default (configurable via `.contextvibes.yaml`). *(Note: Full configurability implemented in 0.0.5)*
+*   `cmd/commit.go`: Commit message validation now enforces Conventional Commits format by default (configurable via `.contextvibes.yaml`).
 
 ### Fixed
 
@@ -57,7 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 *   `internal/tools/exec.go` (superseded by `internal/exec` package).
-*   Most utility functions from `internal/tools/git.go` (functionality moved to `internal/git.Client` or uses `os.Stat`). `IsGitRepo` remains; `CheckGitPrereqs` (if previously present after refactor) is removed as its functionality is covered by `git.NewClient`.
+*   Most utility functions from `internal/tools/git.go` (functionality moved to `internal/git.Client` or uses `os.Stat`). `IsGitRepo` remains; `CheckGitPrereqs` is removed.
 *   `internal/git/executor.go` (superseded by `internal/exec.CommandExecutor` interface).
 
 ---
@@ -66,16 +125,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-*   **`version` command:** Displays the current CLI version. The version (`AppVersion`) is set in `cmd/root.go`.
-*   **`test` command:** Detects project type (currently Go and Python) and runs appropriate test suites (e.g., `go test ./...`, `pytest`). Forwards additional arguments to the underlying test runner.
-*   Unit tests for the `version` command using `stretchr/testify`.
+*   **`version` command:** Displays the current CLI version.
+*   **`test` command:** Detects project type and runs tests.
+*   Unit tests for the `version` command.
 
 ### Changed
 
-*   Application version (`AppVersion`) set to `0.0.3` in `cmd/root.go`.
-*   `.idx/airules.md`: Updated with instructions for local running, installation, and new command context.
-*   `README.md`: Updated key features to include `version` and `test` commands.
-*   `go.mod` and `go.sum`: Added `github.com/stretchr/testify` and its dependencies.
+*   Application version (`AppVersion`) set to `0.0.3`.
+*   `.idx/airules.md` and `README.md` updated.
+*   `go.mod`, `go.sum` updated for `stretchr/testify`.
 
 ---
 
@@ -83,24 +141,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-*   New `format` command to apply code formatting for Go, Python, and Terraform projects.
-*   Go project support added to `quality` command (`go fmt` compliance check, `go vet`, `go mod tidy`).
+*   New `format` command.
+*   Go project support to `quality` command.
 
 ### Changed
 
-*   `quality` command: Go formatting check (`go fmt`) now fails if files were modified, indicating non-compliance.
-*   `wrapup` command: Now advises on alternative workflows before user confirmation.
-*   `.idx/airules.md`:
-    *   Updated to reflect current project structure and code comment guidelines.
-    *   Added instructions for local running and installation from GitHub.
-*   `CONTRIBUTING.md`: Aligned TODOs with current state and roadmap.
-*   `internal/tools/exec.go`: Removed direct UI output from `ExecuteCommand`.
+*   `quality` command: Go formatting check fails if files modified.
+*   `wrapup` command: Advises on alternative workflows.
+*   Documentation and internal code refinements.
 
 ### Fixed
 
-*   Internal error string formatting (ST1005) in `cmd/plan.go`, `cmd/deploy.go`, and `cmd/describe.go`.
-*   Removed historical code comments from `cmd/root.go` and `internal/tools/io.go`.
-*   Deduplicated entries in `.gitignore`.
+*   Error string formatting.
+*   Removed old comments.
+*   Deduplicated `.gitignore` entries.
 
 ---
 
@@ -109,21 +163,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 *   **Initial Release of Context Vibes CLI.**
-*   **Core Functionality:**
-    *   AI Context Generation (`describe`, `diff`).
-    *   Git Workflow Automation (`kickoff`, `commit`, `sync`, `wrapup`, `status`).
-    *   Infrastructure as Code Wrappers (`plan`, `deploy`, `init`).
-    *   Code Quality Checks for Terraform & Python (`quality`).
-*   **Project Structure:** Cobra CLI, `internal/` packages for git, ui, project, tools.
-*   **Configuration & Logging:** `.idx/airules.md`, `.aiexclude`, dual logging (Presenter & slog).
+*   Core Functionality: `describe`, `diff`, Git Workflows, IaC Wrappers, Basic Quality Checks.
+*   Project Structure: Cobra CLI, `internal/` packages.
+*   Initial Configuration & Logging.
 
 ---
 
 <!--
-Link Definitions - Add the new one when tagging
+Link Definitions
 -->
-[0.0.5]: https://github.com/contextvibes/cli/.../compare/v0.0.4...v0.0.5 <!-- Adjust URL and tags WHEN YOU TAG -->
+[Unreleased]: https://github.com/contextvibes/cli/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/contextvibes/cli/compare/v0.0.5...v0.1.0
+[0.0.5]: https://github.com/contextvibes/cli/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/contextvibes/cli/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/contextvibes/cli/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/contextvibes/cli/compare/v0.0.1...v0.0.2
-[0.0.1]: https://github.com/contextvibes/cli/tag/v0.0.1
+[0.0.1]: https://github.com/contextvibes/cli/releases/tag/v0.0.1

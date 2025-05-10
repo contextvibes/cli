@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/contextvibes/cli)](https://goreportcard.com/report/github.com/contextvibes/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- Open in Firebase Studio Button -->
-<a href="https://studio.firebase.google.com/import?url=https%3A%2F%2Fgithub.com%2Fcontextvibes%2Fcli"> <!-- Verify this URL! -->
+<a href="https://studio.firebase.google.com/import?url=https%3A%2F%2Fgithub.com%2Fcontextvibes%2Fcli">
   <picture>
     <source
       media="(prefers-color-scheme: dark)"
@@ -27,19 +27,22 @@ Context Vibes is a command-line tool designed to streamline common development t
 *   **Automation:** Simplifies multi-step processes and provides non-interactive options via the global `--yes` flag. Designed for use in scripts or by AI agents.
 *   **AI Integration:**
     *   Generates a `contextvibes.md` context file (`describe`, `diff`) suitable for AI prompts.
+    *   The `kickoff --strategic` command generates a master prompt file to guide an AI-facilitated strategic project kickoff.
     *   Produces structured terminal output suitable for human review or direct AI parsing.
     *   Generates a detailed JSON trace log (default: `contextvibes_ai_trace.log`, configurable) for deeper AI analysis or debugging.
 *   **Clarity & Safety:** Uses distinct output formats and requires confirmation for state-changing operations (unless `--yes` is specified).
-*   **Configurability:** Supports a `.contextvibes.yaml` file for customizing default behaviors. See the [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for details.
+*   **Configurability:** Supports a `.contextvibes.yaml` file for customizing default behaviors (Git, validation rules, logging, AI interaction preferences). See the [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for details.
 
 ## Key Features
 
-*   **AI Context Generation:** `describe`, `diff`
-*   **Git Workflow Automation:** `kickoff`, `commit`, `sync`, `wrapup`, `status` (Configurable branch/commit rules)
-*   **Infrastructure as Code (IaC) Wrappers:** `plan`, `deploy`, `init`
-*   **Code Quality & Formatting:** `quality`, `format`
-*   **Project Testing & Versioning:** `test`, `version`
-*   **Code Modification:** `codemod`
+*   **AI Context Generation:** `describe`, `diff`.
+*   **Enhanced Git Workflow Automation:**
+    *   `kickoff`: Dual-mode for AI-assisted strategic project kickoff prompt generation OR daily development branch creation.
+    *   `commit`, `sync`, `wrapup`, `status` (Configurable branch/commit rules).
+*   **Infrastructure as Code (IaC) Wrappers:** `plan`, `deploy`, `init` (Terraform/Pulumi).
+*   **Code Quality & Formatting:** `quality`, `format` (Go, Python, Terraform).
+*   **Project Testing & Versioning:** `test`, `version`.
+*   **Code Modification:** `codemod` (from JSON scripts).
 
 *(For detailed information on each command, see the [Command Reference](docs/COMMAND_REFERENCE.md).)*
 
@@ -83,7 +86,13 @@ contextvibes [command] [flags] # Run a command
 **Examples:**
 
 ```bash
-# Start a new feature branch (prompts for name if needed)
+# Initiate a strategic project kickoff (generates a master prompt for your AI)
+contextvibes kickoff --strategic
+
+# (After AI session and creating summary) Mark strategic kickoff as complete
+contextvibes kickoff --mark-strategic-complete
+
+# Start a new daily feature branch (assumes strategic kickoff is complete)
 contextvibes kickoff --branch feature/add-user-auth
 
 # Describe the project for an AI (prompts for task description)
@@ -106,15 +115,14 @@ contextvibes sync -y
 
 # Display CLI version
 contextvibes version
-
-# Apply programmatic changes from a script
-contextvibes codemod --script ./changes.json```
+```
 
 ## Documentation
 
 *   **[Overview & Installation](README.md):** (This file) High-level features and setup.
-*   **[Command Reference](docs/COMMAND_REFERENCE.md):** Detailed syntax, flags, examples, and exit codes for every command. **Use this for specific command usage.**
-*   **[Configuration Reference](docs/CONFIGURATION_REFERENCE.md):** Full details on configuring the CLI via `.contextvibes.yaml`. **Use this to customize behavior.**
+*   **[Command Reference](docs/COMMAND_REFERENCE.md):** Detailed syntax, flags, examples, and exit codes for every command.
+*   **[Configuration Reference](docs/CONFIGURATION_REFERENCE.md):** Full details on configuring the CLI via `.contextvibes.yaml`.
+*   **[Project Kickoff Guide](docs/PROJECT_KICKOFF_GUIDE.md):** Explains the AI-assisted strategic project kickoff workflow.
 *   **[Contributing Guidelines](CONTRIBUTING.md):** How to contribute code, report issues, and set up a development environment.
 *   **[Changelog](CHANGELOG.md):** History of notable changes in each release.
 *   **[Roadmap](ROADMAP.md):** Future plans and development direction.
@@ -123,7 +131,7 @@ contextvibes codemod --script ./changes.json```
 
 ## Important: Ignoring Generated Files
 
-It is strongly recommended to add generated files like `contextvibes.md`, `contextvibes_ai_trace.log`, `*.log`, and `tfplan.out` to your project's `.gitignore` file.
+It is strongly recommended to add generated files like `contextvibes.md`, `STRATEGIC_KICKOFF_PROTOCOL_FOR_AI.md`, `contextvibes_ai_trace.log`, `*.log`, and `tfplan.out` to your project's `.gitignore` file.
 
 ## Terminal Output vs. AI Log File
 

@@ -75,45 +75,78 @@ contextvibes diff
 **Synopsis:**
 
 ```
-contextvibes kickoff [--branch <branch-name>]
+contextvibes kickoff [--branch <branch-name>] [--strategic] [--mark-strategic-complete]
 ```
 
 **Description:**
 
-Performs the start-of-work workflow: updates the main branch from the remote, creates and switches to a new branch, and pushes the new branch to the remote. Requires a clean state on the main branch.
+Manages project kickoff workflows.
+
+**Default Behavior (Daily Kickoff, if strategic completed):**
+  - Requires a clean state on the main branch (configurable, default: `main`).
+  - Updates the main branch from the remote (configurable, default: `origin`).
+  - Creates and switches to a new daily/feature branch. The name is taken from the `--branch` flag or prompted for if the flag is omitted (and `--yes` is not active).
+  - Branch name validation is applied based on rules in `.contextvibes.yaml` (default pattern: `^((feature|fix|docs|format)/.+)$`).
+  - Pushes the new branch to the remote and sets upstream tracking.
+
+**Strategic Kickoff Prompt Generation Mode (`--strategic`, or if first run in a project):**
+  - This mode is triggered if `projectState.strategicKickoffCompleted` is `false` (or not set) in `.contextvibes.yaml`, or if the `--strategic` flag is explicitly used.
+  - Conducts a brief interactive session to gather:
+    1.  User preferences for how ContextVibes CLI should format its own outputs (e.g., code blocks, Markdown style) and interact during setup. These are saved to `.contextvibes.yaml` under `ai.collaborationPreferences`.
+    2.  Basic project details (name, primary application type, current stage like new/existing).
+    3.  Confirmation of ContextVibes CLI readiness (e.g., installed, ENV vars).
+  - Generates a comprehensive master prompt file named `STRATEGIC_KICKOFF_PROTOCOL_FOR_AI.md` in the project root.
+  - This generated file contains a detailed protocol (based on the embedded template `internal/kickoff/assets/strategic_kickoff_protocol_template.md`), parameterized with the gathered project details and CLI preferences.
+  - The user is then instructed to take this `STRATEGIC_KICKOFF_PROTOCOL_FOR_AI.md` file and use its content as the initial prompt for their chosen external AI assistant (e.g., Gemini, Claude, ChatGPT). The external AI will then facilitate the detailed strategic kickoff discussion.
+  - The generated master prompt also instructs the external AI to ask the user to run other `contextvibes` commands (like `describe`, `status`) as needed during their session to provide live project data back to the AI. It also instructs the AI to generate structured YAML for certain user decisions (like the `ai.collaborationPreferences`).
+
+**Marking Strategic Kickoff as Complete (`--mark-strategic-complete`):**
+  - This flag is used *after* the user has completed their AI-guided strategic kickoff session.
+  - It updates the project's `.contextvibes.yaml` file by:
+    - Setting `projectState.strategicKickoffCompleted: true`.
+    - Recording `projectState.lastStrategicKickoffDate` with the current timestamp.
+    - Persisting any `ai.collaborationPreferences` that were gathered during the most recent `--strategic` run's setup phase.
+  - This enables the daily Git kickoff workflow for subsequent `contextvibes kickoff` runs (without `--strategic`).
+
+**Global Flags:**
+  - The global `--yes` (or `-y`) flag bypasses confirmation prompts for the daily Git kickoff actions. It does not bypass the interactive setup questions for the strategic kickoff prompt generation.
 
 **Flags:**
 
-| Flag       | Short | Description                                                                   | Data Type | Default Value | Overrides Config File |
-|------------|-------|-------------------------------------------------------------------------------|-----------|---------------|-----------------------|
-| `--branch` | `-b`  | Name for the new branch (e.g., `feature/JIRA-123-task-name`). If omitted, user is prompted. | string    | ""            | No                    |
+| Flag                        | Short | Description                                                                                                | Data Type | Default Value |
+|-----------------------------|-------|------------------------------------------------------------------------------------------------------------|-----------|---------------|
+| `--branch`                  | `-b`  | Name for the new daily/feature branch (e.g., `feature/JIRA-123-task-name`). Used by daily kickoff mode.    | string    | ""            |
+| `--strategic`               |       | Forces the strategic kickoff prompt generation, even if a previous strategic kickoff was marked complete.    | boolean   | `false`       |
+| `--mark-strategic-complete` |       | Marks the strategic kickoff as complete in `.contextvibes.yaml`. Mutually exclusive with other flags.      | boolean   | `false`       |
+
 
 **Example Usage:**
 
-*   Start a new feature branch with a specified name:
-
+*   **Daily Kickoff (assuming strategic kickoff is marked complete):**
     ```bash
     contextvibes kickoff --branch feature/JIRA-123-new-widget
-    ```
-
-*   Start a new fix branch with a specified name, bypassing confirmation:
-
-    ```bash
     contextvibes kickoff -b fix/login-bug -y
+    contextvibes kickoff # Prompts for branch name if not provided and not -y
     ```
 
-*   Start a new branch, prompting for the name:
-
+*   **Strategic Kickoff Prompt Generation:**
     ```bash
-    contextvibes kickoff
+    contextvibes kickoff --strategic # Always runs the strategic prompt generation
+    contextvibes kickoff             # Runs strategic prompt generation if first time in project
+    ```
+    *(Then, take `STRATEGIC_KICKOFF_PROTOCOL_FOR_AI.md` to your AI)*
+
+*   **Mark Strategic Kickoff as Done:**
+    ```bash
+    contextvibes kickoff --mark-strategic-complete
     ```
 
 **Exit Codes:**
 
 | Exit Code | Meaning                                                                                                                                                                                                               |
 |-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 0         | Success. The new branch was created and pushed successfully.                                                                                                                                                        |
-| 1         | An error occurred. Check the error message in the terminal output and the AI log file for details.  Common causes: dirty working directory, not on main branch, invalid branch name, remote access issues, etc. |
+| 0         | Success. The requested kickoff operation (daily branch creation, strategic prompt generation, or marking complete) was successful.                                                                                 |
+| 1         | An error occurred. Check the error message in the terminal output and the AI log file for details. Common causes: Git prerequisites not met (dirty WD, wrong branch), invalid branch name, file I/O errors, etc. |
 
 ### `commit`
 
@@ -158,8 +191,7 @@ Stages all changes and commits locally with a provided message.  Commit message 
 
 **Synopsis:**
 
-```
-contextvibes sync
+```contextvibes sync
 ```
 
 **Description:**
@@ -301,8 +333,7 @@ This command has no flags.
 
 **Synopsis:**
 
-```
-contextvibes quality
+```contextvibes quality
 ```
 
 **Description:**
