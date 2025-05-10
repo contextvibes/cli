@@ -66,8 +66,8 @@ type Config struct {
 }
 
 func GetDefaultConfig() *Config {
-	enableTrue := true    
-	defaultFalse := false 
+	enableTrue := true
+	defaultFalse := false
 
 	cfg := &Config{
 		Git: GitSettings{
@@ -90,16 +90,16 @@ func GetDefaultConfig() *Config {
 				Pattern: DefaultCommitMessagePattern,
 			},
 		},
-		ProjectState: ProjectState{ 
-			StrategicKickoffCompleted: &defaultFalse, 
+		ProjectState: ProjectState{
+			StrategicKickoffCompleted: &defaultFalse,
 			LastStrategicKickoffDate:  "",
 		},
-		AI: AISettings{ 
+		AI: AISettings{
 			CollaborationPreferences: AICollaborationPreferences{
 				// Corrected: Set actual default values
 				CodeProvisioningStyle: "bash_cat_eof",
 				MarkdownDocsStyle:     "raw_markdown",
-				DetailedTaskMode:      "mode_b", 
+				DetailedTaskMode:      "mode_b",
 				ProactiveDetailLevel:  "detailed_explanations",
 				AIProactivity:         "proactive_suggestions",
 			},
@@ -110,14 +110,14 @@ func GetDefaultConfig() *Config {
 
 func LoadConfig(filePath string) (*Config, error) {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return nil, nil 
+		return nil, nil
 	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file '%s': %w", filePath, err)
 	}
-	if len(data) == 0 { 
-		return nil, nil 
+	if len(data) == 0 {
+		return nil, nil
 	}
 	var cfg Config
 	// Use yaml.UnmarshalStrict to catch more errors if needed, but v3.Unmarshal is usually fine.
@@ -133,19 +133,19 @@ func FindRepoRootConfigPath(execClient *exec.ExecutorClient) (string, error) {
 	if execClient == nil {
 		return "", errors.New("executor client is nil, cannot find repo root")
 	}
-	ctx := context.Background() 
+	ctx := context.Background()
 	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", fmt.Errorf("failed to determine git repository root (is this a git repo, or is 'git' not in PATH? details: %s): %w", strings.TrimSpace(stderr), err)
 	}
 	repoRoot := filepath.Clean(strings.TrimSpace(stdout))
-	if repoRoot == "" || repoRoot == "." { 
+	if repoRoot == "" || repoRoot == "." {
 		return "", errors.New("git rev-parse --show-toplevel returned an empty or invalid path, not in a git repository")
 	}
 
 	configPath := filepath.Join(repoRoot, DefaultConfigFileName)
 	if _, statErr := os.Stat(configPath); os.IsNotExist(statErr) {
-		return "", nil 
+		return "", nil
 	} else if statErr != nil {
 		return "", fmt.Errorf("error checking for config file at '%s': %w", configPath, statErr)
 	}
@@ -153,14 +153,14 @@ func FindRepoRootConfigPath(execClient *exec.ExecutorClient) (string, error) {
 }
 
 func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
-	if defaultConfig == nil { 
+	if defaultConfig == nil {
 		panic("MergeWithDefaults called with nil defaultConfig")
 	}
 	if loadedCfg == nil {
-		return defaultConfig 
+		return defaultConfig
 	}
 
-	finalCfg := *defaultConfig 
+	finalCfg := *defaultConfig
 
 	if loadedCfg.Git.DefaultRemote != "" {
 		finalCfg.Git.DefaultRemote = loadedCfg.Git.DefaultRemote
@@ -179,8 +179,8 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 		if loadedCfg.Validation.BranchName.Pattern != "" {
 			finalCfg.Validation.BranchName.Pattern = loadedCfg.Validation.BranchName.Pattern
 		}
-	} else { 
-		finalCfg.Validation.BranchName.Pattern = "" 
+	} else {
+		finalCfg.Validation.BranchName.Pattern = ""
 	}
 
 	if loadedCfg.Validation.CommitMessage.Enable != nil {
@@ -194,13 +194,13 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 		finalCfg.Validation.CommitMessage.Pattern = ""
 	}
 
-	if loadedCfg.ProjectState.StrategicKickoffCompleted != nil { 
+	if loadedCfg.ProjectState.StrategicKickoffCompleted != nil {
 		finalCfg.ProjectState.StrategicKickoffCompleted = loadedCfg.ProjectState.StrategicKickoffCompleted
-	} 
+	}
 	if loadedCfg.ProjectState.LastStrategicKickoffDate != "" {
 		finalCfg.ProjectState.LastStrategicKickoffDate = loadedCfg.ProjectState.LastStrategicKickoffDate
 	}
-	
+
 	userAICollabPrefs := loadedCfg.AI.CollaborationPreferences
 	if userAICollabPrefs.CodeProvisioningStyle != "" {
 		finalCfg.AI.CollaborationPreferences.CodeProvisioningStyle = userAICollabPrefs.CodeProvisioningStyle
@@ -242,10 +242,10 @@ func UpdateAndSaveConfig(cfgToSave *Config, filePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary config file in '%s': %w", dir, err)
 	}
-	defer os.Remove(tempFile.Name()) 
+	defer os.Remove(tempFile.Name())
 
 	if _, err := tempFile.Write(yamlData); err != nil {
-		_ = tempFile.Close() 
+		_ = tempFile.Close()
 		return fmt.Errorf("failed to write to temporary config file '%s': %w", tempFile.Name(), err)
 	}
 	if err := tempFile.Close(); err != nil {

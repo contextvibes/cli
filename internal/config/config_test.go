@@ -27,16 +27,15 @@ func (m *mockExecutor) CaptureOutput(ctx context.Context, dir string, commandNam
 	}
 	return "", "", errors.New("CaptureOutputFunc not implemented in mock")
 }
-func (m *mockExecutor) Execute(ctx context.Context, dir string, commandName string, args ...string) error { 
+func (m *mockExecutor) Execute(ctx context.Context, dir string, commandName string, args ...string) error {
 	return errors.New("Execute not implemented in mock")
 }
-func (m *mockExecutor) CommandExists(commandName string) bool { 
-	return false 
+func (m *mockExecutor) CommandExists(commandName string) bool {
+	return false
 }
 func (m *mockExecutor) Logger() *slog.Logger {
-	return nil 
+	return nil
 }
-
 
 func TestGetDefaultConfig(t *testing.T) {
 	cfg := GetDefaultConfig()
@@ -89,7 +88,7 @@ func TestLoadConfig(t *testing.T) {
 		// and the string for defaultMainBranch is not closed.
 		malformedYAMLContent := "git: { defaultRemote: origin\n  defaultMainBranch: \"not_closed_string"
 		require.NoError(t, os.WriteFile(malformedFilePath, []byte(malformedYAMLContent), 0600))
-		
+
 		cfg, err := LoadConfig(malformedFilePath)
 		assert.Error(t, err)
 		assert.Nil(t, cfg)
@@ -99,11 +98,11 @@ func TestLoadConfig(t *testing.T) {
 		// Or for unclosed string: "yaml: found unexpected end of stream"
 		// The LoadConfig wraps it, so we check our wrapper's prefix and that it wraps *some* yaml error.
 		assert.Contains(t, err.Error(), fmt.Sprintf("failed to parse YAML config file '%s'", malformedFilePath))
-		
+
 		// To specifically check for the underlying yaml error type if needed:
 		var yamlErr *yaml.TypeError // This might not be the exact type, yaml.Unmarshal returns a generic error
-		                               // that might not always be a TypeError for all parsing issues.
-		                               // A more general check is that an error occurred during parsing.
+		// that might not always be a TypeError for all parsing issues.
+		// A more general check is that an error occurred during parsing.
 		isYamlError := strings.Contains(err.Error(), "yaml:") // A common indicator from the yaml package
 		assert.True(t, isYamlError || errors.As(err, &yamlErr), "Error should be or wrap a YAML parsing error")
 	})
@@ -163,28 +162,31 @@ func TestMergeWithDefaults(t *testing.T) {
 	})
 
 	t.Run("loaded config with no overrides", func(t *testing.T) {
-		loaded := &Config{} 
+		loaded := &Config{}
 		merged := MergeWithDefaults(loaded, defaults)
 		assert.Equal(t, defaults.Git.DefaultRemote, merged.Git.DefaultRemote)
 		assert.Equal(t, defaults.Logging.DefaultAILogFile, merged.Logging.DefaultAILogFile)
 		require.NotNil(t, merged.Validation.BranchName.Enable)
-		assert.True(t, *merged.Validation.BranchName.Enable) 
+		assert.True(t, *merged.Validation.BranchName.Enable)
 		assert.Equal(t, defaults.Validation.BranchName.Pattern, merged.Validation.BranchName.Pattern)
 		require.NotNil(t, merged.ProjectState.StrategicKickoffCompleted)
-		assert.False(t, *merged.ProjectState.StrategicKickoffCompleted) 
+		assert.False(t, *merged.ProjectState.StrategicKickoffCompleted)
 		assert.Equal(t, defaults.AI.CollaborationPreferences.CodeProvisioningStyle, merged.AI.CollaborationPreferences.CodeProvisioningStyle)
 	})
-	
+
 	t.Run("partial git override", func(t *testing.T) {
 		loaded := &Config{Git: GitSettings{DefaultRemote: "myfork"}}
 		merged := MergeWithDefaults(loaded, defaults)
 		assert.Equal(t, "myfork", merged.Git.DefaultRemote)
-		assert.Equal(t, defaults.Git.DefaultMainBranch, merged.Git.DefaultMainBranch) 
+		assert.Equal(t, defaults.Git.DefaultMainBranch, merged.Git.DefaultMainBranch)
 	})
 
 	t.Run("disable branch validation", func(t *testing.T) {
 		disableValidation := false
-		loaded := &Config{Validation: struct{BranchName ValidationRule `yaml:"branchName,omitempty"`; CommitMessage ValidationRule `yaml:"commitMessage,omitempty"`}{
+		loaded := &Config{Validation: struct {
+			BranchName    ValidationRule `yaml:"branchName,omitempty"`
+			CommitMessage ValidationRule `yaml:"commitMessage,omitempty"`
+		}{
 			BranchName: ValidationRule{Enable: &disableValidation, Pattern: "should_be_ignored_if_disabled"},
 		}}
 		merged := MergeWithDefaults(loaded, defaults)
@@ -192,7 +194,7 @@ func TestMergeWithDefaults(t *testing.T) {
 		assert.False(t, *merged.Validation.BranchName.Enable)
 		assert.Equal(t, "", merged.Validation.BranchName.Pattern, "Pattern should be cleared if validation is disabled")
 	})
-	
+
 	t.Run("override one AI collaboration preference", func(t *testing.T) {
 		loaded := &Config{
 			AI: AISettings{
@@ -222,7 +224,7 @@ func TestMergeWithDefaults(t *testing.T) {
 func TestUpdateAndSaveConfig(t *testing.T) {
 	tempDir := t.TempDir()
 	validConfig := GetDefaultConfig()
-	validConfig.Git.DefaultRemote = "test_remote" 
+	validConfig.Git.DefaultRemote = "test_remote"
 
 	t.Run("save nil config", func(t *testing.T) {
 		err := UpdateAndSaveConfig(nil, filepath.Join(tempDir, "nil_config.yaml"))
@@ -264,12 +266,12 @@ func TestUpdateAndSaveConfig(t *testing.T) {
 }
 
 func TestFindRepoRootConfigPath(t *testing.T) {
-	ctx := context.Background() 
+	ctx := context.Background()
 
 	t.Run("git rev-parse fails", func(t *testing.T) {
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
-				assert.Equal(t, ctx, ctxIn) 
+				assert.Equal(t, ctx, ctxIn)
 				if commandName == "git" && args[0] == "rev-parse" {
 					return "", "git error", errors.New("git rev-parse failed")
 				}
@@ -285,9 +287,9 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 	t.Run("git rev-parse returns empty", func(t *testing.T) {
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
-				assert.Equal(t, ctx, ctxIn) 
+				assert.Equal(t, ctx, ctxIn)
 				if commandName == "git" && args[0] == "rev-parse" {
-					return "  ", "", nil 
+					return "  ", "", nil
 				}
 				return "", "", errors.New("unexpected command")
 			},
@@ -297,12 +299,12 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "returned an empty or invalid path")
 	})
-	
+
 	t.Run("config file not found in repo root", func(t *testing.T) {
-		tempDir := t.TempDir() 
+		tempDir := t.TempDir()
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
-				assert.Equal(t, ctx, ctxIn) 
+				assert.Equal(t, ctx, ctxIn)
 				if commandName == "git" && args[0] == "rev-parse" && args[1] == "--show-toplevel" {
 					return tempDir + "\n", "", nil
 				}
@@ -310,7 +312,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 			},
 		}
 		client := exec.NewClient(mockExec)
-		
+
 		configPath, err := FindRepoRootConfigPath(client)
 		require.NoError(t, err)
 		assert.Equal(t, "", configPath, "Should return empty path if config file not found")
@@ -323,7 +325,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
-				assert.Equal(t, ctx, ctxIn) 
+				assert.Equal(t, ctx, ctxIn)
 				if commandName == "git" && args[0] == "rev-parse" && args[1] == "--show-toplevel" {
 					return tempDir + "\n", "", nil
 				}
