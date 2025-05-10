@@ -4,9 +4,9 @@
 package kickoff
 
 import (
-	"bytes" // For text/template
+	"bytes" 
 	"context"
-	_ "embed" // Required for //go:embed
+	_ "embed" 
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"text/template" // Required for template processing
+	"text/template" 
 	"time"
 
 	"github.com/contextvibes/cli/internal/config"
@@ -23,12 +23,10 @@ import (
 	"github.com/contextvibes/cli/internal/ui"
 )
 
-var assumeYes bool
-
 const strategicKickoffPromptFilename = "STRATEGIC_KICKOFF_PROTOCOL_FOR_AI.md"
 
 //go:embed assets/strategic_kickoff_protocol_template.md
-var masterKickoffProtocolTemplateContent string // Content will be embedded here
+var masterKickoffProtocolTemplateContent string 
 
 type Orchestrator struct {
 	logger         *slog.Logger
@@ -36,6 +34,7 @@ type Orchestrator struct {
 	presenter      *ui.Presenter
 	gitClient      *git.GitClient
 	configFilePath string
+	assumeYes      bool 
 }
 
 func NewOrchestrator(
@@ -44,6 +43,7 @@ func NewOrchestrator(
 	presenter *ui.Presenter,
 	gitClient *git.GitClient,
 	configFilePath string,
+	globalAssumeYes bool, 
 ) *Orchestrator {
 	if logger == nil {
 		fmt.Fprintln(os.Stderr, "[WARN] Kickoff Orchestrator initialized with a nil logger. Using discard logger.")
@@ -55,15 +55,15 @@ func NewOrchestrator(
 		presenter:      presenter,
 		gitClient:      gitClient,
 		configFilePath: configFilePath,
+		assumeYes:      globalAssumeYes, 
 	}
 }
 
-func (o *Orchestrator) ExecuteKickoff(ctx context.Context, isStrategicFlag bool, branchNameFlag string, globalAssumeYes bool) error {
-	assumeYes = globalAssumeYes
+func (o *Orchestrator) ExecuteKickoff(ctx context.Context, isStrategicFlag bool, branchNameFlag string) error { 
 	o.logger.DebugContext(ctx, "ExecuteKickoff called",
 		slog.Bool("isStrategicFlag", isStrategicFlag),
 		slog.String("branchNameFlag", branchNameFlag),
-		slog.Bool("assumeYesGlobal", assumeYes))
+		slog.Bool("assumeYes", o.assumeYes)) 
 
 	if o.config == nil {
 		err := errors.New("orchestrator config is nil, cannot proceed")
@@ -102,7 +102,7 @@ func (o *Orchestrator) MarkStrategicKickoffComplete(ctx context.Context) error {
 	trueVal := true
 	o.config.ProjectState.StrategicKickoffCompleted = &trueVal
 	o.config.ProjectState.LastStrategicKickoffDate = time.Now().UTC().Format(time.RFC3339)
-
+	
 	if err := config.UpdateAndSaveConfig(o.config, o.configFilePath); err != nil {
 		errMsg := fmt.Sprintf("failed to save updated configuration to %s", o.configFilePath)
 		o.presenter.Error("%s: %v", errMsg, err)
@@ -120,15 +120,27 @@ func (o *Orchestrator) executeStrategicKickoffGeneration(ctx context.Context) er
 	o.presenter.Summary("ContextVibes: Strategic Project Kickoff - Prompt Generation")
 	o.logger.InfoContext(ctx, "Starting Strategic Project Kickoff prompt generation.")
 
-	if err := o.runCollaborationSetup(ctx); err != nil {
+	if err := o.runCollaborationSetup(ctx); err != nil { 
+		o.presenter.Error("Failed during CLI collaboration setup phase.")
 		return fmt.Errorf("phase IV (Collaboration Setup for CLI) failed: %w", err)
 	}
-	initialProjectInfo, errGathering := o.runInitialInfoGathering(ctx)
+	initialProjectInfo, errGathering := o.runInitialInfoGathering(ctx) 
 	if errGathering != nil {
+		o.presenter.Error("Failed during initial project information gathering.")
 		return fmt.Errorf("phase I (Initial Info Gathering for CLI) failed: %w", errGathering)
 	}
-	if err := o.runTechnicalReadinessInquiry(ctx); err != nil {
+	if err := o.runTechnicalReadinessInquiry(ctx); err != nil { 
+		o.presenter.Error("Failed during technical readiness inquiry.")
 		return fmt.Errorf("phase II (Technical Readiness Inquiry for CLI) failed: %w", err)
+	}
+	
+	// Save config *after* collaboration preferences are gathered, so they are included
+	// in the generated YAML for the master prompt.
+	if err := config.UpdateAndSaveConfig(o.config, o.configFilePath); err != nil {
+		o.presenter.Warning("Could not immediately save AI collaboration preferences to '%s': %v", o.configFilePath, err)
+		o.logger.WarnContext(ctx, "Failed to save config after collaboration setup in strategic kickoff generation", "error", err, "path", o.configFilePath)
+	} else {
+		o.logger.InfoContext(ctx, "AI collaboration preferences (in-memory) saved to config file.", "path", o.configFilePath)
 	}
 
 	o.presenter.Newline()
@@ -136,12 +148,11 @@ func (o *Orchestrator) executeStrategicKickoffGeneration(ctx context.Context) er
 
 	promptText, err := o.generateMasterKickoffPromptText(initialProjectInfo)
 	if err != nil {
-		// Error already logged by generateMasterKickoffPromptText
 		o.presenter.Error("Failed to generate the master kickoff prompt content: %v", err)
 		return err
 	}
 
-	promptFilePath := filepath.Join(".", strategicKickoffPromptFilename)
+	promptFilePath := filepath.Join(".", strategicKickoffPromptFilename) 
 	err = os.WriteFile(promptFilePath, []byte(promptText), 0644)
 	if err != nil {
 		o.presenter.Error("Failed to save the master kickoff prompt to '%s': %v", promptFilePath, err)
@@ -171,36 +182,60 @@ func (o *Orchestrator) executeStrategicKickoffGeneration(ctx context.Context) er
 func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 	o.logger.DebugContext(ctx, "Executing Phase IV: Collaboration Model Setup (for ContextVibes CLI interaction)")
 	o.presenter.Header("IV. ContextVibes CLI Interaction Preferences")
-	o.presenter.Info("Let's set preferences for how I, ContextVibes CLI, will provide outputs like code or docs if generated based on your AI session summary later.")
-	o.presenter.Detail("Your choices can be stored in '%s' if you complete a strategic kickoff and this CLI is enhanced to save them.", o.configFilePath)
+	o.presenter.Info("Let's set preferences for how I, ContextVibes CLI, will provide outputs like code or docs.")
+	o.presenter.Detail("Your choices help tailor my assistance and will be saved in '%s' if you mark this strategic kickoff as complete.", o.configFilePath)
 	o.presenter.Newline()
 
-	if o.config == nil { return errors.New("config is nil in runCollaborationSetup") }
-	prefs := &o.config.AI.CollaborationPreferences
+	if o.config == nil { 
+		o.logger.ErrorContext(ctx, "Config is nil in runCollaborationSetup")
+		return errors.New("internal error: config not loaded for collaboration setup")
+	}
+	prefs := &o.config.AI.CollaborationPreferences 
+	defaultCP := config.GetDefaultConfig().AI.CollaborationPreferences
 
-	askAndSetPreference := func(promptKey, currentValue string, validOptions []string, exampleValue string, updateFunc func(string)) error {
+
+	askAndSetPreference := func(promptKey, currentValue string, validOptions []string, defaultValue string, updateFunc func(string)) error {
 		var currentDisplay string
-		if currentValue == "" { currentDisplay = "(default or not set)"
-		} else { currentDisplay = fmt.Sprintf("current: %s", currentValue) }
+		if currentValue == "" { 
+			currentDisplay = fmt.Sprintf("(current default: %s)", defaultValue)
+		} else { 
+			currentDisplay = fmt.Sprintf("current: %s", currentValue) 
+		}
 		optionsStr := strings.Join(validOptions, " | ")
-		promptMsgStr := fmt.Sprintf("%s\n  Options: [ %s ] (e.g., '%s')\n  (%s)\nYour choice (or press Enter to keep current/default): ",
-			promptKey, optionsStr, exampleValue, currentDisplay)
+		promptMsgStr := fmt.Sprintf("%s\n  Options: [ %s ]\n  %s\nYour choice (or press Enter to use value shown in current/default): ",
+			promptKey, optionsStr, currentDisplay)
 
 		userInput, err := o.presenter.PromptForInput(promptMsgStr)
 		if err != nil { return fmt.Errorf("failed to get user input for '%s': %w", promptKey, err) }
 		userInput = strings.TrimSpace(userInput)
 
+		effectiveValue := currentValue
+		if effectiveValue == "" { effectiveValue = defaultValue}
+
+
 		if userInput == "" {
-			o.presenter.Info("  -> No change for '%s'. Using: '%s'", promptKey, currentValue)
-			o.logger.DebugContext(ctx, "Collaboration preference unchanged by user", "key", promptKey, "value", currentValue)
+			updateFunc(effectiveValue) // Ensure a value (current or default) is set in the config struct
+			o.presenter.Info("  -> No change for '%s'. Using: '%s'", promptKey, effectiveValue)
+			o.logger.DebugContext(ctx, "Collaboration preference confirmed/defaulted", "key", promptKey, "value", effectiveValue)
 			return nil
 		}
 		isValidOption := false
 		for _, opt := range validOptions { if userInput == opt { isValidOption = true; break } }
+		
 		if !isValidOption {
-			o.presenter.Warning("  -> Invalid option '%s' for '%s'. Kept: '%s'.", userInput, promptKey, currentValue)
-			o.logger.WarnContext(ctx, "Invalid collaboration preference option entered", "key", promptKey, "entered_value", userInput, "kept_value", currentValue)
-			return nil 
+			o.presenter.Warning("  -> Invalid option '%s' for '%s'. Valid: [%s].", userInput, promptKey, optionsStr)
+			o.presenter.Info("  Please try again for '%s'.", promptKey)
+			userInputRetry, errRetry := o.presenter.PromptForInput(fmt.Sprintf("Retry for '%s' (Options: %s): ", promptKey, optionsStr))
+			if errRetry != nil { return fmt.Errorf("failed to get user input on retry for '%s': %w", promptKey, errRetry) }
+			userInput = strings.TrimSpace(userInputRetry)
+			isValidOption = false 
+			for _, opt := range validOptions { if userInput == opt { isValidOption = true; break } }
+			if !isValidOption {
+				o.presenter.Error("  -> Still invalid option '%s' for '%s'. Keeping: '%s'.", userInput, promptKey, effectiveValue)
+				updateFunc(effectiveValue) 
+				o.logger.WarnContext(ctx, "Invalid collaboration preference on retry", "key", promptKey, "attemptedValue", userInput, "kept_value", effectiveValue)
+				return nil 
+			}
 		}
 		updateFunc(userInput)
 		o.presenter.Info("  -> Preference for '%s' set to: '%s'", promptKey, userInput)
@@ -209,94 +244,134 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 	}
 	
 	var err error
-	err = askAndSetPreference("1. CLI Code/Command Provisioning Style:", prefs.CodeProvisioningStyle, []string{"bash_cat_eof", "raw_markdown"}, "bash_cat_eof", func(s string) { prefs.CodeProvisioningStyle = s })
+	err = askAndSetPreference("1. My Code/Command Provisioning Style:", prefs.CodeProvisioningStyle, []string{"bash_cat_eof", "raw_markdown"}, defaultCP.CodeProvisioningStyle, func(s string) { prefs.CodeProvisioningStyle = s })
 	if err != nil { return err }
-	err = askAndSetPreference("2. CLI Markdown Doc Presentation Style:", prefs.MarkdownDocsStyle, []string{"raw_markdown"}, "raw_markdown", func(s string) { prefs.MarkdownDocsStyle = s })
+
+	err = askAndSetPreference("2. My Markdown Doc Presentation Style:", prefs.MarkdownDocsStyle, []string{"raw_markdown"}, defaultCP.MarkdownDocsStyle, func(s string) { prefs.MarkdownDocsStyle = s })
+	if err != nil { return err }
+
+	err = askAndSetPreference("3. My Detailed Task Interaction Model (for future direct AI):", prefs.DetailedTaskMode, []string{"mode_a", "mode_b"}, defaultCP.DetailedTaskMode, func(s string) { prefs.DetailedTaskMode = s })
 	if err != nil { return err }
 	
+	effectiveTaskMode := prefs.DetailedTaskMode; if effectiveTaskMode == "" {effectiveTaskMode = defaultCP.DetailedTaskMode}
+	defaultProactiveDetail := defaultCP.ProactiveDetailLevel
+	if effectiveTaskMode == "mode_b" { defaultProactiveDetail = "detailed_explanations"
+	} else if defaultProactiveDetail == "" { defaultProactiveDetail = "concise_unless_asked" }
+
+
+	err = askAndSetPreference("4. My Explanation Depth & Proactive Detail Level:", prefs.ProactiveDetailLevel, []string{"detailed_explanations", "concise_unless_asked"}, defaultProactiveDetail, func(s string) { prefs.ProactiveDetailLevel = s })
+	if err != nil { return err }
+	
+	err = askAndSetPreference("5. My General Proactivity in Suggestions:", prefs.AIProactivity, []string{"proactive_suggestions", "wait_for_request"}, defaultCP.AIProactivity, func(s string) { prefs.AIProactivity = s })
+	if err != nil { return err }
+
+	o.presenter.Newline() 
+	o.presenter.Info("Informational Points (not saved as preferences):")
+	o.presenter.Detail("  - Context Management: For very long *chat sessions* with an AI, you might need to refresh its context.")
+	o.presenter.Detail("  - Feedback: Your feedback on ContextVibes (and me!) is always welcome.")
+	o.presenter.Detail("  - AI Rules: If `.idx/airules.md` exists, I use its guidance. Any session-specific overrides can be mentioned now.")
+	_, _ = o.presenter.PromptForInput("  Any immediate thoughts on AI rules for this session? (Enter or describe): ") 
 	o.presenter.Newline()
-	o.presenter.Success("ContextVibes CLI interaction preferences noted (will be saved if strategic kickoff is marked complete).")
-	o.logger.InfoContext(ctx, "ContextVibes CLI collaboration model setup phase complete.", slog.Any("final_preferences_in_config_struct", *prefs))
+
+	o.presenter.Success("ContextVibes CLI interaction preferences configured (in memory).")
+	o.logger.InfoContext(ctx, "Collaboration model setup phase complete.", slog.Any("final_preferences_in_config_struct", *prefs))
 	return nil
 }
 
 func (o *Orchestrator) runInitialInfoGathering(ctx context.Context) (map[string]string, error) {
 	o.logger.DebugContext(ctx, "Executing Simplified Initial Info Gathering for Prompt Parameterization")
-	o.presenter.Header("Project Details for Kickoff Prompt Customization")
-	o.presenter.Info("I need a few details to customize the master kickoff prompt for your AI.")
+	o.presenter.Header("I. Initial Project Information for Kickoff Prompt")
+	o.presenter.Info("Please provide these initial details about the project you are kicking off.")
 	o.presenter.Newline()
 
 	gatheredInfo := make(map[string]string)
 	var err error
 	var tempStr string
 
-	tempStr, err = o.presenter.PromptForInput("  What is the official name for this project? (e.g., MyNewService): ")
+	tempStr, err = o.presenter.PromptForInput("  1. What is the official name for this project?\n     (e.g., MyNewService. Press Enter to use current directory name): ")
 	if err != nil { return nil, err }
 	if tempStr == "" {
 		cwd, cwdErr := os.Getwd()
 		if cwdErr != nil { 
 			o.logger.ErrorContext(ctx, "Failed to get current working directory for default project name", slog.Any("error", cwdErr))
-			return nil, fmt.Errorf("failed to get current directory for default project name: %w", cwdErr)
+			// Allow user to manually enter if auto-detection fails
+			tempStr, err = o.presenter.PromptForInput("  Could not get directory name. Please enter project name: ")
+			if err != nil { return nil, err }
+			if tempStr == "" { return nil, errors.New("project name cannot be empty if directory name fetch fails") }
+		} else {
+			gatheredInfo["projectName"] = filepath.Base(cwd)
+			o.presenter.Info("     -> Using current directory name: %s", gatheredInfo["projectName"])
 		}
-		gatheredInfo["projectName"] = filepath.Base(cwd)
-	} else {
+	}
+	if tempStr != "" { // If user entered a name, or re-entered after CWD fail
 		gatheredInfo["projectName"] = tempStr
 	}
+	o.presenter.Newline()
 	
-	tempStr, err = o.presenter.PromptForInput(fmt.Sprintf("  What is the primary application type being developed for '%s'? (e.g., Go API, Python CLI): ", gatheredInfo["projectName"]))
+	tempStr, err = o.presenter.PromptForInput(fmt.Sprintf("  2. What is the primary application type for '%s'?\n     (e.g., Go API, Python CLI, Terraform Module): ", gatheredInfo["projectName"]))
 	if err != nil { return nil, err }
 	if tempStr == "" { return nil, errors.New("project application type cannot be empty") }
 	gatheredInfo["projectAppType"] = tempStr
-
-	tempStr, err = o.presenter.PromptForInput(fmt.Sprintf("  Is '%s' a brand new project, or an existing one entering a new phase? [new/existing]: ", gatheredInfo["projectName"]))
-	if err != nil { return nil, err }
-	if tempStr == "" { return nil, errors.New("project stage (new/existing) cannot be empty") }
-	gatheredInfo["projectStage"] = tempStr
-	
 	o.presenter.Newline()
-	o.logger.InfoContext(ctx, "Simplified initial info gathered.", slog.Any("info", gatheredInfo))
+
+	tempStr, err = o.presenter.PromptForInput(fmt.Sprintf("  3. Is '%s' a [new] project, an [existing] project (new phase), or a [refactor] effort? ", gatheredInfo["projectName"]))
+	if err != nil { return nil, err }
+	if tempStr == "" { return nil, errors.New("project stage (new/existing/refactor) cannot be empty") }
+	gatheredInfo["projectStage"] = tempStr
+	o.presenter.Newline()
+	
+	o.logger.InfoContext(ctx, "Simplified initial info gathered for prompt parameterization.", slog.Any("info", gatheredInfo))
 	return gatheredInfo, nil
 }
 
 func (o *Orchestrator) runTechnicalReadinessInquiry(ctx context.Context) error {
-	o.logger.DebugContext(ctx, "Executing Phase II: Technical Readiness Inquiry (for ContextVibes CLI user)")
-	o.presenter.Header("II. ContextVibes CLI Readiness Check")
-	o.presenter.Info("Just a couple of quick checks regarding your `contextvibes` CLI environment:")
+	o.logger.DebugContext(ctx, "Executing Phase II: Technical Readiness Inquiry (for User's ContextVibes CLI setup)")
+	o.presenter.Header("II. User's ContextVibes CLI Readiness Check")
+	o.presenter.Info("A quick check regarding your local `contextvibes` CLI environment:")
 	o.presenter.Newline()
 
 	var err error
-	_, err = o.presenter.PromptForConfirmation("  1. Is the `contextvibes` CLI installed and accessible in your system PATH? [Y/n]: ")
-	if err != nil { return err }
+	var confirmed bool
 
-	_, err = o.presenter.PromptForConfirmation("  2. Are any environment variables required by `contextvibes` for its general operation set correctly? [Y/n]: ")
+	confirmed, err = o.presenter.PromptForConfirmation("  1. Is your `contextvibes` CLI installed and accessible in your system PATH? [Y/n]: ")
 	if err != nil { return err }
+	if !confirmed && !o.assumeYes { o.presenter.Warning("     -> Please ensure `contextvibes` is installed and in your PATH for optimal use during the AI-guided session.") }
+	o.presenter.Newline()
+
+	confirmed, err = o.presenter.PromptForConfirmation("  2. Are any environment variables required by `contextvibes` for its general operation set correctly? [Y/n]: ")
+	if err != nil { return err }
+	if !confirmed && !o.assumeYes { o.presenter.Advice("     -> Ensure relevant environment variables are set if ContextVibes features you use depend on them.") }
 	o.presenter.Newline()
 	
+	o.presenter.Success("Technical readiness inquiry complete.")
 	o.logger.InfoContext(ctx, "Technical readiness inquiry phase (for CLI user) finished.")
 	return nil
 }
 
-// generateCollaborationPrefsYAML is a helper to create the YAML string for AI collaboration preferences.
 func (o *Orchestrator) generateCollaborationPrefsYAML() string {
-    // Ensure defaults if some preferences are empty, to make the YAML more complete for the AI prompt.
-    prefs := o.config.AI.CollaborationPreferences
+    defaultPrefs := config.GetDefaultConfig().AI.CollaborationPreferences
+    currentPrefs := o.config.AI.CollaborationPreferences
     
-    style := prefs.CodeProvisioningStyle
-    if style == "" { style = "bash_cat_eof" } // Example default
+    getEffective := func(current, def string) string {
+        if current != "" { return current }
+        return def
+    }
+
+    style := getEffective(currentPrefs.CodeProvisioningStyle, defaultPrefs.CodeProvisioningStyle)
+    mdStyle := getEffective(currentPrefs.MarkdownDocsStyle, defaultPrefs.MarkdownDocsStyle)
+    taskMode := getEffective(currentPrefs.DetailedTaskMode, defaultPrefs.DetailedTaskMode)
     
-    mdStyle := prefs.MarkdownDocsStyle
-    if mdStyle == "" { mdStyle = "raw_markdown" }
+    detailLevel := currentPrefs.ProactiveDetailLevel
+    if detailLevel == "" { // If user didn't explicitly set it
+        if taskMode == "mode_b" { // If effective taskMode is mode_b
+            detailLevel = "detailed_explanations" // Sensible default for interactive mode
+        } else { // For mode_a or if taskMode is somehow empty/defaulted to non-mode_b
+            detailLevel = getEffective("", defaultPrefs.ProactiveDetailLevel) // Use general default
+			if detailLevel == "" { detailLevel = "concise_unless_asked"; } // Absolute fallback
+        }
+    }
 
-    taskMode := prefs.DetailedTaskMode
-    if taskMode == "" { taskMode = "mode_b" }
-
-    detailLevel := prefs.ProactiveDetailLevel
-    if detailLevel == "" && taskMode == "mode_b" { detailLevel = "detailed_explanations" }
-	 if detailLevel == "" { detailLevel = "concise_unless_asked" }
-
-
-    proactivity := prefs.AIProactivity
-    if proactivity == "" { proactivity = "proactive_suggestions" }
+    proactivity := getEffective(currentPrefs.AIProactivity, defaultPrefs.AIProactivity)
 
     var sb strings.Builder
     sb.WriteString("ai:\n")
@@ -327,10 +402,9 @@ func (o *Orchestrator) generateMasterKickoffPromptText(initialInfo map[string]st
 		CollaborationPrefsYAML: collaborationPrefsYAML,
 	}
 
-	// Ensure masterKickoffProtocolTemplateContent is not empty
 	if strings.TrimSpace(masterKickoffProtocolTemplateContent) == "" {
-		errMsg := "embedded master kickoff protocol template is empty"
-		o.logger.ErrorContext(context.Background(), errMsg) // Use a background context if ctx not available
+		errMsg := "embedded master kickoff protocol template is empty or not loaded"
+		o.logger.ErrorContext(context.Background(), errMsg, slog.String("hint", "Ensure internal/kickoff/assets/strategic_kickoff_protocol_template.md is populated and embed directive is correct."))
 		return "", errors.New(errMsg)
 	}
 
@@ -399,7 +473,7 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 	}
 
 	if targetBranchName == "" {
-		if assumeYes { 
+		if o.assumeYes { 
 			errMsg := "branch name is required via --branch flag when using --yes for daily kickoff"
 			o.presenter.Error(errMsg)
 			o.logger.ErrorContext(ctx, errMsg)
@@ -450,7 +524,7 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 	o.presenter.Detail("3. Push new branch '%s' to '%s' and set upstream tracking.", targetBranchName, remoteName)
 	o.presenter.Newline()
 
-	if !assumeYes {
+	if !o.assumeYes { 
 		confirmed, promptErr := o.presenter.PromptForConfirmation("Proceed with Daily Kickoff Git workflow?")
 		if promptErr != nil { return promptErr }
 		if !confirmed {

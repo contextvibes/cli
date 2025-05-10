@@ -3,15 +3,15 @@ package cmd
 
 import (
 	"context"
-	"errors"
+	"errors"  
 	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
+	"os" 
+	"path/filepath" 
+	"strings" // Added for TrimSpace in configFilePath logic
 
-	"github.com/contextvibes/cli/internal/config"
+	"github.com/contextvibes/cli/internal/config" 
 	"github.com/contextvibes/cli/internal/git"
-	"github.com/contextvibes/cli/internal/kickoff"
+	"github.com/contextvibes/cli/internal/kickoff" 
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +57,7 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := AppLogger // From cmd/root.go
+		logger := AppLogger 
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background()
 
@@ -73,30 +73,27 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 		}
 
 		var configFilePath string
-		// Attempt to find .contextvibes.yaml in repo root
 		repoCfgPath, findPathErr := config.FindRepoRootConfigPath(ExecClient) 
-		if findPathErr != nil { // Error finding repo root (e.g., not a git repo)
+		if findPathErr != nil { 
 			logger.WarnContext(ctx, "Could not determine git repository root. '.contextvibes.yaml' will be looked for/created in current directory.",
 				slog.String("source_command", "kickoff"), slog.Any("find_path_error", findPathErr))
 			cwd, _ := os.Getwd()
 			configFilePath = filepath.Join(cwd, config.DefaultConfigFileName)
-		} else if repoCfgPath == "" { // Repo root found, but .contextvibes.yaml doesn't exist there
+		} else if repoCfgPath == "" { 
 			logger.InfoContext(ctx, "'.contextvibes.yaml' not found in repository root. It will be created there if needed.",
 				slog.String("source_command", "kickoff"))
-			// Get repo root again to ensure correct path for creation
 			repoRootForCreation, _, _ := ExecClient.CaptureOutput(context.Background(), ".", "git", "rev-parse", "--show-toplevel")
 			cleanRoot := strings.TrimSpace(repoRootForCreation)
-			if cleanRoot == "" || cleanRoot == "." { // Fallback if somehow rev-parse fails here
+			if cleanRoot == "" || cleanRoot == "." { 
 				cwd, _ := os.Getwd()
 				cleanRoot = cwd
 			}
 			configFilePath = filepath.Join(cleanRoot, config.DefaultConfigFileName)
-		} else { // Config file found in repo root
+		} else { 
 			configFilePath = repoCfgPath
 		}
 		logger.DebugContext(ctx, "Determined config file path for kickoff operations", 
 			slog.String("path", configFilePath), slog.String("source_command", "kickoff"))
-
 
 		workDir, err := os.Getwd()
 		if err != nil {
@@ -112,21 +109,17 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 			DefaultMainBranchName: LoadedAppConfig.Git.DefaultMainBranch,
 			Executor:              ExecClient.UnderlyingExecutor(), 
 		}
-		// Try to initialize Git client. It's okay if it fails for some strategic operations.
 		gitClt, err = git.NewClient(ctx, workDir, gitClientConfig)
 		if err != nil {
-			// Only log a warning here. The orchestrator will decide if a nil gitClient is fatal for the chosen operation.
 			logger.WarnContext(ctx, "Kickoff cmd: Git client initialization failed. Some operations might be limited.", 
 				slog.String("source_command", "kickoff"), 
 				slog.String("error", err.Error()))
-			// gitClt will be nil
 		}
 
-		// The global 'assumeYes' is set by rootCmd.PersistentPreRunE or by flag parsing.
-		orchestrator := kickoff.NewOrchestrator(logger, LoadedAppConfig, presenter, gitClt, configFilePath)
+		// Pass the global 'assumeYes' (from cmd/root.go) to NewOrchestrator
+		orchestrator := kickoff.NewOrchestrator(logger, LoadedAppConfig, presenter, gitClt, configFilePath, assumeYes)
 
 		if markStrategicCompleteFlag {
-			// User wants to mark the strategic kickoff as done.
 			if isStrategicKickoffFlag || branchNameFlag != "" {
 				presenter.Warning("--mark-strategic-complete is mutually exclusive with --strategic and --branch. Ignoring other flags.")
 				logger.WarnContext(ctx, "Redundant flags with --mark-strategic-complete", 
@@ -135,17 +128,14 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 			}
 			err = orchestrator.MarkStrategicKickoffComplete(ctx)
 		} else {
-			// Pass the global 'assumeYes' (from cmd/root.go, bound to rootCmd.PersistentFlags())
-			err = orchestrator.ExecuteKickoff(ctx, isStrategicKickoffFlag, branchNameFlag, assumeYes)
+			// ExecuteKickoff no longer takes assumeYes directly
+			err = orchestrator.ExecuteKickoff(ctx, isStrategicKickoffFlag, branchNameFlag)
 		}
 		
 		if err != nil {
-			// Orchestrator's presenter methods should have already shown user-friendly messages.
-			// Log the error from the orchestrator for the AI trace log.
 			logger.ErrorContext(ctx, "Kickoff command execution resulted in error", 
 				slog.String("source_command", "kickoff"), 
-				slog.Any("error", err)) // err already includes context from orchestrator
-			// Return error to signify failure to Cobra, avoids double-printing if presenter handled it.
+				slog.Any("error", err)) 
 			return err 
 		}
 

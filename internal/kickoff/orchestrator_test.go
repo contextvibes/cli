@@ -28,8 +28,6 @@ type SourcedInputReader struct {
 func NewSourcedInputReader(inputs []string) *SourcedInputReader {
 	return &SourcedInputReader{inputs: inputs}
 }
-
-// Read satisfies io.Reader. It provides one input line per Read call.
 func (sir *SourcedInputReader) Read(p []byte) (n int, err error) {
 	if sir.index >= len(sir.inputs) {
 		return 0, io.EOF 
@@ -58,15 +56,8 @@ func NewMockPresenter() *MockPresenter {
 }
 func (m *MockPresenter) Out() io.Writer { return m.OutputBuffer }
 func (m *MockPresenter) Err() io.Writer { return m.ErrorBuffer }
-
-func (m *MockPresenter) SetInput(inputs []string) {
-	m.InputResponses = inputs
-	m.inputIndex = 0
-}
-func (m *MockPresenter) SetConfirmations(confirmations []bool) {
-	m.Confirmations = confirmations
-	m.confirmIndex = 0
-}
+func (m *MockPresenter) SetInput(inputs []string) { m.InputResponses = inputs; m.inputIndex = 0 }
+func (m *MockPresenter) SetConfirmations(confirmations []bool) { m.Confirmations = confirmations; m.confirmIndex = 0 }
 func (m *MockPresenter) PromptForInput(prompt string) (string, error) {
 	m.Called(prompt) 
 	m.ErrorBuffer.WriteString(prompt) 
@@ -97,7 +88,6 @@ func (m *MockPresenter) Newline()                        { fmt.Fprintln(m.Output
 func (m *MockPresenter) InfoPrefixOnly()                 { fmt.Fprint(m.OutputBuffer, "INFO: ") }
 func (m *MockPresenter) Separator()                      { fmt.Fprintln(m.OutputBuffer, "---SEPARATOR---") }
 
-
 // --- Mock GitClient ---
 type MockGitClient struct { mock.Mock }
 func (m *MockGitClient) GetCurrentBranchName(ctx context.Context) (string, error) { args := m.Called(ctx); return args.String(0), args.Error(1) }
@@ -106,7 +96,6 @@ func (m *MockGitClient) PullRebase(ctx context.Context, branch string) error    
 func (m *MockGitClient) LocalBranchExists(ctx context.Context, branchName string) (bool, error) { args := m.Called(ctx, branchName); return args.Bool(0), args.Error(1) }
 func (m *MockGitClient) CreateAndSwitchBranch(ctx context.Context, newBranch, baseBranch string) error { args := m.Called(ctx, newBranch, baseBranch); return args.Error(0) }
 func (m *MockGitClient) PushAndSetUpstream(ctx context.Context, branchName string) error { args := m.Called(ctx, branchName); return args.Error(0) }
-
 
 func setupTestOrchestrator(t *testing.T) (
 	orc *Orchestrator, 
@@ -133,9 +122,10 @@ func setupTestOrchestrator(t *testing.T) (
 	presenter := ui.NewPresenter(presenterOut, presenterErr, inputReader)
 	mockGit = new(MockGitClient)
 	
-	var gitClientForOrc *git.GitClient = nil // Pass nil for gitClient for most unit tests
+	var gitClientForOrc *git.GitClient = nil 
 	
-	orc = NewOrchestrator(logger, appCfg, presenter, gitClientForOrc, configFilePath)
+	// Pass a default 'false' for assumeYes to NewOrchestrator
+	orc = NewOrchestrator(logger, appCfg, presenter, gitClientForOrc, configFilePath, false /* globalAssumeYes */)
 	require.NotNil(t, orc)
 	
 	return orc, appCfg, presenterOut, presenterErr, inputReader, mockGit, configFilePath
@@ -148,6 +138,7 @@ func TestNewOrchestrator(t *testing.T) {
 	assert.Equal(t, cfg, orc.config)
 	assert.NotNil(t, orc.presenter) 
 	assert.Equal(t, configPath, orc.configFilePath) 
+	assert.False(t, orc.assumeYes, "assumeYes should be false by default from setupTestOrchestrator")
 }
 
 func TestExecuteKickoff_ModeSelection(t *testing.T) {
@@ -162,8 +153,10 @@ func TestExecuteKickoff_ModeSelection(t *testing.T) {
 	t.Run("strategic flag forces strategic mode", func(t *testing.T) {
 		orc, _, outBuf, _, inputReader, _, _ := setupTestOrchestrator(t)
 		inputReader.inputs = strategicSetupInputs
+		orc.assumeYes = false // Explicitly set for this test case if needed, or rely on setupTestOrchestrator default
 		
-		err := orc.ExecuteKickoff(ctx, true /*isStrategicFlag*/, "", false /*globalAssumeYes*/)
+		// ExecuteKickoff no longer takes globalAssumeYes
+		err := orc.ExecuteKickoff(ctx, true /*isStrategicFlag*/, "") 
 		require.NoError(t, err) 
 		assert.Contains(t, outBuf.String(), "ContextVibes: Strategic Project Kickoff - Prompt Generation")
 	})
@@ -172,10 +165,11 @@ func TestExecuteKickoff_ModeSelection(t *testing.T) {
 		orc, cfg, outBuf, _, inputReader, _, _ := setupTestOrchestrator(t)
 		defaultFalse := false
 		cfg.ProjectState.StrategicKickoffCompleted = &defaultFalse
+		orc.assumeYes = false
 
 		inputReader.inputs = strategicSetupInputs
 		
-		err := orc.ExecuteKickoff(ctx, false /*isStrategicFlag*/, "", false)
+		err := orc.ExecuteKickoff(ctx, false /*isStrategicFlag*/, "")
 		require.NoError(t, err)
 		assert.Contains(t, outBuf.String(), "No prior strategic kickoff detected")
 		assert.Contains(t, outBuf.String(), "ContextVibes: Strategic Project Kickoff - Prompt Generation")
@@ -184,10 +178,11 @@ func TestExecuteKickoff_ModeSelection(t *testing.T) {
 	t.Run("no strategic flag, kickoff nil (default), runs strategic", func(t *testing.T) {
 		orc, cfg, outBuf, _, inputReader, _, _ := setupTestOrchestrator(t)
 		cfg.ProjectState.StrategicKickoffCompleted = nil 
+		orc.assumeYes = false
 
 		inputReader.inputs = strategicSetupInputs
 		
-		err := orc.ExecuteKickoff(ctx, false /*isStrategicFlag*/, "", false)
+		err := orc.ExecuteKickoff(ctx, false /*isStrategicFlag*/, "")
 		require.NoError(t, err)
 		assert.Contains(t, outBuf.String(), "No prior strategic kickoff detected") 
 		assert.Contains(t, outBuf.String(), "ContextVibes: Strategic Project Kickoff - Prompt Generation")
@@ -197,8 +192,10 @@ func TestExecuteKickoff_ModeSelection(t *testing.T) {
 		orc, cfg, outBuf, _, _, _, _ := setupTestOrchestrator(t) 
 		isComplete := true
 		cfg.ProjectState.StrategicKickoffCompleted = &isComplete
+		orc.assumeYes = true // To bypass branch prompt in daily, assuming it would be called
 
-		err := orc.ExecuteKickoff(ctx, false /*isStrategicFlag*/, "test-daily-branch", true)
+		// orchestrator's gitClient is nil from setupTestOrchestrator
+		err := orc.ExecuteKickoff(ctx, false /*isStrategicFlag*/, "test-daily-branch") 
 		
 		require.Error(t, err) 
 		assert.Contains(t, err.Error(), "git client not available for daily kickoff")
