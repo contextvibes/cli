@@ -4,25 +4,21 @@
 # see: https://developers.google.com/idx/guides/customize-idx-env
 
 { pkgs, ... }: {
-  # Which nixpkgs channel to use. (https://status.nixos.org/)
-  channel = "stable-24.11"; # Or choose a specific Nixpkgs commit/tag
+  # Pin to a specific Nixpkgs channel for reproducibility.
+  channel = "stable-25.05";
 
-  # Use https://search.nixos.org/packages to find packages for Go development
-  packages = [
+  # The 'pkgs' block defines system-level packages available in your workspace.
+  packages = with pkgs; [
     # --- Core Go Development ---
-    pkgs.go # The Go compiler and runtime
+    go # The Go compiler and runtime
 
     # --- Version Control ---
-    pkgs.git # Essential version control system
-    pkgs.gh
+    git # Essential version control system
+    gh
   ];
 
   # Sets environment variables in the workspace
-  env = {
-  };
-
-  # Enable Docker daemon service if you need to build/run containers
-  services.docker.enable = true;
+  env = { };
 
   idx = {
     # Search for extensions on https://open-vsx.org/ and use "publisher.id"
@@ -36,11 +32,9 @@
 
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
-      onCreate = {
-      };
+      onCreate = { };
       # Runs every time a workspace is started
-      onStart = {
-      };
+      onStart = { };
     };
 
     # Enable previews and customize configuration if you're running web services
