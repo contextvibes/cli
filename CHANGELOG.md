@@ -16,6 +16,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ---
+## [0.2.0] - 2025-06-08 
+
+### Added
+- **`contextvibes index` Command Enhancement:**
+    - Now generates a comprehensive JSON manifest (`project_manifest.json` by default) from local Markdown files.
+    - Parses rich YAML front matter including `title`, `artifactVersion`, `summary`, `usageGuidance`, `owner`, `createdDate`, `lastModifiedDate`, `defaultTargetPath`, and `tags`.
+    - Derives `id` (from relative path) and `fileExtension`.
+    - `lastModifiedDate` falls back to file system modification time if not in front matter.
+    - `defaultTargetPath` defaults to `id.fileExtension` if not in front matter.
+- **New Command: `contextvibes thea get-artifact <artifact-id>`:**
+    - Fetches a specific artifact document (e.g., playbook, template) from the central THEA framework repository.
+    - Uses a hardcoded default URL for the THEA manifest (`https://raw.githubusercontent.com/contextvibes/THEA/main/thea-manifest.json`) and artifacts.
+    - Supports `--version` flag for version hints (maps to Git ref).
+    - Supports `--output` or `-o` to specify the local save path. Defaults to a name derived from artifact metadata if `-o` is omitted.
+    - Supports `--force` or `-f` to overwrite existing output files.
+- **Internal `thea.Client`:**
+    - Added a new internal client (`internal/thea/client.go`) responsible for interacting with the THEA framework repository.
+    - Capable of fetching and parsing the remote `thea-manifest.json`.
+    - Capable of fetching specific artifact content based on manifest details.
+    - Includes integration tests against the live THEA repository.
+
+### Changed
+- (List any significant changes to existing functionality if applicable)
+- Example: If `kickoff` was refactored to use the `thea.Client` in this release, mention it here. (Sounds like we deferred this part for now).
+
+### Fixed
+- (List any bug fixes, e.g., "Resolved `EOF` errors in `kickoff` command unit tests by mocking Stdin for collaboration preference prompts." - *IF you fixed these*)
+
+### Removed
+- (List any features removed)
 
 ## [0.1.1] - 2025-05-10
 
