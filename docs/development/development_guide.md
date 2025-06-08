@@ -1,3 +1,38 @@
+---
+title: "ContextVibes CLI: Local Development Guide"
+artifactVersion: "1.0.0"
+summary: "A comprehensive guide for developers on setting up a local development environment for the ContextVibes CLI. Covers prerequisites, initial setup, building the binary, and running common development tasks like testing, linting, formatting, and debugging."
+owner: "Scribe"
+createdDate: "2025-06-08T12:00:00Z"
+lastModifiedDate: "2025-06-08T12:00:00Z"
+defaultTargetPath: "docs/DEVELOPMENT.md"
+usageGuidance:
+  - "Use as the primary guide for setting up a local development environment for the ContextVibes CLI."
+  - "Consult for standard commands to run tests (`go test`), lint (`go vet`), and format code (`go fmt`)."
+  - "Reference for building the CLI from source and for debugging instructions using Delve."
+  - "Provides instructions on how to 'dogfood' (use `contextvibes` on its own codebase)."
+tags:
+  - "development-guide"
+  - "contributing"
+  - "local-setup"
+  - "go"
+  - "git"
+  - "nix"
+  - "delve"
+  - "testing"
+  - "linting"
+  - "formatting"
+  - "building"
+  - "debugging"
+  - "dogfooding"
+  - "go-test"
+  - "go-vet"
+  - "go-fmt"
+  - "golangci-lint"
+  - "contextvibes"
+  - "cli"
+---
+
 # Local Development Guide for ContextVibes CLI
 
 This guide provides instructions for setting up your local development environment to work on the `contextvibes` Go CLI, run tests, and follow project conventions.
@@ -54,14 +89,19 @@ This project uses standard Go commands. You can also use a development build of 
 ### 1. Running Unit Tests
 
 Run all unit tests (excluding integration tests, if any are tagged separately):
+
 ```bash
 go test ./...
 ```
+
 To detect race conditions (highly recommended):
+
 ```bash
 go test -race ./...
 ```
+
 To get coverage information:
+
 ```bash
 go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
 ```
@@ -69,6 +109,7 @@ go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
 ### 2. Running Integration Tests (If Applicable)
 
 If integration tests exist (e.g., in an `integration_test/` directory with build tags):
+
 ```bash
 # Example: go test -tags=integration -v ./integration_test/...
 # Refer to specific integration testing docs if available.
@@ -77,30 +118,39 @@ If integration tests exist (e.g., in an `integration_test/` directory with build
 ### 3. Linting
 
 This project may use `golangci-lint` (check for a `.golangci.yml` file). If so:
+
 ```bash
 golangci-lint run ./...
 ```
+
 Also, always run:
+
 ```bash
 go vet ./...
 ```
+
 You can use a development build of `contextvibes quality` on its own codebase too.
 
 ### 4. Formatting Code
 
 Ensure your code is formatted according to Go standards:
+
 ```bash
 go fmt ./...
 # If goimports-reviser or similar is standard for the project:
 # goimports-reviser -format ./...
 ```
+
 Alternatively, use `./contextvibes format` (your dev build).
 
 ### 5. Tidying Go Modules
+
 After adding or updating dependencies:
+
 ```bash
 go mod tidy
 ```
+
 Commit both `go.mod` and `go.sum` after changes.
 
 ## Debugging
@@ -110,6 +160,7 @@ You can run tests with Delve or attach it to a running process.
 For VS Code users, the Go extension provides debugging capabilities that should work with Delve.
 
 Example of running a specific test with Delve:
+
 ```bash
 # dlv test ./path/to/package -test.run TestSpecificFunction
 dlv test ./internal/config -test.run TestConfigLoading # Example
@@ -132,3 +183,4 @@ It's recommended to have a `.contextvibes.yaml` file in the root of this CLI's r
 ---
 
 This guide should help you get started with developing the ContextVibes CLI.
+```
