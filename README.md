@@ -31,7 +31,7 @@ Context Vibes is a command-line tool designed to streamline common development t
     *   Produces structured terminal output suitable for human review or direct AI parsing.
     *   Generates a detailed JSON trace log (default: `contextvibes_ai_trace.log`, configurable) for deeper AI analysis or debugging.
 *   **Clarity & Safety:** Uses distinct output formats and requires confirmation for state-changing operations (unless `--yes` is specified).
-*   **Configurability:** Supports a `.contextvibes.yaml` file for customizing default behaviors (Git, validation rules, logging, AI interaction preferences). See the [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for details.
+*   **Configurability:** Supports a `.contextvibes.yaml` file for customizing default behaviors (Git, validation rules, logging, AI interaction preferences). See the [Configuration Reference](docs/reference/configuration_reference.md) for details.
 
 ## Key Features
 
@@ -44,7 +44,7 @@ Context Vibes is a command-line tool designed to streamline common development t
 *   **Project Testing & Versioning:** `test`, `version`.
 *   **Code Modification:** `codemod` (from JSON scripts).
 
-*(For detailed information on each command, see the [Command Reference](docs/COMMAND_REFERENCE.md).)*
+*(For detailed information on each command, see the [Command Reference](docs/reference/command_reference.md).)*
 
 ## Installation
 
@@ -81,7 +81,7 @@ contextvibes [command] [flags] # Run a command
 *   `--ai-log-file <path>`: Specify a path for the detailed AI JSON log.
 *   `--log-level-ai <level>`: Set the minimum level for the AI log file (debug, info, warn, error).
 
-*(See the [Command Reference](docs/COMMAND_REFERENCE.md) for all commands and flags.)*
+*(See the [Command Reference](docs/reference/command_reference.md) for all commands and flags.)*
 
 **Examples:**
 
@@ -92,42 +92,32 @@ contextvibes kickoff --strategic
 # (After AI session and creating summary) Mark strategic kickoff as complete
 contextvibes kickoff --mark-strategic-complete
 
-# Start a new daily feature branch (assumes strategic kickoff is complete)
-contextvibes kickoff --branch feature/add-user-auth
-
 # Describe the project for an AI (prompts for task description)
 contextvibes describe -o my_context.md
 
-# Apply code formatting
-contextvibes format
-
-# Check code quality
-contextvibes quality
-
 # Run project tests (e.g., for a Go project, passing -v flag)
 contextvibes test -v
-
-# Commit work (message required, interactive confirmation)
-contextvibes commit -m "feat(auth): Implement OTP login"
-
-# Sync non-interactively
-contextvibes sync -y
-
-# Display CLI version
-contextvibes version
 ```
 
 ## Documentation
 
-*   **[Overview & Installation](README.md):** (This file) High-level features and setup.
-*   **[Command Reference](docs/COMMAND_REFERENCE.md):** Detailed syntax, flags, examples, and exit codes for every command.
-*   **[Configuration Reference](docs/CONFIGURATION_REFERENCE.md):** Full details on configuring the CLI via `.contextvibes.yaml`.
-*   **[Project Kickoff Guide](docs/PROJECT_KICKOFF_GUIDE.md):** Explains the AI-assisted strategic project kickoff workflow.
-*   **[Contributing Guidelines](CONTRIBUTING.md):** How to contribute code, report issues, and set up a development environment.
-*   **[Changelog](CHANGELOG.md):** History of notable changes in each release.
-*   **[Roadmap](ROADMAP.md):** Future plans and development direction.
+Our documentation is organized to help you find information quickly.
 
-*(Additional Tutorials and How-To Guides may be added to the `docs/` directory.)*
+*   **Project Overview:** [README.md](README.md) (this file)
+*   **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+
+### Guides
+*   **User Manual:** [docs/guides/user_manual.md](docs/guides/user_manual.md)
+*   **Project Kickoff Guide:** [docs/guides/project_kickoff_guide.md](docs/guides/project_kickoff_guide.md)
+
+### Reference
+*   **Command Reference:** [docs/reference/command_reference.md](docs/reference/command_reference.md) (Stub)
+*   **Configuration Reference:** [docs/reference/configuration_reference.md](docs/reference/configuration_reference.md)
+
+### Development & Contributing
+*   **Local Development Guide:** [docs/development/development_guide.md](docs/development/development_guide.md)
+*   **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+*   **Project Roadmap:** [docs/development/roadmap.md](docs/development/roadmap.md)
 
 ## Important: Ignoring Generated Files
 
@@ -137,8 +127,8 @@ It is strongly recommended to add generated files like `contextvibes.md`, `STRAT
 
 Context Vibes uses two distinct output mechanisms:
 
-1.  **Terminal Output (stdout/stderr):** For human readability and high-level status/errors. Uses structured prefixes (`SUMMARY:`, `INFO:`, etc.).
-2.  **AI Log File (JSON):** Written to `contextvibes_ai_trace.log` by default (configurable). Contains a detailed, structured trace for AI analysis or debugging.
+1.  **Terminal Output (stdout/stderr):** For human readability and high-level status/errors.
+2.  **AI Log File (JSON):** Written to `contextvibes_ai_trace.log` by default (configurable).
 
 ## Code of Conduct
 
