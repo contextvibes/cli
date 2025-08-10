@@ -15,3 +15,9 @@ bin/
 
 # Temporary or example files
 .contextvibes.yaml
+notes.txt
+coverage.out
+thea/
+factory/
+context_*.md
+.env

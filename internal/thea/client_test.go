@@ -4,11 +4,13 @@ package thea // Ensures this file is part of the 'thea' package
 import (
 	"context"
 	"encoding/json"
+
 	// "fmt" // Only if used
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
+
 	// "strings" // Only if used for more complex path/URL assertions
 	"testing"
 	// "time" // Only if used for time-related tests (e.g., caching)

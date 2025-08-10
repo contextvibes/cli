@@ -14,6 +14,7 @@ import (
 
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/ui"
+
 	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed for exec functions
 	"github.com/contextvibes/cli/internal/tools" // Keep for non-exec tools like ReadFileContent, markdown helpers for now
 

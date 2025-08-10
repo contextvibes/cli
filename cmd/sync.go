@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
 	// "strings" // No longer needed directly here
 
 	"github.com/contextvibes/cli/internal/git" // Use GitClient
 	"github.com/contextvibes/cli/internal/ui"  // Use Presenter
+
 	// "github.com/contextvibes/cli/internal/tools" // No longer needed for Git/Prompts
 	"github.com/spf13/cobra"
 )

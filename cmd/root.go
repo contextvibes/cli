@@ -208,7 +208,7 @@ var (
 func init() {
 	// Set the application version. This can be overridden by ldflags during build.
 	if AppVersion == "" {
-		AppVersion = "v0.1.1" // Default version if not set by build flags
+		AppVersion = "v0.3.0-draft" // Default version if not set by build flags
 	}
 
 	// Define persistent flags available to all commands.

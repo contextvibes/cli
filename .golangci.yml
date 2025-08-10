@@ -1,0 +1,72 @@
+# .golangci.yml
+# This is a minimal configuration to test compatibility with the old golangci-lint version.
+# The 'issues' section has been removed to isolate the syntax error.
+version: "2"
+
+run:
+  timeout: 5m
+  go: '1.24'
+  modules-download-mode: readonly
+  tests: true
+
+formatters:
+  gofumpt:
+    module-path: github.com/contextvibes/cli
+    extra-rules: true
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/contextvibes/cli)
+    custom-order: true
+linters:
+  default: all
+  disable:
+  - lll
+  - contextcheck
+  - copyloopvar
+  - cyclop
+  - depguard
+  - dogsled
+  - err113
+  - errcheck
+  - exhaustruct
+  - forbidigo
+  - funcorder
+  - funlen
+  - gochecknoglobals
+  - gochecknoinits
+  - gocognit
+  - goconst
+  - gocritic
+  - godot
+  - godox
+  - gosec
+  - iface
+  - ireturn
+  - mnd
+  - nestif
+  - nilerr
+  - nilnil
+  - nlreturn
+  - nonamedreturns
+  - paralleltest
+  - perfsprint
+  - prealloc
+  - revive
+  - sloglint
+  - staticcheck
+  - tagliatelle
+  - testifylint
+  - testpackage
+  - thelper
+  - unparam
+  - usetesting
+  - varnamelen
+  - wastedassign
+  - wrapcheck
+  - wsl
+  
+linters-settings:
+  lll:
+    line-length0
