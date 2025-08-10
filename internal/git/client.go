@@ -317,3 +317,32 @@ func TruncateString(s string, maxLen int) string {
 	}
 	return s[:maxLen-3] + "..."
 }
+
+// GetLogAndDiffFromMergeBase finds the common ancestor with a branch and returns the log and diff since that point.
+func (c *GitClient) GetLogAndDiffFromMergeBase(ctx context.Context, baseBranchRef string) (log, diff string, err error) {
+	// First, check if the remote branch even exists.
+	_, _, err = c.captureGitOutput(ctx, "rev-parse", "--verify", baseBranchRef)
+	if err != nil {
+		// This is not a fatal error; it often means the branch hasn't been pushed.
+		// Return a specific error that the caller can check for.
+		return "", "", fmt.Errorf("remote branch '%s' not found", baseBranchRef)
+	}
+
+	mergeBaseBytes, _, err := c.captureGitOutput(ctx, "merge-base", baseBranchRef, "HEAD")
+	if err != nil {
+		return "", "", fmt.Errorf("git merge-base against '%s' failed: %w", baseBranchRef, err)
+	}
+	mergeBase := strings.TrimSpace(string(mergeBaseBytes))
+
+	log, _, err = c.captureGitOutput(ctx, "log", "--pretty=format:%h %s (%an, %cr)", mergeBase+"..HEAD")
+	if err != nil {
+		return "", "", fmt.Errorf("git log failed: %w", err)
+	}
+
+	diff, _, err = c.captureGitOutput(ctx, "diff", mergeBase+"..HEAD")
+	if err != nil {
+		return "", "", fmt.Errorf("git diff failed: %w", err)
+	}
+
+	return log, diff, nil
+}

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/color" // Import the color library
 	"github.com/charmbracelet/huh"
+	"github.com/fatih/color" // Import the color library
 )
 
 // Presenter handles structured writing to standard output and standard error,
@@ -170,12 +170,10 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 	}
 }
 
-
-
 // PromptForSelect displays a single-choice list to the user and returns the selected option.
 func (p *Presenter) PromptForSelect(title string, options []string) (string, error) {
 	var choice string
-	
+
 	huhOptions := make([]huh.Option[string], len(options))
 	for i, opt := range options {
 		huhOptions[i] = huh.NewOption(opt, opt)
@@ -193,8 +191,6 @@ func (p *Presenter) PromptForSelect(title string, options []string) (string, err
 	return choice, nil
 }
 
-
-
 // PromptForMultiSelect displays a multi-choice list to the user and returns the selected options.
 func (p *Presenter) PromptForMultiSelect(title string, options []string) ([]string, error) {
 	var choices []string
@@ -208,7 +204,7 @@ func (p *Presenter) PromptForMultiSelect(title string, options []string) ([]stri
 		Title(title).
 		Options(huhOptions...).
 		Value(&choices)
-	
+
 	if err := form.Run(); err != nil {
 		return nil, err
 	}

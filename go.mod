@@ -50,3 +50,5 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 )
+
+replace github.com/contextvibes/cli => ./
