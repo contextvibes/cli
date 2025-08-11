@@ -85,6 +85,136 @@ These flags can be used with any command:
 
 This section provides a detailed reference for each command available in the ContextVibes CLI, listed alphabetically.
 
+### `clean`
+
+**Synopsis:**
+
+```
+contextvibes clean
+```
+
+**Description:**
+
+Removes temporary files, build artifacts, and local caches from the project directory. This is useful for ensuring a clean state before a build or commit. It removes the `./bin/` directory, Go caches, and generated context files.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+```bash
+contextvibes clean
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The project directory was cleaned successfully.                                      |
+| 1         | An error occurred during file or directory removal, or while running `go clean`.              |
+
+### `finish`
+
+**Synopsis:**
+
+```
+contextvibes finish
+```
+
+**Description:**
+
+Finalizes a feature branch by pushing it to the remote and then launching the interactive GitHub CLI (`gh`) tool to create a pull request. This standardizes the code review submission process.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+```bash
+contextvibes finish
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The branch was pushed and the PR creation process was started.                       |
+| 1         | An error occurred. Common causes: not on a feature branch, `git push` failed, or `gh` is not installed. |
+
+### `git-tidy`
+
+**Synopsis:**
+
+```
+contextvibes git-tidy <subcommand>
+```
+
+**Description:**
+
+A parent command for subcommands that help with local Git branch hygiene.
+
+**Subcommands:**
+
+* `finish`: Deletes the current branch after it has been merged.
+
+#### `git-tidy finish`
+
+**Synopsis:**
+
+```
+contextvibes git-tidy finish
+```
+
+**Description:**
+
+A workflow for after your pull request has been merged. It switches to the main branch, pulls the latest changes, and deletes the now-merged local branch.
+
+**Example Usage:**
+
+```bash
+# After your PR for 'feature/my-task' is merged...
+git switch feature/my-task
+contextvibes git-tidy finish
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The local branch was deleted and you are on the updated main branch.                 |
+| 1         | An error occurred. Common causes: not on a feature branch, or git commands failed.             |
+
+### `update`
+
+**Synopsis:**
+
+```
+contextvibes update
+```
+
+**Description:**
+
+Finds all `go.mod` files within the project and updates all of their dependencies to the latest versions by running `go get -u ./...` and `go mod tidy`.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+```bash
+contextvibes update
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. All Go modules were updated successfully.                                            |
+| 1         | An error occurred during module discovery or while running `go` commands.                     |
+
 ### `codemod`
 
 **Synopsis:**
@@ -123,6 +253,35 @@ Applies programmatic code modifications or deletions from a JSON script.
 |-----------|-----------------------------------------------------------------------------------------------|
 | 0         | Success. The codemod script was executed successfully.                                         |
 | 1         | An error occurred. Check the error messages in the terminal output and the AI log file for details. |
+
+### `clean`
+
+**Synopsis:**
+
+```
+contextvibes clean
+```
+
+**Description:**
+
+Removes temporary files, build artifacts, and local caches from the project directory. This is useful for ensuring a clean state before a build or commit. It removes the `./bin/` directory, Go caches, and generated context files.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+```bash
+contextvibes clean
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The project directory was cleaned successfully.                                      |
+| 1         | An error occurred during file or directory removal, or while running `go clean`.              |
 
 ### `commit`
 
@@ -267,6 +426,35 @@ contextvibes diff
 | 0         | Success. The diff summary was generated successfully, or no changes were found.                                                                                   |
 | 1         | An error occurred. Check the error message in the terminal output and the AI log file for details.  Common causes: Git command failures. |
 
+### `finish`
+
+**Synopsis:**
+
+```
+contextvibes finish
+```
+
+**Description:**
+
+Finalizes a feature branch by pushing it to the remote and then launching the interactive GitHub CLI (`gh`) tool to create a pull request. This standardizes the code review submission process.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+```bash
+contextvibes finish
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The branch was pushed and the PR creation process was started.                       |
+| 1         | An error occurred. Common causes: not on a feature branch, `git push` failed, or `gh` is not installed. |
+
 ### `format`
 
 **Synopsis:**
@@ -297,6 +485,51 @@ This command has no specific flags other than global flags.
 |-----------|-----------------------------------------------------------------------------------------------|
 | 0         | Success. All formatting tools completed successfully or applied changes.                       |
 | 1         | An error occurred. Check the error messages in the terminal output and the AI log file for details. |
+
+### `git-tidy`
+
+**Synopsis:**
+
+```
+contextvibes git-tidy <subcommand>
+```
+
+**Description:**
+
+A parent command for subcommands that help with local Git branch hygiene.
+
+**Subcommands:**
+
+* `finish`: Deletes the current branch after it has been merged.
+
+---
+
+#### `git-tidy finish`
+
+**Synopsis:**
+
+```
+contextvibes git-tidy finish
+```
+
+**Description:**
+
+A workflow for after your pull request has been merged. It switches to the main branch, pulls the latest changes, and deletes the now-merged local branch.
+
+**Example Usage:**
+
+```bash
+# After your PR for 'feature/my-task' is merged...
+git switch feature/my-task
+contextvibes git-tidy finish
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The local branch was deleted and you are on the updated main branch.                 |
+| 1         | An error occurred. Common causes: not on a feature branch, or git commands failed.             |
 
 ### `index`
 
@@ -698,6 +931,35 @@ Downloads a specified artifact (e.g., playbook, template, guide) from the centra
 | 0         | Success. The artifact was fetched and saved successfully.                                                                                                        |
 | 1         | An error occurred. Common causes: artifact ID not found in manifest, network error fetching manifest or content, file system error writing output. Check terminal output and AI log. |
 
+### `update`
+
+**Synopsis:**
+
+```
+contextvibes update
+```
+
+**Description:**
+
+Finds all `go.mod` files within the project and updates all of their dependencies to the latest versions by running `go get -u ./...` and `go mod tidy`.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+```bash
+contextvibes update
+```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. All Go modules were updated successfully.                                            |
+| 1         | An error occurred during module discovery or while running `go` commands.                     |
+
 ### `version`
 
 **Synopsis:**
@@ -765,3 +1027,48 @@ This command has no specific flags other than global flags.
 |-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0         | Success. The changes were staged, committed (if needed), and the branch was pushed (if needed).                                                                     |
 | 1         | An error occurred. Check the error message in the terminal output and the AI log file for details.  Common causes: git failures, merge conflicts, or remote errors. |
+### `apply`
+
+**Synopsis:**
+
+```
+contextvibes apply [--script <file>]
+```
+
+**Description:**
+
+Applies a set of declarative changes to the current project.
+
+This command is the primary executor for AI-generated solutions. It can operate in two modes:
+
+1. **Structured Plan (JSON):** If the input is a JSON object matching the Change Plan
+   schema, 'apply' will parse it, display a high-level summary of the plan, and then
+   execute each step (file modifications, command executions) using its own robust logic.
+   This is the PREFERRED and SAFER mode of operation.
+
+2. **Fallback Script (Shell):** If the input is not JSON, it is treated as a raw shell
+   script. The script is displayed in full and executed with 'bash' upon confirmation.
+
+Input can be read from a file with `--script` or piped from standard input.
+
+**Flags:**
+
+| Flag       | Short | Description                                          | Data Type | Default Value |
+|------------|-------|------------------------------------------------------|-----------|---------------|
+| `--script` | `-s`  | Path to the Change Plan (JSON) or shell script to apply. | string    | (none)        |
+
+**Example Usage:**
+
+```bash
+# Apply a structured plan from a file after reviewing it
+contextvibes apply --script ./plan.json
+
+# Pipe a plan from an AI and apply it without a confirmation prompt
+cat ./plan.json | contextvibes apply -y```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                       |
+|-----------|-----------------------------------------------------------------------------------------------|
+| 0         | Success. The plan or script was executed successfully or the user chose not to proceed.       |
+| 1         | An error occurred. Common causes: invalid JSON, file not found, or a step/command failed.     |

@@ -1,4 +1,3 @@
-// internal/contextgen/helpers.go
 package contextgen
 
 import (
@@ -18,6 +17,7 @@ func GenerateReportHeader(promptFile, defaultTitle string) (string, error) {
 	}
 	for _, path := range searchPaths {
 		if _, err := os.Stat(path); err == nil {
+			//gosec:G304
 			content, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return "", fmt.Errorf("failed to read prompt file %s: %w", path, readErr)
@@ -29,7 +29,8 @@ func GenerateReportHeader(promptFile, defaultTitle string) (string, error) {
 }
 
 func ExportBook(ctx context.Context, execClient *exec.ExecutorClient, outputFile, title string, paths ...string) (err error) {
-	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//gosec:G304
+	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open output file: %w", err)
 	}
@@ -51,6 +52,7 @@ func ExportBook(ctx context.Context, execClient *exec.ExecutorClient, outputFile
 		if file == "" {
 			continue
 		}
+		//gosec:G304
 		content, err := os.ReadFile(file)
 		if err != nil {
 			if os.IsNotExist(err) {

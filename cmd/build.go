@@ -100,7 +100,7 @@ Use the --debug flag to compile with debugging symbols included.`,
 		if outputPath == "" {
 			// Ensure ./bin directory exists
 			binDir := filepath.Join(cwd, "bin")
-			if err := os.MkdirAll(binDir, 0755); err != nil {
+			if err := os.MkdirAll(binDir, 0750); err != nil {
 				presenter.Error("Failed to create './bin/' directory: %v", err)
 
 				return err

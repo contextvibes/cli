@@ -77,7 +77,7 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("empty file", func(t *testing.T) {
 		emptyFilePath := filepath.Join(tempDir, "empty.yaml")
-		require.NoError(t, os.WriteFile(emptyFilePath, []byte{}, 0644))
+		require.NoError(t, os.WriteFile(emptyFilePath, []byte{}, 0600))
 		cfg, err := LoadConfig(emptyFilePath)
 		assert.NoError(t, err)
 		assert.Nil(t, cfg, "LoadConfig with empty file should return nil config and no error")
@@ -131,7 +131,7 @@ ai:
     codeProvisioningStyle: "raw_markdown"
     detailedTaskMode: "mode_a"
 `
-		require.NoError(t, os.WriteFile(validFilePath, []byte(validYAML), 0644))
+		require.NoError(t, os.WriteFile(validFilePath, []byte(validYAML), 0600))
 		cfg, err := LoadConfig(validFilePath)
 		require.NoError(t, err)
 		require.NotNil(t, cfg)
@@ -251,7 +251,7 @@ func TestUpdateAndSaveConfig(t *testing.T) {
 		filePath := filepath.Join(tempDir, "overwrite_config.yaml")
 		initialCfg := GetDefaultConfig()
 		initialData, _ := yaml.Marshal(initialCfg)
-		require.NoError(t, os.WriteFile(filePath, initialData, 0644))
+		require.NoError(t, os.WriteFile(filePath, initialData, 0600))
 
 		updatedCfg := GetDefaultConfig()
 		updatedCfg.Logging.DefaultAILogFile = "overwrite.log"
@@ -325,7 +325,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 	t.Run("config file found in repo root", func(t *testing.T) {
 		tempDir := t.TempDir()
 		expectedConfigPath := filepath.Join(tempDir, DefaultConfigFileName)
-		require.NoError(t, os.WriteFile(expectedConfigPath, []byte("git: {}"), 0644))
+		require.NoError(t, os.WriteFile(expectedConfigPath, []byte("git: {}"), 0600))
 
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
