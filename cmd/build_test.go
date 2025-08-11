@@ -84,7 +84,7 @@ func TestBuildCmd(t *testing.T) {
 		// Reset flags for each run
 		buildOutputFlag = ""
 		buildDebugFlag = false
-		
+
 		out, _, err := runBuildCmd(buildCmd, []string{})
 		require.NoError(t, err)
 
@@ -102,7 +102,7 @@ func TestBuildCmd(t *testing.T) {
 
 		buildOutputFlag = ""
 		buildDebugFlag = true // Set the flag for debug
-		
+
 		out, _, err := runBuildCmd(buildCmd, []string{})
 		require.NoError(t, err)
 

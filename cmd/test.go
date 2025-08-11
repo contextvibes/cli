@@ -25,8 +25,8 @@ type execTestClientInterface interface {
 
 var testCmd = &cobra.Command{
 	DisableFlagParsing: true,
-	Use:   "test [args...]",
-	Short: "Runs project-specific tests (e.g., go test, pytest).",
+	Use:                "test [args...]",
+	Short:              "Runs project-specific tests (e.g., go test, pytest).",
 	Long: `Detects the project type (Go, Python) and runs the appropriate test command.
 Any arguments passed to 'contextvibes test' will be forwarded to the underlying test runner.
 

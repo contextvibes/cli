@@ -75,6 +75,7 @@ type RunSettings struct {
 type ExportSettings struct {
 	ExcludePatterns []string `yaml:"excludePatterns,omitempty"`
 }
+
 // --- End NEW ---
 
 type Config struct {
@@ -84,10 +85,10 @@ type Config struct {
 		BranchName    ValidationRule `yaml:"branchName,omitempty"`
 		CommitMessage ValidationRule `yaml:"commitMessage,omitempty"`
 	} `yaml:"validation,omitempty"`
-	ProjectState ProjectState `yaml:"projectState,omitempty"`
-	AI           AISettings   `yaml:"ai,omitempty"`
-	Run          RunSettings  `yaml:"run,omitempty"`
-	Export     ExportSettings `yaml:"export,omitempty"` // NEW
+	ProjectState ProjectState   `yaml:"projectState,omitempty"`
+	AI           AISettings     `yaml:"ai,omitempty"`
+	Run          RunSettings    `yaml:"run,omitempty"`
+	Export       ExportSettings `yaml:"export,omitempty"` // NEW
 }
 
 func GetDefaultConfig() *Config {

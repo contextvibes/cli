@@ -67,7 +67,6 @@ func (i *Issue) WriteTo(w io.Writer) (n int64, err error) {
 	return int64(totalBytes), err
 }
 
-
 // --- Cobra Command Definitions ---
 
 var projectCmd = &cobra.Command{
@@ -95,7 +94,7 @@ var listIssuesCmd = &cobra.Command{
 				return err
 			}
 			outputTarget = file
-			defer outputTarget.Close()
+			defer func() { _ = outputTarget.Close() }()
 		}
 
 		consolePresenter.Summary("Fetching GitHub issues for the current repository...")
@@ -132,7 +131,7 @@ var listIssuesCmd = &cobra.Command{
 
 		// Write the formatted issues to the designated target (console or file)
 		for _, issue := range issues {
-			issue.WriteTo(outputTarget)
+			_, _ = issue.WriteTo(outputTarget)
 		}
 
 		if outputFile != "" {
