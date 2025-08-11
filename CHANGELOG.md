@@ -15,6 +15,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.3.0] - 2025-08-11
+
+### Added
+- **New `init` Command:**
+  - `contextvibes init` now creates a default `.contextvibes.yaml` file in the project root if one doesn't exist, streamlining project setup.
+- **New `project` Command:**
+  - `contextvibes project list-issues` fetches and displays all open issues, including comments, from the current GitHub repository.
+  - Added an `--output` (`-o`) flag to save the formatted issue list to a file.
+- **New Configuration Option for `export`:**
+  - Added `export.excludePatterns` to `.contextvibes.yaml` to allow exclusion of files/directories (e.g., `vendor/`) from the `context export all` command.
+
+### Changed
+- **Refactored `kickoff` Command:**
+  - Now depends on an interface for its presenter, significantly improving testability.
+- **Improved `export` Command:**
+  - Logic updated to respect the new `export.excludePatterns` configuration.
+  - Now correctly detects and skips binary files to prevent corrupting the `context_export_project.md` output file.
+- **Improved `build` Command:**
+  - Refactored to respect the command's output streams, making it fully testable.
+
+### Fixed
+- **CLI Help Output:** Corrected a bug in `cmd/root.go` that caused command descriptions to be duplicated in the `--help` output.
+- **`test` Command Flag Parsing:** Fixed a bug where flags like `-v` were not correctly passed to the underlying test runner (e.g., `go test`).
+- **Unit Test Suite:**
+  - Fixed multiple failing unit tests in `cmd/build_test.go` and `internal/kickoff/orchestrator_test.go`.
+  - Resolved numerous `golangci-lint` warnings, including `errcheck`, `unused`, and `stdmethods`.
+
 ---
 ## [0.2.0] - 2025-06-08 
 

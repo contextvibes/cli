@@ -116,7 +116,7 @@ Our documentation is organized to help you find information quickly.
 
 ### Development & Contributing
 *   **Local Development Guide:** [docs/development/development_guide.md](docs/development/development_guide.md)
-*   **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+*   **Contributing Guide:** [docs/development/CONTRIBUTING.md](docs/development/CONTRIBUTING.md)
 *   **Project Roadmap:** [docs/development/roadmap.md](docs/development/roadmap.md)
 
 ## Important: Ignoring Generated Files

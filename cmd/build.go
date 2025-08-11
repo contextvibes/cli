@@ -1,9 +1,8 @@
-// cmd/build.go
+// FILE: cmd/build.go
 package cmd
 
 import (
 	"errors"
-
 	"os"
 	"path/filepath"
 
@@ -31,44 +30,38 @@ Use the --debug flag to compile with debugging symbols included.`,
   contextvibes build -o myapp             # Build and name the output 'myapp'
   contextvibes build --debug              # Build with debug symbols for Delve`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		// CORRECTED: Use the command's configured output streams. This makes the command testable.
+		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin)
 		logger := AppLogger
 		ctx := cmd.Context()
 
 		presenter.Summary("Building Go application binary.")
 
-		// 1. Detect Project Type
 		cwd, err := os.Getwd()
 		if err != nil {
 			presenter.Error("Failed to get current working directory: %v", err)
-
 			return err
 		}
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			presenter.Error("Failed to detect project type: %v", err)
-
 			return err
 		}
 		if projType != project.Go {
 			presenter.Info("Build command is only applicable for Go projects. Nothing to do.")
-
 			return nil
 		}
 		presenter.Info("Go project detected.")
 
-		// 2. Determine Main Package
 		cmdDir := filepath.Join(cwd, "cmd")
 		entries, err := os.ReadDir(cmdDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				presenter.Error("Directory './cmd/' not found. Cannot determine main package to build.")
 				presenter.Advice("This command expects a conventional Go project layout with a './cmd/<appname>/' directory.")
-
 				return errors.New("cmd directory not found")
 			}
 			presenter.Error("Failed to read './cmd/' directory: %v", err)
-
 			return err
 		}
 
@@ -81,35 +74,28 @@ Use the --debug flag to compile with debugging symbols included.`,
 
 		if len(mainPackageDirs) == 0 {
 			presenter.Error("No subdirectories found in './cmd/'. Cannot determine main package.")
-
 			return errors.New("no main package found in cmd")
 		}
 		if len(mainPackageDirs) > 1 {
 			presenter.Error("Multiple subdirectories found in './cmd/': %v", mainPackageDirs)
 			presenter.Advice("Unsure which application to build. Please ensure only one main package exists in './cmd/'.")
-
 			return errors.New("ambiguous main package in cmd")
 		}
 		mainPackageName := mainPackageDirs[0]
-		// CORRECTED LINE: Ensure the path starts with './' to signify a relative filesystem path to the Go compiler.
-		sourcePath := "./" + filepath.Join("cmd", mainPackageName)
+		sourcePath := "./" + filepath.ToSlash(filepath.Join("cmd", mainPackageName))
 		presenter.Info("Main package found: %s", sourcePath)
 
-		// 3. Determine Output Path
 		outputPath := buildOutputFlag
 		if outputPath == "" {
-			// Ensure ./bin directory exists
 			binDir := filepath.Join(cwd, "bin")
 			if err := os.MkdirAll(binDir, 0750); err != nil {
 				presenter.Error("Failed to create './bin/' directory: %v", err)
-
 				return err
 			}
 			outputPath = filepath.Join("./bin", mainPackageName)
 		}
 		presenter.Info("Binary will be built to: %s", outputPath)
 
-		// 4. Construct Build Command
 		buildArgs := []string{"build"}
 		if !buildDebugFlag {
 			presenter.Info("Compiling optimized binary (without debug symbols).")
@@ -119,13 +105,11 @@ Use the --debug flag to compile with debugging symbols included.`,
 		}
 		buildArgs = append(buildArgs, "-o", outputPath, sourcePath)
 
-		// 5. Execute Build
 		presenter.Newline()
 		presenter.Step("Running 'go build'...")
 		err = ExecClient.Execute(ctx, cwd, "go", buildArgs...)
 		if err != nil {
 			presenter.Error("'go build' command failed. See output above for details.")
-
 			return errors.New("go build failed")
 		}
 

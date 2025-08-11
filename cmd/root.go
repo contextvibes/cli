@@ -1,3 +1,4 @@
+// FILE: cmd/root.go
 package cmd
 
 import (
@@ -82,36 +83,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
 	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
 	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all prompts")
-
-	// --- Register ALL Commands Here ---
-	rootCmd.AddCommand(buildCmd)
-	rootCmd.AddCommand(applyCmd)
-	rootCmd.AddCommand(cleanCmd)
-	rootCmd.AddCommand(codemodCmd)
-	rootCmd.AddCommand(commitCmd)
-	rootCmd.AddCommand(cleanCmd)
-	rootCmd.AddCommand(finishCmd)
-	rootCmd.AddCommand(deployCmd)
-	rootCmd.AddCommand(finishCmd)
-	rootCmd.AddCommand(gitTidyCmd)
-	rootCmd.AddCommand(formatCmd)
-	rootCmd.AddCommand(gitTidyCmd)
-	rootCmd.AddCommand(indexCmd)
-	rootCmd.AddCommand(kickoffCmd)
-	rootCmd.AddCommand(planCmd)
-	rootCmd.AddCommand(qualityCmd)
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(updateCmd)
-	rootCmd.AddCommand(syncCmd)
-	rootCmd.AddCommand(updateCmd)
-	rootCmd.AddCommand(testCmd)
-	rootCmd.AddCommand(theaCmd)
-	rootCmd.AddCommand(versionCmd)
-	// Placeholders for commands to be added
-	// rootCmd.AddCommand(NewFinishCmd())
-	// rootCmd.AddCommand(NewGitTidyCmd())
-	// rootCmd.AddCommand(NewRunCmd())
-	// rootCmd.AddCommand(NewUpdateCmd())
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {
