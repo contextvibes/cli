@@ -9,7 +9,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -47,8 +46,10 @@ func NewOrchestrator(
 ) *Orchestrator {
 	if logger == nil {
 		fmt.Fprintln(os.Stderr, "[WARN] Kickoff Orchestrator initialized with a nil logger. Using discard logger.")
-		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
+		logger = slog.New(slog.DiscardHandler)
 	}
+
 	return &Orchestrator{
 		logger:         logger.With("component", "kickoff.Orchestrator"),
 		config:         cfg,
@@ -69,6 +70,7 @@ func (o *Orchestrator) ExecuteKickoff(ctx context.Context, isStrategicFlag bool,
 		err := errors.New("orchestrator config is nil, cannot proceed")
 		o.logger.ErrorContext(ctx, "Configuration error in ExecuteKickoff", slog.Any("error", err))
 		o.presenter.Error("Internal error: Kickoff orchestrator missing essential configuration.")
+
 		return err
 	}
 
@@ -78,6 +80,7 @@ func (o *Orchestrator) ExecuteKickoff(ctx context.Context, isStrategicFlag bool,
 			o.presenter.Info("No prior strategic kickoff detected for this project.")
 			o.presenter.Info("This command will now guide you to generate a master prompt for an AI to facilitate a full Strategic Project Kickoff.")
 			o.presenter.Newline()
+
 			runStrategic = true
 		}
 	}
@@ -85,6 +88,7 @@ func (o *Orchestrator) ExecuteKickoff(ctx context.Context, isStrategicFlag bool,
 	if runStrategic {
 		return o.executeStrategicKickoffGeneration(ctx)
 	}
+
 	return o.executeDailyKickoff(ctx, branchNameFlag)
 }
 
@@ -96,6 +100,7 @@ func (o *Orchestrator) MarkStrategicKickoffComplete(ctx context.Context) error {
 		err := errors.New("orchestrator config is nil, cannot mark complete")
 		o.logger.ErrorContext(ctx, "Configuration error in MarkStrategicKickoffComplete", slog.Any("error", err))
 		o.presenter.Error("Internal error: Configuration not loaded.")
+
 		return err
 	}
 
@@ -104,15 +109,17 @@ func (o *Orchestrator) MarkStrategicKickoffComplete(ctx context.Context) error {
 	o.config.ProjectState.LastStrategicKickoffDate = time.Now().UTC().Format(time.RFC3339)
 
 	if err := config.UpdateAndSaveConfig(o.config, o.configFilePath); err != nil {
-		errMsg := fmt.Sprintf("failed to save updated configuration to %s", o.configFilePath)
+		errMsg := "failed to save updated configuration to " + o.configFilePath
 		o.presenter.Error("%s: %v", errMsg, err)
 		o.logger.ErrorContext(ctx, "Failed to save config for marking strategic kickoff complete", "error", err, "path", o.configFilePath)
+
 		return fmt.Errorf("%s: %w", errMsg, err)
 	}
 
 	o.presenter.Success("Strategic kickoff has been marked as complete in: %s", o.presenter.Highlight(o.configFilePath))
 	o.presenter.Info("Subsequent `contextvibes kickoff` runs (without --strategic) will now perform the daily Git workflow.")
 	o.logger.InfoContext(ctx, "Strategic kickoff marked as complete.", "path", o.configFilePath)
+
 	return nil
 }
 
@@ -122,15 +129,20 @@ func (o *Orchestrator) executeStrategicKickoffGeneration(ctx context.Context) er
 
 	if err := o.runCollaborationSetup(ctx); err != nil {
 		o.presenter.Error("Failed during CLI collaboration setup phase.")
+
 		return fmt.Errorf("phase IV (Collaboration Setup for CLI) failed: %w", err)
 	}
+
 	initialProjectInfo, errGathering := o.runInitialInfoGathering(ctx)
 	if errGathering != nil {
 		o.presenter.Error("Failed during initial project information gathering.")
+
 		return fmt.Errorf("phase I (Initial Info Gathering for CLI) failed: %w", errGathering)
 	}
+
 	if err := o.runTechnicalReadinessInquiry(ctx); err != nil {
 		o.presenter.Error("Failed during technical readiness inquiry.")
+
 		return fmt.Errorf("phase II (Technical Readiness Inquiry for CLI) failed: %w", err)
 	}
 
@@ -149,16 +161,20 @@ func (o *Orchestrator) executeStrategicKickoffGeneration(ctx context.Context) er
 	promptText, err := o.generateMasterKickoffPromptText(initialProjectInfo)
 	if err != nil {
 		o.presenter.Error("Failed to generate the master kickoff prompt content: %v", err)
+
 		return err
 	}
 
 	promptFilePath := filepath.Join(".", strategicKickoffPromptFilename)
 	err = os.WriteFile(promptFilePath, []byte(promptText), 0644)
+
 	if err != nil {
 		o.presenter.Error("Failed to save the master kickoff prompt to '%s': %v", promptFilePath, err)
 		o.logger.ErrorContext(ctx, "Failed to write master kickoff prompt file", "path", promptFilePath, "error", err)
+
 		return fmt.Errorf("failed to save master kickoff prompt: %w", err)
 	}
+
 	o.presenter.Success("Master Kickoff Prompt successfully generated and saved to: %s", o.presenter.Highlight(promptFilePath))
 	o.logger.InfoContext(ctx, "Master kickoff prompt generated and saved.", "path", promptFilePath)
 
@@ -176,6 +192,7 @@ func (o *Orchestrator) executeStrategicKickoffGeneration(ctx context.Context) er
 	o.presenter.Advice(" - You can then inform ContextVibes by running: `contextvibes kickoff --mark-strategic-complete`.")
 
 	o.logger.InfoContext(ctx, "Strategic Project Kickoff prompt generation finished successfully.")
+
 	return nil
 }
 
@@ -188,8 +205,10 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 
 	if o.config == nil {
 		o.logger.ErrorContext(ctx, "Config is nil in runCollaborationSetup")
+
 		return errors.New("internal error: config not loaded for collaboration setup")
 	}
+
 	prefs := &o.config.AI.CollaborationPreferences
 	defaultCP := config.GetDefaultConfig().AI.CollaborationPreferences
 
@@ -198,8 +217,9 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 		if currentValue == "" {
 			currentDisplay = fmt.Sprintf("(current default: %s)", defaultValue)
 		} else {
-			currentDisplay = fmt.Sprintf("current: %s", currentValue)
+			currentDisplay = "current: " + currentValue
 		}
+
 		optionsStr := strings.Join(validOptions, " | ")
 		promptMsgStr := fmt.Sprintf("%s\n  Options: [ %s ]\n  %s\nYour choice (or press Enter to use value shown in current/default): ",
 			promptKey, optionsStr, currentDisplay)
@@ -208,6 +228,7 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to get user input for '%s': %w", promptKey, err)
 		}
+
 		userInput = strings.TrimSpace(userInput)
 
 		effectiveValue := currentValue
@@ -219,12 +240,16 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 			updateFunc(effectiveValue) // Ensure a value (current or default) is set in the config struct
 			o.presenter.Info("  -> No change for '%s'. Using: '%s'", promptKey, effectiveValue)
 			o.logger.DebugContext(ctx, "Collaboration preference confirmed/defaulted", "key", promptKey, "value", effectiveValue)
+
 			return nil
 		}
+
 		isValidOption := false
+
 		for _, opt := range validOptions {
 			if userInput == opt {
 				isValidOption = true
+
 				break
 			}
 		}
@@ -232,32 +257,41 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 		if !isValidOption {
 			o.presenter.Warning("  -> Invalid option '%s' for '%s'. Valid: [%s].", userInput, promptKey, optionsStr)
 			o.presenter.Info("  Please try again for '%s'.", promptKey)
+
 			userInputRetry, errRetry := o.presenter.PromptForInput(fmt.Sprintf("Retry for '%s' (Options: %s): ", promptKey, optionsStr))
 			if errRetry != nil {
 				return fmt.Errorf("failed to get user input on retry for '%s': %w", promptKey, errRetry)
 			}
+
 			userInput = strings.TrimSpace(userInputRetry)
 			isValidOption = false
+
 			for _, opt := range validOptions {
 				if userInput == opt {
 					isValidOption = true
+
 					break
 				}
 			}
+
 			if !isValidOption {
 				o.presenter.Error("  -> Still invalid option '%s' for '%s'. Keeping: '%s'.", userInput, promptKey, effectiveValue)
 				updateFunc(effectiveValue)
 				o.logger.WarnContext(ctx, "Invalid collaboration preference on retry", "key", promptKey, "attemptedValue", userInput, "kept_value", effectiveValue)
+
 				return nil
 			}
 		}
+
 		updateFunc(userInput)
 		o.presenter.Info("  -> Preference for '%s' set to: '%s'", promptKey, userInput)
 		o.logger.InfoContext(ctx, "Collaboration preference updated", "key", promptKey, "new_value", userInput)
+
 		return nil
 	}
 
 	var err error
+
 	err = askAndSetPreference("1. My Code/Command Provisioning Style:", prefs.CodeProvisioningStyle, []string{"bash_cat_eof", "raw_markdown"}, defaultCP.CodeProvisioningStyle, func(s string) { prefs.CodeProvisioningStyle = s })
 	if err != nil {
 		return err
@@ -277,6 +311,7 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 	if effectiveTaskMode == "" {
 		effectiveTaskMode = defaultCP.DetailedTaskMode
 	}
+
 	defaultProactiveDetail := defaultCP.ProactiveDetailLevel
 	if effectiveTaskMode == "mode_b" {
 		defaultProactiveDetail = "detailed_explanations"
@@ -304,6 +339,7 @@ func (o *Orchestrator) runCollaborationSetup(ctx context.Context) error {
 
 	o.presenter.Success("ContextVibes CLI interaction preferences configured (in memory).")
 	o.logger.InfoContext(ctx, "Collaboration model setup phase complete.", slog.Any("final_preferences_in_config_struct", *prefs))
+
 	return nil
 }
 
@@ -314,13 +350,16 @@ func (o *Orchestrator) runInitialInfoGathering(ctx context.Context) (map[string]
 	o.presenter.Newline()
 
 	gatheredInfo := make(map[string]string)
+
 	var err error
+
 	var tempStr string
 
 	tempStr, err = o.presenter.PromptForInput("  1. What is the official name for this project?\n     (e.g., MyNewService. Press Enter to use current directory name): ")
 	if err != nil {
 		return nil, err
 	}
+
 	if tempStr == "" {
 		cwd, cwdErr := os.Getwd()
 		if cwdErr != nil {
@@ -330,6 +369,7 @@ func (o *Orchestrator) runInitialInfoGathering(ctx context.Context) (map[string]
 			if err != nil {
 				return nil, err
 			}
+
 			if tempStr == "" {
 				return nil, errors.New("project name cannot be empty if directory name fetch fails")
 			}
@@ -338,32 +378,41 @@ func (o *Orchestrator) runInitialInfoGathering(ctx context.Context) (map[string]
 			o.presenter.Info("     -> Using current directory name: %s", gatheredInfo["projectName"])
 		}
 	}
+
 	if tempStr != "" { // If user entered a name, or re-entered after CWD fail
 		gatheredInfo["projectName"] = tempStr
 	}
+
 	o.presenter.Newline()
 
 	tempStr, err = o.presenter.PromptForInput(fmt.Sprintf("  2. What is the primary application type for '%s'?\n     (e.g., Go API, Python CLI, Terraform Module): ", gatheredInfo["projectName"]))
 	if err != nil {
 		return nil, err
 	}
+
 	if tempStr == "" {
 		return nil, errors.New("project application type cannot be empty")
 	}
+
 	gatheredInfo["projectAppType"] = tempStr
+
 	o.presenter.Newline()
 
 	tempStr, err = o.presenter.PromptForInput(fmt.Sprintf("  3. Is '%s' a [new] project, an [existing] project (new phase), or a [refactor] effort? ", gatheredInfo["projectName"]))
 	if err != nil {
 		return nil, err
 	}
+
 	if tempStr == "" {
 		return nil, errors.New("project stage (new/existing/refactor) cannot be empty")
 	}
+
 	gatheredInfo["projectStage"] = tempStr
+
 	o.presenter.Newline()
 
 	o.logger.InfoContext(ctx, "Simplified initial info gathered for prompt parameterization.", slog.Any("info", gatheredInfo))
+
 	return gatheredInfo, nil
 }
 
@@ -374,28 +423,34 @@ func (o *Orchestrator) runTechnicalReadinessInquiry(ctx context.Context) error {
 	o.presenter.Newline()
 
 	var err error
+
 	var confirmed bool
 
 	confirmed, err = o.presenter.PromptForConfirmation("  1. Is your `contextvibes` CLI installed and accessible in your system PATH? [Y/n]: ")
 	if err != nil {
 		return err
 	}
+
 	if !confirmed && !o.assumeYes {
 		o.presenter.Warning("     -> Please ensure `contextvibes` is installed and in your PATH for optimal use during the AI-guided session.")
 	}
+
 	o.presenter.Newline()
 
 	confirmed, err = o.presenter.PromptForConfirmation("  2. Are any environment variables required by `contextvibes` for its general operation set correctly? [Y/n]: ")
 	if err != nil {
 		return err
 	}
+
 	if !confirmed && !o.assumeYes {
 		o.presenter.Advice("     -> Ensure relevant environment variables are set if ContextVibes features you use depend on them.")
 	}
+
 	o.presenter.Newline()
 
 	o.presenter.Success("Technical readiness inquiry complete.")
 	o.logger.InfoContext(ctx, "Technical readiness inquiry phase (for CLI user) finished.")
+
 	return nil
 }
 
@@ -407,6 +462,7 @@ func (o *Orchestrator) generateCollaborationPrefsYAML() string {
 		if current != "" {
 			return current
 		}
+
 		return def
 	}
 
@@ -429,6 +485,7 @@ func (o *Orchestrator) generateCollaborationPrefsYAML() string {
 	proactivity := getEffective(currentPrefs.AIProactivity, defaultPrefs.AIProactivity)
 
 	var sb strings.Builder
+
 	sb.WriteString("ai:\n")
 	sb.WriteString("  collaborationPreferences:\n")
 	sb.WriteString(fmt.Sprintf("    codeProvisioningStyle: \"%s\"\n", style))
@@ -436,6 +493,7 @@ func (o *Orchestrator) generateCollaborationPrefsYAML() string {
 	sb.WriteString(fmt.Sprintf("    detailedTaskMode: \"%s\"\n", taskMode))
 	sb.WriteString(fmt.Sprintf("    proactiveDetailLevel: \"%s\"\n", detailLevel))
 	sb.WriteString(fmt.Sprintf("    aiProactivity: \"%s\"\n", proactivity))
+
 	return sb.String()
 }
 
@@ -444,6 +502,7 @@ func (o *Orchestrator) generateMasterKickoffPromptText(initialInfo map[string]st
 	if projectName == "" {
 		projectName = "[User to Specify Project Name]"
 	}
+
 	projectAppType := initialInfo["projectAppType"]
 	if projectAppType == "" {
 		projectAppType = "[User to Specify Project Type]"
@@ -464,18 +523,21 @@ func (o *Orchestrator) generateMasterKickoffPromptText(initialInfo map[string]st
 	if strings.TrimSpace(masterKickoffProtocolTemplateContent) == "" {
 		errMsg := "embedded master kickoff protocol template is empty or not loaded"
 		o.logger.ErrorContext(context.Background(), errMsg, slog.String("hint", "Ensure internal/kickoff/assets/strategic_kickoff_protocol_template.md is populated and embed directive is correct."))
+
 		return "", errors.New(errMsg)
 	}
 
 	tmpl, err := template.New("kickoffProtocol").Parse(masterKickoffProtocolTemplateContent)
 	if err != nil {
 		o.logger.Error("Failed to parse master kickoff protocol template", slog.Any("error", err))
+
 		return "", fmt.Errorf("failed to parse master kickoff protocol template: %w", err)
 	}
 
 	var outputBuffer bytes.Buffer
 	if err := tmpl.Execute(&outputBuffer, templateData); err != nil {
 		o.logger.Error("Failed to execute master kickoff protocol template", slog.Any("error", err))
+
 		return "", fmt.Errorf("failed to execute master kickoff protocol template: %w", err)
 	}
 
@@ -490,6 +552,7 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 		errMsg := "git client not available for daily kickoff. Ensure you are in a Git repository"
 		o.presenter.Error(errMsg)
 		o.logger.ErrorContext(ctx, errMsg)
+
 		return errors.New(errMsg)
 	}
 
@@ -497,6 +560,7 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 	if mainBranchName == "" {
 		mainBranchName = config.DefaultGitMainBranch
 	}
+
 	remoteName := o.config.Git.DefaultRemote
 	if remoteName == "" {
 		remoteName = config.DefaultGitRemote
@@ -508,27 +572,35 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 	currentBranch, err := o.gitClient.GetCurrentBranchName(ctx)
 	if err != nil {
 		o.presenter.Error("Failed to get current Git branch: %v", err)
+
 		return err
 	}
+
 	if currentBranch != mainBranchName {
 		errMsg := fmt.Sprintf("not on the main branch ('%s'). Current branch: '%s'", mainBranchName, currentBranch)
 		o.presenter.Error(errMsg)
 		o.presenter.Advice("Switch to the main branch first using `git switch %s`.", mainBranchName)
+
 		return errors.New(errMsg)
 	}
+
 	o.presenter.Info("Confirmed on main branch '%s'.", mainBranchName)
 
 	isClean, err := o.gitClient.IsWorkingDirClean(ctx)
 	if err != nil {
 		o.presenter.Error("Failed checking working directory status: %v", err)
+
 		return err
 	}
+
 	if !isClean {
 		errMsg := "working directory is not clean. Daily kickoff requires a clean state on main"
 		o.presenter.Error(errMsg)
 		o.presenter.Advice("Commit or stash changes first. Try `contextvibes commit -m \"...\"` or `git stash`.")
+
 		return errors.New(errMsg)
 	}
+
 	o.presenter.Info("Working directory is clean.")
 
 	targetBranchName := strings.TrimSpace(branchNameFlag)
@@ -546,22 +618,28 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 			errMsg := "branch name is required via --branch flag when using --yes for daily kickoff"
 			o.presenter.Error(errMsg)
 			o.logger.ErrorContext(ctx, errMsg)
+
 			return errors.New(errMsg)
 		}
+
 		o.presenter.Newline()
 		o.presenter.Info("Please provide the name for the new daily/feature branch.")
+
 		if validationIsEnabled {
 			o.presenter.Advice("Pattern to match: %s", effectivePattern)
 		}
+
 		for {
 			targetBranchName, err = o.presenter.PromptForInput("New branch name: ")
 			if err != nil {
 				return err
 			}
+
 			targetBranchName = strings.TrimSpace(targetBranchName)
 			if targetBranchName != "" {
 				break
 			}
+
 			o.presenter.Warning("Branch name cannot be empty.")
 		}
 	}
@@ -570,14 +648,18 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 		branchNameRe, errRe := regexp.Compile(effectivePattern)
 		if errRe != nil {
 			o.presenter.Error("Internal error: Invalid branch name validation pattern ('%s') in configuration: %v", effectivePattern, errRe)
+
 			return fmt.Errorf("invalid branch name regex in config: %w", errRe)
 		}
+
 		if !branchNameRe.MatchString(targetBranchName) {
 			errMsg := fmt.Sprintf("invalid branch name: '%s'", targetBranchName)
 			o.presenter.Error(errMsg)
 			o.presenter.Advice("Branch name must match the configured pattern: %s", effectivePattern)
+
 			return errors.New(errMsg)
 		}
+
 		o.logger.DebugContext(ctx, "Branch name format validated successfully", "pattern", effectivePattern, "branch", targetBranchName)
 	} else {
 		o.logger.InfoContext(ctx, "Branch name validation is disabled by configuration.")
@@ -586,10 +668,13 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 	existsLocally, err := o.gitClient.LocalBranchExists(ctx, targetBranchName)
 	if err != nil {
 		o.presenter.Error("Failed checking if branch '%s' exists locally: %v", targetBranchName, err)
+
 		return err
 	}
+
 	if existsLocally {
 		o.presenter.Error("Branch '%s' already exists locally.", targetBranchName)
+
 		return errors.New("branch already exists locally for daily kickoff")
 	}
 
@@ -605,8 +690,10 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 		if promptErr != nil {
 			return promptErr
 		}
+
 		if !confirmed {
 			o.presenter.Info("Daily kickoff aborted by user.")
+
 			return nil
 		}
 	} else {
@@ -615,30 +702,40 @@ func (o *Orchestrator) executeDailyKickoff(ctx context.Context, branchNameFlag s
 
 	o.presenter.Newline()
 	o.presenter.Step("Updating main branch '%s' from '%s'...", mainBranchName, remoteName)
+
 	if err := o.gitClient.PullRebase(ctx, mainBranchName); err != nil {
 		o.presenter.Error("Failed to update main branch: %v", err)
+
 		return err
 	}
+
 	o.presenter.Info("Main branch update successful.")
 
 	o.presenter.Newline()
 	o.presenter.Step("Creating and switching to new branch '%s' from '%s'...", targetBranchName, mainBranchName)
+
 	if err := o.gitClient.CreateAndSwitchBranch(ctx, targetBranchName, mainBranchName); err != nil {
 		o.presenter.Error("Failed to create/switch branch: %v", err)
+
 		return err
 	}
+
 	o.presenter.Info("Successfully on new branch '%s'.", targetBranchName)
 
 	o.presenter.Newline()
 	o.presenter.Step("Pushing new branch '%s' to '%s' and setting upstream...", targetBranchName, remoteName)
+
 	if err := o.gitClient.PushAndSetUpstream(ctx, targetBranchName); err != nil {
 		o.presenter.Error("Failed to push new branch: %v", err)
+
 		return err
 	}
+
 	o.presenter.Info("New branch '%s' pushed and upstream tracking set.", targetBranchName)
 
 	o.presenter.Newline()
 	o.presenter.Success("Daily Git Kickoff workflow completed. You are now on branch '%s'.", targetBranchName)
 	o.logger.InfoContext(ctx, "Daily Git Kickoff workflow finished successfully.", slog.String("new_branch", targetBranchName))
+
 	return nil
 }

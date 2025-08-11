@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/project"
-	// "github.com/contextvibes/cli/internal/tools" // No longer needed for exec functions
+	// "github.com/contextvibes/cli/internal/tools" // No longer needed for exec functions.
 	"github.com/contextvibes/cli/internal/ui" // Use Presenter
 	"github.com/spf13/cobra"
 	// Ensure internal/exec is available if not already imported by other files in cmd
-	// but we'll be using the global ExecClient from cmd/root.go
+	// but we'll be using the global ExecClient from cmd/root.go.
 )
 
 var planCmd = &cobra.Command{
@@ -34,10 +34,10 @@ command to generate an execution plan, showing expected infrastructure changes.
 		logger := AppLogger // From cmd/root.go
 		// ExecClient should also be available from cmd/root.go
 		if ExecClient == nil {
-			return fmt.Errorf("internal error: executor client not initialized")
+			return errors.New("internal error: executor client not initialized")
 		}
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
@@ -50,6 +50,7 @@ command to generate an execution plan, showing expected infrastructure changes.
 			wrappedErr := fmt.Errorf("failed to get current working directory: %w", err)
 			logger.ErrorContext(ctx, "Plan: Failed getwd", slog.String("error", err.Error()))
 			presenter.Error("Failed to get current working directory: %v", err)
+
 			return wrappedErr
 		}
 
@@ -59,6 +60,7 @@ command to generate an execution plan, showing expected infrastructure changes.
 			wrappedErr := fmt.Errorf("failed to detect project type: %w", err)
 			logger.ErrorContext(ctx, "Plan: Failed project detection", slog.String("error", err.Error()))
 			presenter.Error("Failed to detect project type: %v", err)
+
 			return wrappedErr
 		}
 
@@ -72,27 +74,31 @@ command to generate an execution plan, showing expected infrastructure changes.
 			return executePulumiPreview(ctx, presenter, logger, ExecClient, cwd) // Pass ExecClient
 		case project.Go:
 			presenter.Info("Plan command is not applicable for Go projects.")
+
 			return nil
 		case project.Python:
 			presenter.Info("Plan command is not applicable for Python projects.")
+
 			return nil
 		case project.Unknown:
 			errMsgForUser := "Unknown project type detected. Cannot determine plan action."
 			errMsgForError := "unknown project type detected"
 			presenter.Error(errMsgForUser)
 			logger.Error(errMsgForUser, slog.String("source_command", "plan"))
+
 			return errors.New(errMsgForError)
 		default:
 			errMsgForUser := fmt.Sprintf("Internal error: Unhandled project type '%s'", projType)
 			errMsgForError := fmt.Sprintf("internal error: unhandled project type '%s'", projType)
 			presenter.Error(errMsgForUser)
 			logger.Error(errMsgForUser, slog.String("source_command", "plan"))
+
 			return errors.New(errMsgForError)
 		}
 	},
 }
 
-// Modified to accept execClient
+// Modified to accept execClient.
 func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execClientInterface, dir string) error {
 	tool := "terraform"
 	args := []string{"plan", "-out=tfplan.out"}
@@ -100,8 +106,10 @@ func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, logger *
 	if !execClient.CommandExists(tool) { // Use ExecClient
 		errMsgForUser := fmt.Sprintf("Command '%s' not found. Please ensure Terraform is installed and in your PATH.", tool)
 		errMsgForError := fmt.Sprintf("command '%s' not found", tool)
+
 		presenter.Error(errMsgForUser)
 		logger.Error("Terraform plan prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
+
 		return errors.New(errMsgForError)
 	}
 
@@ -125,28 +133,37 @@ func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, logger *
 				if strings.TrimSpace(stderr) != "" {
 					presenter.Detail("Terraform plan output (stderr):\n%s", stderr)
 				}
+
 				presenter.Info("Terraform plan indicates changes are needed.")
 				presenter.Advice("Plan saved to tfplan.out. Run `contextvibes deploy` to apply.")
 				logger.Info("Terraform plan successful (changes detected)", slog.String("source_command", "plan"), slog.Int("exit_code", 2))
+
 				return nil
 			}
 			// Any other non-zero exit code is a failure
 			errMsgForUser := fmt.Sprintf("'%s plan' command failed.", tool)
-			errMsgForError := fmt.Sprintf("%s plan command failed", tool)
+			errMsgForError := tool + " plan command failed"
+
 			presenter.Error(errMsgForUser)
+
 			if strings.TrimSpace(stderr) != "" {
 				presenter.Error("Details (stderr):\n%s", stderr)
 			}
+
 			logger.Error("Terraform plan command failed", slog.String("source_command", "plan"), slog.Int("exit_code", exitErr.ExitCode()), slog.String("error", err.Error()), slog.String("stderr", stderr))
+
 			return errors.New(errMsgForError)
 		}
 		// Error wasn't an ExitError
 		errMsgForUser := fmt.Sprintf("Failed to execute '%s plan': %v", tool, err)
 		presenter.Error(errMsgForUser)
+
 		if strings.TrimSpace(stderr) != "" {
 			presenter.Error("Details (stderr):\n%s", stderr)
 		}
+
 		logger.Error("Terraform plan execution failed", slog.String("source_command", "plan"), slog.String("error", err.Error()), slog.String("stderr", stderr))
+
 		return fmt.Errorf("failed to execute '%s plan': %w", tool, err)
 	}
 
@@ -157,10 +174,11 @@ func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, logger *
 	presenter.Info("Terraform plan successful (no changes detected).")
 	presenter.Advice("Plan saved to tfplan.out (contains no changes).")
 	logger.Info("Terraform plan successful (no changes)", slog.String("source_command", "plan"), slog.Int("exit_code", 0))
+
 	return nil
 }
 
-// Modified to accept execClient
+// Modified to accept execClient.
 func executePulumiPreview(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execClientInterface, dir string) error {
 	tool := "pulumi"
 	args := []string{"preview"}
@@ -168,8 +186,10 @@ func executePulumiPreview(ctx context.Context, presenter *ui.Presenter, logger *
 	if !execClient.CommandExists(tool) { // Use ExecClient
 		errMsgForUser := fmt.Sprintf("Command '%s' not found. Please ensure Pulumi is installed and in your PATH.", tool)
 		errMsgForError := fmt.Sprintf("command '%s' not found", tool)
+
 		presenter.Error(errMsgForUser)
 		logger.Error("Pulumi preview prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
+
 		return errors.New(errMsgForError)
 	}
 
@@ -183,15 +203,18 @@ func executePulumiPreview(ctx context.Context, presenter *ui.Presenter, logger *
 		// Error message from ExecClient.Execute should be informative enough
 		// (includes exit code if that's the cause)
 		errMsgForUser := fmt.Sprintf("'%s preview' command failed.", tool)
-		errMsgForError := fmt.Sprintf("%s preview command failed", tool)
+		errMsgForError := tool + " preview command failed"
+
 		presenter.Error(errMsgForUser) // The actual error details would have been piped to stderr by Pulumi
 		logger.Error("Pulumi preview command failed", slog.String("source_command", "plan"), slog.String("error", err.Error()))
+
 		return errors.New(errMsgForError)
 	}
 
 	presenter.Newline()
 	presenter.Success("Pulumi preview completed successfully.")
 	logger.Info("Pulumi preview successful", slog.String("source_command", "plan"))
+
 	return nil
 }
 

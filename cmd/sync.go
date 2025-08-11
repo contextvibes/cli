@@ -5,14 +5,15 @@ package cmd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	// "strings" // No longer needed directly here
+
+	// "strings" // No longer needed directly here.
 
 	"github.com/contextvibes/cli/internal/git" // Use GitClient
 	"github.com/contextvibes/cli/internal/ui"  // Use Presenter
-	// "github.com/contextvibes/cli/internal/tools" // No longer needed for Git/Prompts
+
+	// "github.com/contextvibes/cli/internal/tools" // No longer needed for Git/Prompts.
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,7 @@ Workflow:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background()
@@ -52,6 +53,7 @@ Workflow:
 		if err != nil {
 			logger.ErrorContext(ctx, "Sync: Failed getwd", slog.String("err", err.Error()))
 			presenter.Error("Failed getwd: %v", err)
+
 			return err
 		}
 		gitCfg := git.GitClientConfig{Logger: logger} // Use defaults for remote/main branch from config if needed later
@@ -59,6 +61,7 @@ Workflow:
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
+
 			return err
 		}
 		logger.DebugContext(ctx, "GitClient initialized", slog.String("source_command", "sync"))
@@ -68,6 +71,7 @@ Workflow:
 		isClean, err := client.IsWorkingDirClean(ctx)
 		if err != nil {
 			presenter.Error("Failed to check working directory status: %v", err)
+
 			return err // Client logs details
 		}
 		if !isClean {
@@ -75,6 +79,7 @@ Workflow:
 			presenter.Error(errMsg)
 			presenter.Advice("Please commit or stash your changes before syncing. Try `contextvibes commit -m \"...\"`.")
 			logger.WarnContext(ctx, "Sync prerequisite failed: working directory not clean", slog.String("source_command", "sync"))
+
 			return errors.New("working directory not clean") // Use specific error
 		}
 		presenter.Info("Working directory is clean.")
@@ -104,6 +109,7 @@ Workflow:
 			confirmed, promptErr = presenter.PromptForConfirmation("Proceed with sync?")
 			if promptErr != nil {
 				logger.ErrorContext(ctx, "Error reading sync confirmation", slog.String("source_command", "sync"), slog.String("error", promptErr.Error()))
+
 				return promptErr
 			}
 		}
@@ -111,6 +117,7 @@ Workflow:
 		if !confirmed {
 			presenter.Info("Sync aborted by user.")
 			logger.InfoContext(ctx, "Sync aborted by user confirmation", slog.String("source_command", "sync"), slog.Bool("confirmed", false))
+
 			return nil
 		}
 		logger.DebugContext(ctx, "Proceeding after sync confirmation", slog.String("source_command", "sync"), slog.Bool("confirmed", true))
@@ -156,6 +163,7 @@ Workflow:
 		presenter.Newline()
 		presenter.Success("Sync completed successfully.") // Use Success
 		logger.InfoContext(ctx, "Sync successful", slog.String("source_command", "sync"))
+
 		return nil
 	},
 }

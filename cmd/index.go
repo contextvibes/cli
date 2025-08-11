@@ -210,7 +210,7 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 	if err != nil {
 		return nil, fmt.Errorf("opening file %s: %w", filePath, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	var frontMatterLines []string

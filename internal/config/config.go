@@ -1,3 +1,4 @@
+// internal/config/config.go
 package config
 
 import (
@@ -54,6 +55,24 @@ type AISettings struct {
 	CollaborationPreferences AICollaborationPreferences `yaml:"collaborationPreferences,omitempty"`
 }
 
+// --- NEW: Configuration for the 'run' command ---
+type VerificationCheck struct {
+	Name        string   `yaml:"name"`
+	Description string   `yaml:"description,omitempty"`
+	Command     string   `yaml:"command"`
+	Args        []string `yaml:"args,omitempty"`
+}
+
+type ExampleSettings struct {
+	Verify []VerificationCheck `yaml:"verify,omitempty"`
+}
+
+type RunSettings struct {
+	Examples map[string]ExampleSettings `yaml:"examples,omitempty"`
+}
+
+// --- End NEW ---
+
 type Config struct {
 	Git        GitSettings     `yaml:"git,omitempty"`
 	Logging    LoggingSettings `yaml:"logging,omitempty"`
@@ -63,6 +82,7 @@ type Config struct {
 	} `yaml:"validation,omitempty"`
 	ProjectState ProjectState `yaml:"projectState,omitempty"`
 	AI           AISettings   `yaml:"ai,omitempty"`
+	Run          RunSettings  `yaml:"run,omitempty"` // NEW
 }
 
 func GetDefaultConfig() *Config {
@@ -103,6 +123,10 @@ func GetDefaultConfig() *Config {
 				ProactiveDetailLevel:  "detailed_explanations",
 				AIProactivity:         "proactive_suggestions",
 			},
+		},
+		// NEW: Initialize Run settings
+		Run: RunSettings{
+			Examples: make(map[string]ExampleSettings),
 		},
 	}
 	return cfg
@@ -218,6 +242,11 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 		finalCfg.AI.CollaborationPreferences.AIProactivity = loadedCfg.AI.CollaborationPreferences.AIProactivity
 	}
 
+	// NEW: Merge Run settings
+	if loadedCfg.Run.Examples != nil {
+		finalCfg.Run.Examples = loadedCfg.Run.Examples
+	}
+
 	return &finalCfg
 }
 
@@ -233,7 +262,7 @@ func UpdateAndSaveConfig(cfgToSave *Config, filePath string) error {
 
 	dir := filepath.Dir(filePath)
 	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return fmt.Errorf("failed to create directory for config file '%s': %w", dir, err)
 		}
 	}
@@ -242,7 +271,7 @@ func UpdateAndSaveConfig(cfgToSave *Config, filePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary config file in '%s': %w", dir, err)
 	}
-	defer os.Remove(tempFile.Name())
+	defer func() { _ = os.Remove(tempFile.Name()) }()
 
 	if _, err := tempFile.Write(yamlData); err != nil {
 		_ = tempFile.Close()

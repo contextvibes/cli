@@ -1,3 +1,4 @@
+// internal/thea/client.go
 package thea
 
 import (
@@ -106,7 +107,11 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 		c.logger.ErrorContext(ctx, "Failed to fetch manifest", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
 		return nil, fmt.Errorf("fetching manifest from %s: %w", c.config.ManifestURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.WarnContext(ctx, "Failed to close manifest response body", slog.String("error", closeErr.Error()))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		c.logger.ErrorContext(ctx, "Failed to fetch manifest, unexpected status", slog.String("url", c.config.ManifestURL), slog.Int("status", resp.StatusCode))
@@ -215,7 +220,11 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 	if err != nil {
 		return "", fmt.Errorf("fetching artifact content from %s: %w", fullURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.WarnContext(ctx, "Failed to close artifact content response body", slog.String("url", fullURL), slog.String("error", closeErr.Error()))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024)) // Read a bit of the body for error context

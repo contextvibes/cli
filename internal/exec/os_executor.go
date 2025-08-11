@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/exec" // Standard library exec
@@ -23,8 +22,9 @@ type OSCommandExecutor struct {
 func NewOSCommandExecutor(logger *slog.Logger) CommandExecutor {
 	log := logger
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(io.Discard, nil)) // Default to discard if no logger provided
+		log = slog.New(slog.DiscardHandler) // Default to discard if no logger provided
 	}
+
 	return &OSCommandExecutor{logger: log}
 }
 
@@ -58,11 +58,13 @@ func (e *OSCommandExecutor) Execute(ctx context.Context, dir string, commandName
 			// Stderr already piped. Return error that includes exit code info.
 			return fmt.Errorf("command '%s %s' failed with exit code %d: %w", commandName, strings.Join(args, " "), exitErr.ExitCode(), err)
 		}
+
 		e.logger.ErrorContext(ctx, "Failed to execute command",
 			slog.String("component", "OSCommandExecutor"),
 			slog.String("command", commandName),
 			slog.Any("args", args),
 			slog.String("error", err.Error()))
+
 		return fmt.Errorf("failed to start or execute command '%s %s': %w", commandName, strings.Join(args, " "), err)
 	}
 
@@ -70,6 +72,7 @@ func (e *OSCommandExecutor) Execute(ctx context.Context, dir string, commandName
 		slog.String("component", "OSCommandExecutor"),
 		slog.String("command", commandName),
 		slog.Any("args", args))
+
 	return nil
 }
 
@@ -81,6 +84,7 @@ func (e *OSCommandExecutor) CaptureOutput(ctx context.Context, dir string, comma
 		slog.String("dir", dir))
 
 	var stdoutBuf, stderrBuf bytes.Buffer
+
 	cmd := exec.CommandContext(ctx, commandName, args...)
 	cmd.Dir = dir
 	cmd.Stdout = &stdoutBuf
@@ -113,6 +117,7 @@ func (e *OSCommandExecutor) CaptureOutput(ctx context.Context, dir string, comma
 			slog.String("stderr_capture_len", fmt.Sprintf("%d bytes", len(stderrStr))),
 			slog.String("error", err.Error()),     // Log the original simpler error
 			slog.String("detailed_error", errMsg)) // Log the detailed constructed error
+
 		return stdoutStr, stderrStr, fmt.Errorf(errMsg+": %w", err) // Wrap original error
 	}
 
@@ -122,6 +127,7 @@ func (e *OSCommandExecutor) CaptureOutput(ctx context.Context, dir string, comma
 		slog.Any("args", args),
 		slog.String("stdout_capture_len", fmt.Sprintf("%d bytes", len(stdoutStr))),
 		slog.String("stderr_capture_len", fmt.Sprintf("%d bytes", len(stderrStr))))
+
 	return stdoutStr, stderrStr, nil
 }
 
@@ -132,10 +138,13 @@ func (e *OSCommandExecutor) CommandExists(commandName string) bool {
 			slog.String("component", "OSCommandExecutor"),
 			slog.String("command", commandName),
 			slog.String("error", err.Error()))
+
 		return false
 	}
+
 	e.logger.Debug("Command existence check: found",
 		slog.String("component", "OSCommandExecutor"),
 		slog.String("command", commandName))
+
 	return true
 }

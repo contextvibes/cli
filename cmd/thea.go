@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"time"
 
-	// Internal imports
+	// Internal imports.
 	"github.com/contextvibes/cli/internal/thea" // Assuming this is your THEA client package
 	"github.com/contextvibes/cli/internal/ui"
 
-	// External imports
+	// External imports.
 	"github.com/spf13/cobra"
 )
 
-// --- Parent 'thea' Command Definition ---
+// --- Parent 'thea' Command Definition ---.
 var theaCmd = &cobra.Command{
 	Use:   "thea",
 	Short: "Interact with THEA framework artifacts and services.",
@@ -27,14 +27,14 @@ and other interactions related to the THEA framework.`,
 
 // --- Subcommand 'get-artifact' Definitions ---
 
-// Flags for get-artifact
+// Flags for get-artifact.
 var (
 	artifactVersionHintFlag string
 	outputFilePathFlag      string
 	forceOutputFlag         bool
 )
 
-// Hardcoded default values for THEA Service Configuration used by get-artifact
+// Hardcoded default values for THEA Service Configuration used by get-artifact.
 const (
 	getArtifactDefaultManifestURL       = "https://raw.githubusercontent.com/contextvibes/THEA/main/thea-manifest.json"
 	getArtifactDefaultRawContentBaseURL = "https://raw.githubusercontent.com/contextvibes/THEA"
@@ -73,6 +73,7 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 		theaClt, errClient := thea.NewClient(ctx, hardcodedTHEACfg, logger)
 		if errClient != nil {
 			presenter.Error("Failed to initialize THEA artifact service: %v", errClient)
+
 			return fmt.Errorf("initializing THEA artifact service: %w", errClient)
 		}
 
@@ -84,6 +85,7 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 		content, err := theaClt.FetchArtifactContentByID(ctx, artifactID, artifactVersionHintFlag)
 		if err != nil {
 			presenter.Error("Failed to fetch artifact '%s': %v", artifactID, err)
+
 			return fmt.Errorf("fetching artifact '%s': %w", artifactID, err)
 		}
 
@@ -125,6 +127,7 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 		if outputDir != "" && outputDir != "." {
 			if err := os.MkdirAll(outputDir, 0755); err != nil {
 				presenter.Error("Failed to create output directory '%s': %v", outputDir, err)
+
 				return fmt.Errorf("creating output directory %s: %w", outputDir, err)
 			}
 		}
@@ -132,17 +135,20 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 		if _, statErr := os.Stat(outputPath); statErr == nil { // File exists
 			if !forceOutputFlag {
 				presenter.Error("Output file '%s' already exists. Use --force to overwrite.", outputPath)
+
 				return fmt.Errorf("output file %s already exists", outputPath)
 			}
 			presenter.Info("Output file '%s' exists, overwriting due to --force.", outputPath)
 		} else if !os.IsNotExist(statErr) { // Some other error (e.g. permissions)
 			presenter.Error("Error checking output file '%s': %v", outputPath, statErr)
+
 			return fmt.Errorf("checking output file %s: %w", outputPath, statErr)
 		}
 
 		err = os.WriteFile(outputPath, []byte(content), 0644)
 		if err != nil {
 			presenter.Error("Failed to write artifact to '%s': %v", outputPath, err)
+
 			return fmt.Errorf("writing artifact to %s: %w", outputPath, err)
 		}
 
@@ -150,11 +156,12 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 		logger.InfoContext(ctx, "Artifact fetched successfully",
 			slog.String("artifact_id", artifactID),
 			slog.String("output_path", outputPath))
+
 		return nil
 	},
 }
 
-// --- init Function ---
+// --- init Function ---.
 func init() {
 	// Add the parent 'thea' command to the root command
 	rootCmd.AddCommand(theaCmd)

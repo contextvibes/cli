@@ -9,10 +9,10 @@ import (
 	"os"
 
 	"github.com/contextvibes/cli/internal/project"
-	// "github.com/contextvibes/cli/internal/tools" // No longer needed for exec functions
+	// "github.com/contextvibes/cli/internal/tools" // No longer needed for exec functions.
 	"github.com/contextvibes/cli/internal/ui" // Use Presenter
 	"github.com/spf13/cobra"
-	// No direct import of internal/exec needed if using global ExecClient from cmd/root.go
+	// No direct import of internal/exec needed if using global ExecClient from cmd/root.go.
 )
 
 var formatCmd = &cobra.Command{
@@ -35,10 +35,10 @@ formatters, linters, and validators.`,
 		logger := AppLogger // From cmd/root.go
 		// Use global ExecClient from cmd/root.go
 		if ExecClient == nil {
-			return fmt.Errorf("internal error: executor client not initialized")
+			return errors.New("internal error: executor client not initialized")
 		}
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background()
@@ -49,6 +49,7 @@ formatters, linters, and validators.`,
 		if err != nil {
 			logger.ErrorContext(ctx, "Format: Failed getwd", slog.String("error", err.Error()))
 			presenter.Error("Failed to get current working directory: %v", err)
+
 			return err
 		}
 
@@ -57,6 +58,7 @@ formatters, linters, and validators.`,
 		if err != nil {
 			logger.ErrorContext(ctx, "Format: Failed project detection", slog.String("error", err.Error()))
 			presenter.Error("Failed to detect project type: %v", err)
+
 			return err
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
@@ -68,6 +70,7 @@ formatters, linters, and validators.`,
 
 		if !hasTerraform && !hasPython && !hasGo {
 			presenter.Info("No supported components (Terraform, Python, Go) found for formatting in this directory.")
+
 			return nil
 		}
 
@@ -174,7 +177,7 @@ formatters, linters, and validators.`,
 				if errFmt != nil {
 					errMsg := fmt.Sprintf("`go fmt` failed. Error: %v", errFmt)
 					if stderr != "" {
-						errMsg += fmt.Sprintf("\nStderr: %s", stderr)
+						errMsg += "\nStderr: " + stderr
 					}
 					presenter.Error(errMsg)
 					formatErrors = append(formatErrors, errors.New("go fmt failed"))
@@ -202,11 +205,13 @@ formatters, linters, and validators.`,
 			presenter.Error(errMsg)
 			presenter.Advice("Review the errors above.")
 			logger.Error("Format command failed due to errors", slog.String("source_command", "format"), slog.Int("error_count", len(formatErrors)))
+
 			return formatErrors[0]
 		}
 
 		presenter.Success("All formatting tools completed successfully or applied changes.")
 		logger.Info("Format command finished", slog.String("source_command", "format"))
+
 		return nil
 	},
 }

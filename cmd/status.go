@@ -77,12 +77,12 @@ This includes staged changes, unstaged changes, and untracked files.`,
 			logger.InfoContext(ctx, "Status check reported clean working tree", slog.String("source_command", "status"))
 		} else {
 			// Use the Info block to display the short status lines
-			presenter.InfoPrefixOnly()                                           // Print "INFO:" prefix
-			fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):") // Add context header
+			presenter.InfoPrefixOnly()                                                  // Print "INFO:" prefix
+			_, _ = fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):") // Add context header
 			scanner := bufio.NewScanner(strings.NewReader(trimmedStdout))
 			for scanner.Scan() {
 				// Print each line indented under the INFO block
-				fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
+				_, _ = fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
 			}
 			presenter.Newline() // Add newline after the block
 			logger.InfoContext(ctx, "Status check reported changes", slog.String("source_command", "status"), slog.Int("line_count", strings.Count(trimmedStdout, "\n")+1))

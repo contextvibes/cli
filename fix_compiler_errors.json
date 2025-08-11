@@ -1,0 +1,47 @@
+{
+    "description": "Fixes a syntax error in contextgen and adds a missing import to the context command, resolving a cascade of compiler errors.",
+    "steps": [
+      {
+        "type": "file_modification",
+        "description": "Correct the syntax of internal/contextgen/helpers.go and ensure gosec pragmas are in place.",
+        "changes": [
+          {
+            "file_path": "internal/contextgen/helpers.go",
+            "operations": [
+              {
+                "type": "create_or_overwrite",
+                "content": "package contextgen\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\t\"path/filepath\"\n\t\"strings\"\n\n\t\"github.com/contextvibes/cli/internal/exec\"\n)\n\nfunc GenerateReportHeader(promptFile, defaultTitle string) (string, error) {\n\tsearchPaths := []string{\n\t\tfilepath.Join(\"docs\", \"prompts\", promptFile),\n\t\tfilepath.Join(\"..\", \"thea\", \"building-blocks\", \"prompts\", promptFile),\n\t}\n\tfor _, path := range searchPaths {\n\t\tif _, err := os.Stat(path); err == nil {\n\t\t\t//gosec:G304\n\t\t\tcontent, readErr := os.ReadFile(path)\n\t\t\tif readErr != nil {\n\t\t\t\treturn \"\", fmt.Errorf(\"failed to read prompt file %s: %w\", path, readErr)\n\t\t\t}\n\t\t\treturn string(content), nil\n\t\t}\n\t}\n\treturn fmt.Sprintf(\"# AI Prompt: %s\\n\\n---\\n\", defaultTitle), nil\n}\n\nfunc ExportBook(ctx context.Context, execClient *exec.ExecutorClient, outputFile, title string, paths ...string) (err error) {\n\t//gosec:G304\n\tf, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"failed to open output file: %w\", err)\n\t}\n\tdefer func() {\n\t\tif closeErr := f.Close(); closeErr != nil && err == nil {\n\t\t\terr = fmt.Errorf(\"failed to close output file: %w\", closeErr)\n\t\t}\n\t}()\n\n\tif _, err := fmt.Fprintf(f, \"\\n---\\n## Book: %s\\n\\n\", title); err != nil {\n\t\treturn fmt.Errorf(\"failed to write book header: %w\", err)\n\t}\n\tgitArgs := append([]string{\"ls-files\", \"--\"}, paths...)\n\tgitFilesBytes, _, err := execClient.CaptureOutput(ctx, \".\", \"git\", gitArgs...)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"failed to list git files: %w\", err)\n\t}\n\tfor _, file := range strings.Split(gitFilesBytes, \"\\n\") {\n\t\tif file == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\t//gosec:G304\n\t\tcontent, err := os.ReadFile(file)\n\t\tif err != nil {\n\t\t\tif os.IsNotExist(err) {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\treturn fmt.Errorf(\"failed to read file %s: %w\", file, err)\n\t\t}\n\t\text := filepath.Ext(file)\n\t\tlang := strings.TrimPrefix(ext, \".\")\n\t\tvar sb strings.Builder\n\t\tsb.WriteString(fmt.Sprintf(\"======== FILE: %s ========\\n\", file))\n\t\tsb.WriteString(\"```\" + lang + \"\\n\")\n\t\tsb.Write(content)\n\t\tsb.WriteString(\"\\n```\\n\")\n\t\tsb.WriteString(fmt.Sprintf(\"======== END FILE: %s ========\\n\\n\", file))\n\t\tif _, err := f.WriteString(sb.String()); err != nil {\n\t\t\treturn fmt.Errorf(\"failed to write content for file %s: %w\", file, err)\n\t\t}\n\t}\n\treturn nil\n}\n"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "file_modification",
+        "description": "Add missing import to cmd/context.go.",
+        "changes": [
+          {
+            "file_path": "cmd/context.go",
+            "operations": [
+              {
+                "type": "regex_replace",
+                "find_regex": "(package cmd\\n)",
+                "replace_with": "$1\nimport (\n\t\"github.com/contextvibes/cli/internal/contextgen\"\n)"
+              },
+              {
+                "type": "regex_replace",
+                "find_regex": "import \\(\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n\n\t\"github.com/contextvibes/cli/internal/contextgen\"\n\t\"github.com/contextvibes/cli/internal/git\"\n\t\"github.com/contextvibes/cli/internal/ui\"\n\t\"github.com/spf13/cobra\"\n\\)",
+                "replace_with": "import (\n\t\"context\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n\n\t\"github.com/contextvibes/cli/internal/contextgen\"\n\t\"github.com/contextvibes/cli/internal/git\"\n\t\"github.com/contextvibes/cli/internal/ui\"\n\t\"github.com/spf13/cobra\"\n)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "command_execution",
+        "description": "Run 'go mod tidy' to clean up imports.",
+        "command": "go",
+        "args": ["mod", "tidy"]
+      }
+    ]
+  }

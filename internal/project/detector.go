@@ -11,6 +11,7 @@ func Detect(dir string) (Type, error) {
 	if err != nil {
 		return Unknown, fmt.Errorf("error checking for Terraform files: %w", err)
 	}
+
 	if len(tfFiles) > 0 {
 		return Terraform, nil
 	}
@@ -31,11 +32,13 @@ func Detect(dir string) (Type, error) {
 
 	pyReqPath := filepath.Join(dir, "requirements.txt")
 	pyProjPath := filepath.Join(dir, "pyproject.toml")
+
 	if _, err := os.Stat(pyReqPath); err == nil {
 		return Python, nil
 	} else if !os.IsNotExist(err) {
 		return Unknown, fmt.Errorf("error checking for requirements.txt: %w", err)
 	}
+
 	if _, err := os.Stat(pyProjPath); err == nil {
 		return Python, nil
 	} else if !os.IsNotExist(err) {

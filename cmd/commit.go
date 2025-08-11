@@ -50,7 +50,7 @@ Does NOT automatically push.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
 		if logger == nil {
-			fmt.Fprintln(os.Stderr, "[ERROR] Internal error: logger not initialized")
+			_, _ = fmt.Fprintln(os.Stderr, "[ERROR] Internal error: logger not initialized")
 			return fmt.Errorf("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
@@ -216,23 +216,23 @@ Does NOT automatically push.`,
 		presenter.Newline()
 		presenter.InfoPrefixOnly()
 
-		fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
-		fmt.Fprintf(presenter.Out(), "  Commit Message:\n    \"%s\"\n", finalCommitMessage)
+		_, _ = fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
+		_, _ = fmt.Fprintf(presenter.Out(), "  Commit Message:\n    \"%s\"\n", finalCommitMessage)
 		if validationIsEnabled {
-			fmt.Fprintf(presenter.Out(), "  Validation Pattern (%s):\n    `%s`\n", patternSource, effectivePattern)
+			_, _ = fmt.Fprintf(presenter.Out(), "  Validation Pattern (%s):\n    `%s`\n", patternSource, effectivePattern)
 		} else {
-			fmt.Fprintln(presenter.Out(), "  Validation: Disabled by configuration")
+			_, _ = fmt.Fprintln(presenter.Out(), "  Validation: Disabled by configuration")
 		}
-		fmt.Fprintf(presenter.Out(), "  Staged Changes:\n")
+		_, _ = fmt.Fprintf(presenter.Out(), "  Staged Changes:\n")
 
 		if statusErr != nil {
-			fmt.Fprintf(presenter.Out(), "    (Could not retrieve status details for display: %v)\n", statusErr)
+			_, _ = fmt.Fprintf(presenter.Out(), "    (Could not retrieve status details for display: %v)\n", statusErr)
 		} else if strings.TrimSpace(statusOutput) == "" {
-			fmt.Fprintln(presenter.Out(), "    (Staged changes detected, but `git status --short` was unexpectedly empty)")
+			_, _ = fmt.Fprintln(presenter.Out(), "    (Staged changes detected, but `git status --short` was unexpectedly empty)")
 		} else {
 			scanner := bufio.NewScanner(strings.NewReader(statusOutput))
 			for scanner.Scan() {
-				fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
+				_, _ = fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
 			}
 		}
 		presenter.Newline()

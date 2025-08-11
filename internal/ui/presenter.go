@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color" // Import the color library
 )
 
@@ -91,38 +92,40 @@ func (p *Presenter) Err() io.Writer {
 // --- Output Formatting Methods ---
 // These methods correctly use p.outW and p.errW which are io.Writer interfaces
 
-func (p *Presenter) Header(format string, a ...any) { p.headerColor.Fprintf(p.outW, format+"\n", a...) }
+func (p *Presenter) Header(format string, a ...any) {
+	_, _ = p.headerColor.Fprintf(p.outW, format+"\n", a...)
+}
 func (p *Presenter) Summary(format string, a ...any) {
-	p.summaryColor.Fprint(p.outW, "SUMMARY:\n")
-	fmt.Fprintf(p.outW, "  "+format+"\n", a...)
+	_, _ = p.summaryColor.Fprint(p.outW, "SUMMARY:\n")
+	_, _ = fmt.Fprintf(p.outW, "  "+format+"\n", a...)
 	p.Newline()
 }
 func (p *Presenter) Step(format string, a ...any) {
-	p.stepColor.Fprintf(p.outW, "- "+format+"\n", a...)
+	_, _ = p.stepColor.Fprintf(p.outW, "- "+format+"\n", a...)
 }
 func (p *Presenter) Info(format string, a ...any) {
-	p.infoColor.Fprintf(p.outW, "~ "+format+"\n", a...)
+	_, _ = p.infoColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
-func (p *Presenter) InfoPrefixOnly() { p.infoColor.Fprint(p.outW, "~ ") }
+func (p *Presenter) InfoPrefixOnly() { _, _ = p.infoColor.Fprint(p.outW, "~ ") }
 func (p *Presenter) Success(format string, a ...any) {
-	p.successColor.Fprintf(p.outW, "+ "+format+"\n", a...)
+	_, _ = p.successColor.Fprintf(p.outW, "+ "+format+"\n", a...)
 }
 func (p *Presenter) Error(format string, a ...any) {
-	p.errorColor.Fprintf(p.errW, "! "+format+"\n", a...)
+	_, _ = p.errorColor.Fprintf(p.errW, "! "+format+"\n", a...)
 }
 func (p *Presenter) Warning(format string, a ...any) {
-	p.warningColor.Fprintf(p.errW, "~ "+format+"\n", a...)
+	_, _ = p.warningColor.Fprintf(p.errW, "~ "+format+"\n", a...)
 }
 func (p *Presenter) Advice(format string, a ...any) {
-	p.warningColor.Fprintf(p.outW, "~ "+format+"\n", a...)
+	_, _ = p.warningColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
 func (p *Presenter) Detail(format string, a ...any) {
-	p.detailColor.Fprintf(p.outW, "  "+format+"\n", a...)
+	_, _ = p.detailColor.Fprintf(p.outW, "  "+format+"\n", a...)
 }
 func (p *Presenter) Highlight(text string) string { return p.boldColor.Sprint(text) }
-func (p *Presenter) Newline()                     { fmt.Fprintln(p.outW) }
+func (p *Presenter) Newline()                     { _, _ = fmt.Fprintln(p.outW) }
 func (p *Presenter) Separator() {
-	color.New(color.Faint).Fprintln(p.outW, "----------------------------------------")
+	_, _ = color.New(color.Faint).Fprintln(p.outW, "----------------------------------------")
 }
 
 // --- Input Methods ---
@@ -135,10 +138,10 @@ func (p *Presenter) PromptForInput(prompt string) (string, error) {
 		prompt += ":"
 	}
 	prompt += " "
-	p.promptColor.Fprint(p.errW, prompt) // Write prompt to error stream
+	_, _ = p.promptColor.Fprint(p.errW, prompt) // Write prompt to error stream
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
+		_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
 		return "", fmt.Errorf("reading input failed: %w", err)
 	}
 	return strings.TrimSpace(input), nil
@@ -152,10 +155,10 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 	}
 	fullPrompt := prompt + " [y/N]: "
 	for {
-		p.promptColor.Fprint(p.errW, fullPrompt) // Write prompt to error stream
+		_, _ = p.promptColor.Fprint(p.errW, fullPrompt) // Write prompt to error stream
 		input, err := reader.ReadString('\n')
 		if err != nil {
-			p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
+			_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
 			return false, fmt.Errorf("reading confirmation failed: %w", err)
 		}
 		input = strings.ToLower(strings.TrimSpace(input))
@@ -165,6 +168,48 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 		if input == "n" || input == "no" || input == "" {
 			return false, nil
 		}
-		p.warningColor.Fprintf(p.errW, "~ Invalid input. Please enter 'y' or 'n'.\n") // Write warning to error stream
+		_, _ = p.warningColor.Fprintf(p.errW, "~ Invalid input. Please enter 'y' or 'n'.\n") // Write warning to error stream
 	}
+}
+
+// PromptForSelect displays a single-choice list to the user and returns the selected option.
+func (p *Presenter) PromptForSelect(title string, options []string) (string, error) {
+	var choice string
+
+	huhOptions := make([]huh.Option[string], len(options))
+	for i, opt := range options {
+		huhOptions[i] = huh.NewOption(opt, opt)
+	}
+
+	form := huh.NewSelect[string]().
+		Title(title).
+		Options(huhOptions...).
+		Value(&choice)
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return choice, nil
+}
+
+// PromptForMultiSelect displays a multi-choice list to the user and returns the selected options.
+func (p *Presenter) PromptForMultiSelect(title string, options []string) ([]string, error) {
+	var choices []string
+
+	huhOptions := make([]huh.Option[string], len(options))
+	for i, opt := range options {
+		huhOptions[i] = huh.NewOption(opt, opt)
+	}
+
+	form := huh.NewMultiSelect[string]().
+		Title(title).
+		Options(huhOptions...).
+		Value(&choices)
+
+	if err := form.Run(); err != nil {
+		return nil, err
+	}
+
+	return choices, nil
 }

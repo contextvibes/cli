@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -53,7 +54,8 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 			if _, err := os.Stat(defaultCodemodFilename); os.IsNotExist(err) {
 				presenter.Error("Default codemod script '%s' not found and no --script flag provided.", defaultCodemodFilename)
 				presenter.Advice("Create '%s' in the current directory or use the --script flag to specify a file.", defaultCodemodFilename)
-				return fmt.Errorf("no codemod script specified or found")
+
+				return errors.New("no codemod script specified or found")
 			}
 			scriptToLoad = defaultCodemodFilename
 		}
@@ -64,6 +66,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		if err != nil {
 			presenter.Error("Failed to read codemod script file '%s': %v", scriptToLoad, err)
 			logger.Error("codemod: failed to read script file", slog.String("path", scriptToLoad), slog.Any("error", err))
+
 			return err
 		}
 
@@ -71,11 +74,13 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		if err := json.Unmarshal(scriptData, &script); err != nil {
 			presenter.Error("Failed to parse codemod script JSON from '%s': %v", scriptToLoad, err)
 			logger.Error("codemod: failed to parse script json", slog.String("path", scriptToLoad), slog.Any("error", err))
+
 			return err
 		}
 
 		if len(script) == 0 {
 			presenter.Info("Codemod script is empty. No changes to apply.")
+
 			return nil
 		}
 
@@ -95,12 +100,14 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 			} else if !os.IsNotExist(statErr) {
 				presenter.Error("Error checking file %s: %v. Skipping.", fileChangeSet.FilePath, statErr)
 				logger.Error("codemod: failed to stat file", slog.String("path", fileChangeSet.FilePath), slog.Any("error", statErr))
+
 				continue
 			}
 
 			if !fileExists && !onlyDelete {
 				presenter.Error("File not found: %s. Skipping operations (except delete_file).", fileChangeSet.FilePath)
 				logger.Error("codemod: file not found, skipping changeset", slog.String("path", fileChangeSet.FilePath))
+
 				continue
 			}
 
@@ -111,6 +118,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 				if readErr != nil {
 					presenter.Error("Failed to read file %s: %v. Skipping.", fileChangeSet.FilePath, readErr)
 					logger.Error("codemod: failed to read file for modification", slog.String("path", fileChangeSet.FilePath), slog.Any("error", readErr))
+
 					continue
 				}
 				currentFileContent = string(fileContentBytes)
@@ -134,21 +142,25 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 				case "regex_replace":
 					if fileWasDeleted {
 						presenter.Warning("Skipping regex_replace on '%s' as file was already deleted by a previous operation.", fileChangeSet.FilePath)
+
 						continue // to next operation
 					}
 					if !fileExists { // This check might be redundant if fileWasDeleted is handled correctly
 						presenter.Error("Cannot apply regex_replace: file '%s' does not exist.", fileChangeSet.FilePath)
+
 						continue // to next operation
 					}
 					if op.FindRegex == "" {
 						presenter.Warning("Skipping regex_replace for '%s': find_regex is empty.", fileChangeSet.FilePath)
 						logger.Warn("codemod: regex_replace skipped, empty find_regex", slog.String("file", fileChangeSet.FilePath))
+
 						continue // to next operation
 					}
 					re, compileErr := regexp.Compile(op.FindRegex)
 					if compileErr != nil {
 						presenter.Error("Invalid regex '%s' for file '%s': %v. Skipping operation.", op.FindRegex, fileChangeSet.FilePath, compileErr)
 						logger.Error("codemod: invalid regex in script", slog.String("file", fileChangeSet.FilePath), slog.String("regex", op.FindRegex), slog.Any("error", compileErr))
+
 						continue // to next operation
 					}
 
@@ -168,12 +180,14 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 						presenter.Info("File '%s' already does not exist. 'delete_file' operation considered successful.", fileChangeSet.FilePath)
 						opSucceeded = true
 						fileWasDeleted = true // Mark as "conceptually" deleted for this changeset
-						break operationsLoop  // Exit the operations loop for this file
+
+						break operationsLoop // Exit the operations loop for this file
 					}
 					// If fileWasDeleted is true, it means a previous "delete_file" op in *this same FileChangeSet* already deleted it.
 					if fileWasDeleted {
 						presenter.Info("File '%s' already actioned for deletion by a previous operation in this set.", fileChangeSet.FilePath)
-						opSucceeded = true   // Considered success as the goal is achieved
+						opSucceeded = true // Considered success as the goal is achieved
+
 						break operationsLoop // Exit the operations loop for this file
 					}
 
@@ -188,6 +202,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 						if promptErr != nil {
 							presenter.Error("Error during delete confirmation for '%s': %v. Skipping deletion.", fileChangeSet.FilePath, promptErr)
 							logger.Error("codemod: delete confirmation error", slog.String("file", fileChangeSet.FilePath), slog.Any("error", promptErr))
+
 							continue // to next operation
 						}
 					}
@@ -245,6 +260,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 					if promptErr != nil {
 						presenter.Error("Error during write confirmation for '%s': %v. Skipping write.", fileChangeSet.FilePath, promptErr)
 						logger.Error("codemod: write confirmation error", slog.String("file", fileChangeSet.FilePath), slog.Any("error", promptErr))
+
 						continue // to next file in the script
 					}
 				}
@@ -282,6 +298,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		presenter.Detail("Files Deleted: %d", totalFilesDeleted)
 		presenter.Detail("Operations Attempted: %d", totalOperationsAttempted)
 		presenter.Detail("Operations Succeeded (may include no-ops/already deleted): %d", totalOperationsSucceeded)
+
 		return nil
 	},
 }

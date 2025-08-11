@@ -2,7 +2,7 @@
 package git
 
 import (
-	// "io" // No longer needed for discard logger if logger is required
+	// "io" // No longer needed for discard logger if logger is required.
 	"log/slog"
 
 	"github.com/contextvibes/cli/internal/exec" // Import the new exec package
@@ -27,9 +27,11 @@ func (c GitClientConfig) validateAndSetDefaults() (GitClientConfig, error) {
 	if validated.DefaultRemoteName == "" {
 		validated.DefaultRemoteName = "origin"
 	}
+
 	if validated.DefaultMainBranchName == "" {
 		validated.DefaultMainBranchName = "main"
 	}
+
 	if validated.GitExecutable == "" {
 		validated.GitExecutable = "git" // Default to looking for 'git' in PATH
 	}

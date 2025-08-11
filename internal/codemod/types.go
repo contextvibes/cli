@@ -12,6 +12,9 @@ type Operation struct {
 	FindRegex string `json:"find_regex,omitempty"`
 	// ReplaceWith is the string to replace matches with.
 	ReplaceWith string `json:"replace_with,omitempty"`
+
+	// --- Fields for "create_or_overwrite" ---
+	Content *string `json:"content,omitempty"` // Pointer to distinguish empty from not-set
 	// LineNumber can be used to target a specific line for some operations (not used by basic regex_replace yet).
 	LineNumber *int `json:"line_number,omitempty"`
 
