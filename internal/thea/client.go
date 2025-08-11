@@ -1,9 +1,9 @@
+// internal/thea/client.go
 package thea
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -59,25 +59,20 @@ type THEAServiceConfig struct {
 // individual methods like FetchArtifactContent will also take a context.
 func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (*Client, error) {
 	if cfg == nil {
-		return nil, errors.New("THEA service config cannot be nil")
+		return nil, fmt.Errorf("THEA service config cannot be nil")
 	}
-
 	if logger == nil {
-		return nil, errors.New("logger cannot be nil")
+		return nil, fmt.Errorf("logger cannot be nil")
 	}
-
 	if cfg.ManifestURL == "" {
-		return nil, errors.New("THEA manifest URL is not configured")
+		return nil, fmt.Errorf("THEA manifest URL is not configured")
 	}
-
 	if cfg.RawContentBaseURL == "" {
-		return nil, errors.New("THEA raw content base URL is not configured")
+		return nil, fmt.Errorf("THEA raw content base URL is not configured")
 	}
-
 	if cfg.DefaultArtifactRef == "" {
 		// Could default to "main" if not set, or error out
 		logger.Warn("THEA default artifact ref is not configured, consider setting it. Defaulting to 'main'.")
-
 		cfg.DefaultArtifactRef = "main" // Or handle as error
 	}
 
@@ -103,31 +98,29 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.config.ManifestURL, nil)
 	if err != nil {
 		c.logger.ErrorContext(ctx, "Failed to create manifest request", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
-
 		return nil, fmt.Errorf("creating manifest request: %w", err)
 	}
 
 	c.logger.InfoContext(ctx, "Fetching THEA manifest", slog.String("url", c.config.ManifestURL))
-
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		c.logger.ErrorContext(ctx, "Failed to fetch manifest", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
-
 		return nil, fmt.Errorf("fetching manifest from %s: %w", c.config.ManifestURL, err)
 	}
-
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.WarnContext(ctx, "Failed to close manifest response body", slog.String("error", closeErr.Error()))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		c.logger.ErrorContext(ctx, "Failed to fetch manifest, unexpected status", slog.String("url", c.config.ManifestURL), slog.Int("status", resp.StatusCode))
-
 		return nil, fmt.Errorf("fetching manifest: received status %d from %s", resp.StatusCode, c.config.ManifestURL)
 	}
 
 	var manifest Manifest
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
 		c.logger.ErrorContext(ctx, "Failed to decode manifest JSON", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
-
 		return nil, fmt.Errorf("decoding manifest JSON from %s: %w", c.config.ManifestURL, err)
 	}
 	// TODO: Add manifest caching logic here (save to c.config.CacheDir)
@@ -142,6 +135,7 @@ func (c *Client) LoadManifest(ctx context.Context) (*Manifest, error) {
 	// 2. If yes, check if it's within c.config.CacheTTL.
 	// 3. If yes and valid, load and return from cache.
 	// 4. Otherwise, fetch, save to cache, and return.
+
 	// For MVP - always fetch:
 	return c.fetchManifest(ctx)
 }
@@ -155,7 +149,6 @@ func (m *Manifest) GetArtifactByID(id string) (*Artifact, error) {
 			return &m.Artifacts[i], nil // Return a pointer to the artifact in the slice
 		}
 	}
-
 	return nil, fmt.Errorf("artifact with ID '%s' not found in manifest", id)
 }
 
@@ -199,7 +192,6 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 	} else {
 		effectiveSourcePathInRepo = artifact.ID // For files like .editorconfig where ID is full name
 	}
-
 	effectiveSourcePathInRepo = strings.TrimPrefix(effectiveSourcePathInRepo, "/") // Ensure no leading slash for JoinPath
 
 	// Construct the full raw download URL
@@ -211,7 +203,6 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 			slog.String("ref", gitRef),
 			slog.String("path_in_repo", effectiveSourcePathInRepo),
 			slog.String("error", err.Error()))
-
 		return "", fmt.Errorf("constructing artifact download URL: %w", err)
 	}
 
@@ -229,7 +220,11 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 	if err != nil {
 		return "", fmt.Errorf("fetching artifact content from %s: %w", fullURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.WarnContext(ctx, "Failed to close artifact content response body", slog.String("url", fullURL), slog.String("error", closeErr.Error()))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024)) // Read a bit of the body for error context
@@ -237,7 +232,6 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 			slog.String("url", fullURL),
 			slog.Int("status", resp.StatusCode),
 			slog.String("response_snippet", string(bodyBytes)))
-
 		return "", fmt.Errorf("fetching artifact content: received status %d from %s", resp.StatusCode, fullURL)
 	}
 

@@ -84,6 +84,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all prompts")
 
 	// --- Register ALL Commands Here ---
+	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(codemodCmd)
 	rootCmd.AddCommand(commitCmd)
 	rootCmd.AddCommand(deployCmd)

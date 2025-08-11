@@ -42,20 +42,16 @@ func NewPresenter(outW, errW io.Writer, inR io.Reader) *Presenter {
 	// *** CORRECTED VARIABLE DECLARATIONS AND ASSIGNMENTS ***
 	// Declare local variables with the correct INTERFACE types
 	var out io.Writer = os.Stdout
-
 	var err io.Writer = os.Stderr
-
 	var in io.Reader = os.Stdin
 
 	// Assign parameters ONLY if they are not nil, overwriting defaults
 	if outW != nil {
 		out = outW
 	}
-
 	if errW != nil {
 		err = errW
 	}
-
 	if inR != nil {
 		in = inR
 	}
@@ -96,38 +92,40 @@ func (p *Presenter) Err() io.Writer {
 // --- Output Formatting Methods ---
 // These methods correctly use p.outW and p.errW which are io.Writer interfaces
 
-func (p *Presenter) Header(format string, a ...any) { p.headerColor.Fprintf(p.outW, format+"\n", a...) }
+func (p *Presenter) Header(format string, a ...any) {
+	_, _ = p.headerColor.Fprintf(p.outW, format+"\n", a...)
+}
 func (p *Presenter) Summary(format string, a ...any) {
-	p.summaryColor.Fprint(p.outW, "SUMMARY:\n")
-	fmt.Fprintf(p.outW, "  "+format+"\n", a...)
+	_, _ = p.summaryColor.Fprint(p.outW, "SUMMARY:\n")
+	_, _ = fmt.Fprintf(p.outW, "  "+format+"\n", a...)
 	p.Newline()
 }
 func (p *Presenter) Step(format string, a ...any) {
-	p.stepColor.Fprintf(p.outW, "- "+format+"\n", a...)
+	_, _ = p.stepColor.Fprintf(p.outW, "- "+format+"\n", a...)
 }
 func (p *Presenter) Info(format string, a ...any) {
-	p.infoColor.Fprintf(p.outW, "~ "+format+"\n", a...)
+	_, _ = p.infoColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
-func (p *Presenter) InfoPrefixOnly() { p.infoColor.Fprint(p.outW, "~ ") }
+func (p *Presenter) InfoPrefixOnly() { _, _ = p.infoColor.Fprint(p.outW, "~ ") }
 func (p *Presenter) Success(format string, a ...any) {
-	p.successColor.Fprintf(p.outW, "+ "+format+"\n", a...)
+	_, _ = p.successColor.Fprintf(p.outW, "+ "+format+"\n", a...)
 }
 func (p *Presenter) Error(format string, a ...any) {
-	p.errorColor.Fprintf(p.errW, "! "+format+"\n", a...)
+	_, _ = p.errorColor.Fprintf(p.errW, "! "+format+"\n", a...)
 }
 func (p *Presenter) Warning(format string, a ...any) {
-	p.warningColor.Fprintf(p.errW, "~ "+format+"\n", a...)
+	_, _ = p.warningColor.Fprintf(p.errW, "~ "+format+"\n", a...)
 }
 func (p *Presenter) Advice(format string, a ...any) {
-	p.warningColor.Fprintf(p.outW, "~ "+format+"\n", a...)
+	_, _ = p.warningColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
 func (p *Presenter) Detail(format string, a ...any) {
-	p.detailColor.Fprintf(p.outW, "  "+format+"\n", a...)
+	_, _ = p.detailColor.Fprintf(p.outW, "  "+format+"\n", a...)
 }
 func (p *Presenter) Highlight(text string) string { return p.boldColor.Sprint(text) }
-func (p *Presenter) Newline()                     { fmt.Fprintln(p.outW) }
+func (p *Presenter) Newline()                     { _, _ = fmt.Fprintln(p.outW) }
 func (p *Presenter) Separator() {
-	color.New(color.Faint).Fprintln(p.outW, "----------------------------------------")
+	_, _ = color.New(color.Faint).Fprintln(p.outW, "----------------------------------------")
 }
 
 // --- Input Methods ---
@@ -135,55 +133,42 @@ func (p *Presenter) Separator() {
 
 func (p *Presenter) PromptForInput(prompt string) (string, error) {
 	reader := bufio.NewReader(p.inR) // Use interface field
-
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, ":") {
 		prompt += ":"
 	}
-
 	prompt += " "
-	p.promptColor.Fprint(p.errW, prompt) // Write prompt to error stream
-
+	_, _ = p.promptColor.Fprint(p.errW, prompt) // Write prompt to error stream
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
-
+		_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
 		return "", fmt.Errorf("reading input failed: %w", err)
 	}
-
 	return strings.TrimSpace(input), nil
 }
 
 func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 	reader := bufio.NewReader(p.inR) // Use interface field
-
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, "?") {
 		prompt += "?"
 	}
-
 	fullPrompt := prompt + " [y/N]: "
-
 	for {
-		p.promptColor.Fprint(p.errW, fullPrompt) // Write prompt to error stream
-
+		_, _ = p.promptColor.Fprint(p.errW, fullPrompt) // Write prompt to error stream
 		input, err := reader.ReadString('\n')
 		if err != nil {
-			p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
-
+			_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
 			return false, fmt.Errorf("reading confirmation failed: %w", err)
 		}
-
 		input = strings.ToLower(strings.TrimSpace(input))
 		if input == "y" || input == "yes" {
 			return true, nil
 		}
-
 		if input == "n" || input == "no" || input == "" {
 			return false, nil
 		}
-
-		p.warningColor.Fprintf(p.errW, "~ Invalid input. Please enter 'y' or 'n'.\n") // Write warning to error stream
+		_, _ = p.warningColor.Fprintf(p.errW, "~ Invalid input. Please enter 'y' or 'n'.\n") // Write warning to error stream
 	}
 }
 

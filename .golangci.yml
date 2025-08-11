@@ -31,61 +31,83 @@ linters:
   default: all
   disable:
     # --------------------------------------------------------------------------
-    # -- PHASE 1: Critical Correctness and Security
+    # -- PHASE 1: Critical Correctness & Security
     # -- These linters find the most severe issues: potential bugs, panics, and
     # -- security vulnerabilities. They should be the first to be re-enabled.
     # --------------------------------------------------------------------------
-    # - errcheck # Finds unchecked errors. HIGHEST PRIORITY.
-    # - gosec # Scans for common security vulnerabilities.
-    # - nilerr # Finds functions that return `nil` instead of a typed nil error.
-    # - nilnil # Checks for `if err != nil { return nil }` which is almost always a bug.
+    # - errcheck      # Finds unchecked errors, a common and critical source of bugs. HIGHEST PRIORITY.
+    - staticcheck   # A comprehensive suite of static analysis checks that finds a wide range of bugs and unidiomatic code.
+    - gosec         # Scans for common security vulnerabilities.
+    - nilnil        # Checks for `if err != nil { return nil }`, a pattern that incorrectly swallows errors and is almost always a bug.
+    - nilerr        # Finds `return nil` where a typed nil error should be returned (e.g., `var err *MyError; return err`), which can cause incorrect error checks.
+    - wastedassign  # Finds wasted assignments (e.g., `x = x`), which often reveal logic errors or shadowed variables.
+    - copyloopvar   # Finds loop variables captured by reference, a common concurrency bug. (Less critical in Go 1.22+ but vital for older versions).
 
     # --------------------------------------------------------------------------
-    # -- PHASE 2: Code Health and Maintainability
+    # -- PHASE 2: Code Health & Maintainability
     # -- This group focuses on code complexity and idiomatic Go patterns that
     # -- make the code easier to understand and maintain.
     # --------------------------------------------------------------------------
-    # - gocritic # A highly configurable linter with dozens of checks for style and correctness.
-    # - revive # A fast and configurable replacement for `golint`. Enforces common Go style.
-    # - cyclop # Checks for high cyclomatic complexity (too many paths through a function).
-    # - funlen # Checks for overly long functions.
-    # - gocognit # Checks for high cognitive complexity (how difficult a function is to understand).
-    # - unparam # Finds unused function parameters.
+    - cyclop        # Checks for high cyclomatic complexity (too many paths through a function).
+    - dogsled       # Finds redundant assignments, improving readability.
+    - funlen        # Checks for overly long functions.
+    - gocognit      # Checks for high cognitive complexity (how difficult a function is to understand).
+    - gocritic      # A highly configurable linter with dozens of checks for style and correctness.
+    - nestif        # Reports deeply nested if statements.
+    - revive        # A fast and configurable replacement for `golint`. Enforces common Go style.
+    - unparam       # Finds unused function parameters.
 
     # --------------------------------------------------------------------------
     # -- PHASE 3: Idiomatic Go and Advanced Practices
     # -- This group enforces more advanced Go idioms related to interfaces,
     # -- error handling, and resource management.
     # --------------------------------------------------------------------------
-    - wrapcheck # Ensures that errors are wrapped with context using `%w`.
-    - prealloc # Finds slice allocations that could be pre-allocated for performance.
-    - ireturn # Checks for functions that could return an interface instead of a concrete type.
-    - err113 # Enforces that error-wrapping helpers follow the standard pattern.
-    - exhaustive # Ensures switch statements on enums cover all possible values.
-    - exhaustruct # Checks if all struct fields are initialized.
-    - usetesting # Finds tests that don't use the testing `t` parameter.
-    - thelper # Finds test helpers that should be marked with `t.Helper()`.
+    - contextcheck    # Checks for correct passing of context.
+    - err113          # Enforces that error-wrapping helpers follow the standard pattern.
+    - exhaustruct     # Checks if all struct fields are initialized.
+    - ireturn         # Checks for functions that could return an interface instead of a concrete type.
+    - prealloc        # Finds slice allocations that could be pre-allocated for performance.
+    - testifylint     # Enforces best practices for the testify suite.
+    - testpackage     # Ensures tests are in the correct package (`_test` suffix).
+    - thelper         # Finds test helpers that should be marked with `t.Helper()`.
+    - unconvert       # Reports unnecessary type conversions.
+    - usetesting      # Finds tests that don't use the testing `t` parameter.
+    - wrapcheck       # Ensures that errors are wrapped with context using `%w`.
+    - exhaustive
 
     # --------------------------------------------------------------------------
     # -- PHASE 4: Stylistic and Highly Opinionated Rules
     # -- This group is the most subjective and may require configuration or team
     # -- discussion before enabling.
     # --------------------------------------------------------------------------
-    - lll # Checks for long lines.
-    - varnamelen # Checks for variable names that are too short (e.g., `i`, `w`).
-    - goconst # Finds repeated string literals that could be constants.
-    - forbidigo # Prevents the use of specific functions (e.g., `fmt.Println`).
-    - mnd # Magic Number Detector. Finds numbers that should be named constants.
-    - tagliatelle # Checks for consistent `json`, `yaml`, etc. struct tag formats.
+    - forbidigo       # Prevents the use of specific functions (e.g., `fmt.Println`).
+    - funcorder       # Checks for a specific order of functions in a file.
+    - goconst         # Finds repeated string literals that could be constants.
+    - godot           # Checks for missing periods on comments.
+    - godox           # Finds TODO/FIXME comments.
+    - iface           # Checks for `interface{}` vs `any`.
+    - lll             # Checks for long lines.
+    - mnd             # Magic Number Detector. Finds numbers that should be named constants.
+    - nlreturn        # Enforces a newline before return statements.
+    - nonamedreturns  # Forbids named return values.
+    - paralleltest    # Checks if tests are marked with `t.Parallel()`.
+    - tagliatelle     # Checks for consistent `json`, `yaml`, etc. struct tag formats.
+    - varnamelen      # Checks for variable names that are too short (e.g., `i`, `w`).
 
     # --------------------------------------------------------------------------
-    # -- PERMANENTLY DISABLED (Generally not applicable or too noisy for this project)
+    # -- Potentially Noisy (Enable with care or after major phases)
     # --------------------------------------------------------------------------
-    - depguard # Manages allowed/denied dependencies (we manage this at the module level).
-    - gochecknoglobals # Forbids global variables (can be too strict for some cases).
-    - gochecknoinits # Forbids `init()` functions (sometimes necessary).
-    - errchkjson # Checks for errors in JSON marshaling (often too noisy).
-    - intrange # Checks for integer range violations (not a primary concern for this SDK).
+    - perfsprint      # Checks for inefficient `fmt.Sprintf` calls (often covered by `staticcheck`).
+    - sloglint        # Enforces consistent and structured logging with `slog`.
+    - wsl             # Enforces whitespace and newline conventions.
+
+    # --------------------------------------------------------------------------
+    # -- PERMANENTLY DISABLED (Not applicable or desired for this project)
+    # --------------------------------------------------------------------------
+    - depguard          # Manages allowed/denied dependencies.
+    - gochecknoglobals  # Forbids global variables (can be too strict for some cases).
+    - gochecknoinits    # Forbids `init()` functions (sometimes necessary).
+    - gomoddirectives
 
 # linters-settings:
 #   errcheck:

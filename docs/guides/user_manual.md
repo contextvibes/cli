@@ -449,6 +449,7 @@ This command has no specific flags other than global flags.
 | 2         | Terraform only: plan indicates changes are needed (considered a successful outcome for the plan command itself).                     |
 
 ### `quality`
+### `quality`
 
 **Synopsis:**
 
@@ -477,6 +478,40 @@ This command has no specific flags other than global flags.
 |-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0         | Success. All critical quality checks passed successfully. Warnings may have been reported for non-critical issues (e.g., some linters).             |
 | 1         | An error occurred or critical checks failed. Check the error messages in the terminal output and the AI log file for details. Common causes:  formatting violations, linter errors, validation failures.  |
+
+### `run`
+
+**Synopsis:**
+
+```
+contextvibes run
+```
+
+**Description:**
+
+Discovers runnable example applications within the `./examples` directory. Before running an example, it first executes any configured prerequisite verification checks defined in `.contextvibes.yaml` under the `run.examples.<example-path>.verify` key.
+
+If all checks pass, it presents an interactive menu to choose an example to execute with `go run`.
+
+**Flags:**
+
+This command has no specific flags other than global flags.
+
+**Example Usage:**
+
+*   Discover, verify, and run an example application:
+
+    ```bash
+    contextvibes run
+    ```
+
+**Exit Codes:**
+
+| Exit Code | Meaning                                                                                                                                   |
+|-----------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| 0         | Success. The selected example was executed successfully after passing all verification checks.                                          |
+| 1         | An error occurred. Common causes: prerequisite verification checks failed, the `go run` command failed, or the user aborted the selection. |
+
 
 ### `status`
 

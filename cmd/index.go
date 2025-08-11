@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Flags for the 'index' command (remain the same).
+// Flags for the 'index' command (remain the same)
 var (
 	indexPathTHEA     string
 	indexPathTemplate string
@@ -127,19 +127,16 @@ or for programmatic access to document metadata.`,
 		jsonData, err := json.MarshalIndent(allMetadata, "", "  ")
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to marshal metadata to JSON", slog.String("error", err.Error()))
-
 			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
 		}
 
 		err = os.WriteFile(indexPathOut, jsonData, 0644)
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to write index file", slog.String("path", indexPathOut), slog.String("error", err.Error()))
-
 			return fmt.Errorf("failed to write index file to %s: %w", indexPathOut, err)
 		}
 
 		presenter.Success("Successfully created document manifest at: %s (%d documents indexed)", indexPathOut, len(allMetadata))
-
 		return nil
 	},
 }
@@ -149,22 +146,18 @@ or for programmatic access to document metadata.`,
 // processedFiles map is used to avoid processing the same absolute file path multiple times.
 func processDirectory(rootPath string, baseDirName string, processedFiles map[string]bool, logger *slog.Logger) ([]DocumentMetadata, error) {
 	var metadataList []DocumentMetadata
-
 	absRootPath, err := filepath.Abs(rootPath)
 	if err != nil {
 		logger.Error("Could not get absolute path for root", slog.String("rootPath", rootPath), slog.String("error", err.Error()))
-
 		return nil, fmt.Errorf("could not get absolute path for %s: %w", rootPath, err)
 	}
 
 	err = filepath.WalkDir(absRootPath, func(currentPath string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			logger.Warn("Error accessing path during walk, skipping entry", slog.String("path", currentPath), slog.String("error", walkErr.Error()))
-
 			if d != nil && d.IsDir() && errors.Is(walkErr, fs.ErrPermission) { // Example: skip permission-denied dirs
 				return fs.SkipDir
 			}
-
 			return nil // Skip this problematic entry, try to continue
 		}
 
@@ -172,10 +165,8 @@ func processDirectory(rootPath string, baseDirName string, processedFiles map[st
 		absCurrentPath, err := filepath.Abs(currentPath)
 		if err != nil {
 			logger.Warn("Could not get absolute path for item, skipping", slog.String("path", currentPath), slog.String("error", err.Error()))
-
 			return nil
 		}
-
 		if processedFiles[absCurrentPath] {
 			return nil // Already processed
 		}
@@ -186,7 +177,6 @@ func processDirectory(rootPath string, baseDirName string, processedFiles map[st
 			fileInfo, statErr := d.Info()
 			if statErr != nil {
 				logger.Warn("Could not get file info, skipping file", slog.String("path", currentPath), slog.String("error", statErr.Error()))
-
 				return nil
 			}
 
@@ -202,17 +192,14 @@ func processDirectory(rootPath string, baseDirName string, processedFiles map[st
 				processedFiles[absCurrentPath] = true // Mark as processed
 			}
 		}
-
 		return nil
 	})
 
 	if err != nil {
 		// This error is from WalkDir itself if it encountered a non-skippable error.
 		logger.Error("Fatal error walking directory", slog.String("rootPath", absRootPath), slog.String("error", err.Error()))
-
 		return nil, fmt.Errorf("error walking directory %s: %w", rootPath, err)
 	}
-
 	return metadataList, nil
 }
 
@@ -223,12 +210,10 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 	if err != nil {
 		return nil, fmt.Errorf("opening file %s: %w", filePath, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
-
 	var frontMatterLines []string
-
 	inFrontMatter := false
 	linesRead := 0
 	maxFrontMatterLines := 100 // Increased slightly
@@ -238,39 +223,31 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 		if linesRead > maxFrontMatterLines && inFrontMatter {
 			return nil, fmt.Errorf("front matter block in %s seems unusually large or unterminated after %d lines", filePath, maxFrontMatterLines)
 		}
-
 		line := scanner.Text()
-
 		trimmedLine := strings.TrimSpace(line)
 		if trimmedLine == "---" {
 			if !inFrontMatter {
 				inFrontMatter = true
-
 				continue
 			} else {
 				break // End of front matter
 			}
 		}
-
 		if inFrontMatter {
 			frontMatterLines = append(frontMatterLines, line) // Keep original lines for YAML parser
 		}
-
 		if !inFrontMatter && linesRead > 10 && len(frontMatterLines) == 0 { // Heuristic: if no '---' after 10 lines
 			return nil, nil // Assume no front matter
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("reading file %s: %w", filePath, err)
 	}
-
 	if !inFrontMatter || len(frontMatterLines) == 0 {
 		return nil, nil // No valid front matter found
 	}
 
 	fmData := tempFrontMatter{}
-
 	err = yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling YAML from %s: %w", filePath, err)
@@ -288,7 +265,6 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 		AppLogger.Warn("Could not make path relative, using full path for ID basis", slog.String("filePath", filePath), slog.String("rootPath", rootPath))
 		relPath = filePath
 	}
-
 	ext := filepath.Ext(relPath)
 	id := strings.TrimSuffix(relPath, ext)
 	// Normalize ID to use forward slashes for consistency, regardless of OS

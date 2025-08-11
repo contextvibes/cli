@@ -128,6 +128,44 @@ validation:
     # pattern: "^(TASK-[0-9]+|MERGE): .+" # Example custom pattern
 ```
 
+#### `run`
+
+This section configures the behavior of the `contextvibes run` command, allowing you to define prerequisite verification checks for example applications.
+
+##### `run.examples`
+
+This is a map where each key is the path to an example directory (e.g., `examples/hello-world`) and the value contains settings for that specific example.
+
+| Key                 | Data Type | Description                                                              |
+| ------------------- | --------- | ------------------------------------------------------------------------ |
+| `verify`            | array     | A list of verification checks to run before the example is executed.     |
+
+**`verify` object fields:**
+
+| Key           | Data Type | Description                                                      | Required |
+|---------------|-----------|------------------------------------------------------------------|----------|
+| `name`        | string    | A short, unique name for the check.                              | Yes      |
+| `description` | string    | A user-friendly description of what the check does.              | No       |
+| `command`     | string    | The command to execute for verification.                         | Yes      |
+| `args`        | array     | A list of string arguments to pass to the command.               | No       |
+
+**Example:**
+
+```yaml
+run:
+  examples:
+    "examples/hello-world":
+      verify:
+        - name: "check-go-version"
+          description: "Ensuring Go 1.24+ is installed."
+          command: "go"
+          args: ["version"]
+        - name: "check-for-gh-cli"
+          description: "Check if the GitHub CLI is available."
+          command: "gh"
+          args: ["--version"]
+```
+
 #### `projectState`
 
 This section stores state information about the project that is managed by ContextVibes CLI commands. Users should generally not edit this section manually unless specifically instructed.
