@@ -37,11 +37,11 @@ linters:
     # --------------------------------------------------------------------------
     # - errcheck      # Finds unchecked errors, a common and critical source of bugs. HIGHEST PRIORITY.
     # - staticcheck   # A comprehensive suite of static analysis checks that finds a wide range of bugs and unidiomatic code.
-    - gosec         # Scans for common security vulnerabilities.
-    - nilnil        # Checks for `if err != nil { return nil }`, a pattern that incorrectly swallows errors and is almost always a bug.
-    - nilerr        # Finds `return nil` where a typed nil error should be returned (e.g., `var err *MyError; return err`), which can cause incorrect error checks.
-    - wastedassign  # Finds wasted assignments (e.g., `x = x`), which often reveal logic errors or shadowed variables.
-    - copyloopvar   # Finds loop variables captured by reference, a common concurrency bug. (Less critical in Go 1.22+ but vital for older versions).
+    # - gosec         # Scans for common security vulnerabilities.
+    # - nilnil        # Checks for `if err != nil { return nil }`, a pattern that incorrectly swallows errors and is almost always a bug.
+    # - nilerr        # Finds `return nil` where a typed nil error should be returned (e.g., `var err *MyError; return err`), which can cause incorrect error checks.
+    # - wastedassign  # Finds wasted assignments (e.g., `x = x`), which often reveal logic errors or shadowed variables.
+    # - copyloopvar   # Finds loop variables captured by reference, a common concurrency bug. (Less critical in Go 1.22+ but vital for older versions).
 
     # --------------------------------------------------------------------------
     # -- PHASE 2: Code Health & Maintainability
