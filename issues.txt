@@ -1,0 +1,234 @@
+[1;4m#18 Feedback on `contextvibes` based on this Refactoring Task
+[0m[2m  Author: duizendstra
+[0m
+[37m- Body:
+[0mThe `contextvibes` model, with its structured JSON change plans, is excellent for ensuring changes are declarative, reviewable, and safe. It's ideal for targeted modifications, like the `gosec` fixes in your example.
+
+However, the large-scale refactoring we are doing right now highlights a potential area for enhancement.
+
+1.  **The Challenge**: My task was to rename an unknown number of files and directories and then perform a search-and-replace across all of them. Expressing this as a pure, declarative JSON plan would require me to first `find` all the files myself and then generate a massive JSON array with hundreds of individual `file_rename` and `file_modification` operations. The resulting plan would be thousands of lines long, difficult for a human to review, and inefficient to generate and apply.
+
+2.  **The Workaround**: I generated a plan that uses a `command` step to execute a shell script. This is a pragmatic "escape hatch" that leverages the power and conciseness of shell commands (`find`, `sed`, `xargs`) for a complex, imperative task. It gets the job done effectively.
+
+3.  **The Opportunity for `contextvibes`**: This situation suggests a potential new feature area for `contextvibes` to make these kinds of large-scale refactorings a first-class, structured operation. You could consider adding more powerful, "bulk" operation types to the plan schema itself. For example:
+
+    *   A **`bulk_rename`** step type:
+        ```json
+        {
+          "type": "bulk_rename",
+          "description": "Rename all files and directories containing 'easyflor' to 'gws'.",
+          "root": ".",
+          "find_string": "easyflor",
+          "replace_with": "gws"
+        }
+        ```
+    *   A **`bulk_replace`** step type:
+        ```json
+        {
+          "type": "bulk_replace",
+          "description": "Replace all instances of 'easyflor' and 'EasyFlor' in all files.",
+          "file_glob": "**/*",
+          "ignore_glob": ".git/*",
+          "replacements": [
+            { "find_regex": "easyflor", "replace_with": "gws" },
+            { "find_regex": "EasyFlor", "replace_with": "GWS" }
+          ]
+        }
+        ```
+
+Adding features like these would allow `contextvibes` to handle complex refactoring tasks natively within its structured, safe execution model, reducing the need to fall back on shell scripts. The tool could provide a much better dry-run experience, showing exactly which files would be renamed or modified.
+
+[2m----------------------------------------[22m
+[1;4m#15 Feature: Add info --links (or org links) command to display key project/organization URLs
+[0m[2m  Author: duizendstra
+[0m
+[37m- Body:
+[0m**1. Describe the Feature Request:**
+
+We propose adding a new command to the `ContextVibes CLI` that allows users to quickly display a list of important URLs related to the current project or the overarching Context Vibes organization. This would serve as a convenient command-line accessible directory of key resources.
+
+**Example Command Concepts:**
+
+*   `contextvibes info --links`
+*   `contextvibes project links`
+*   `contextvibes org links` (if specific to org-level links when run in a profile repo)
+
+**2. Problem or Use Case this Feature Solves:**
+
+Currently, key links to repositories, contribution guides, documentation, community forums, issue trackers, etc., are often embedded within `README.MD` files or other documentation. While essential there, developers already in their terminal using `ContextVibes CLI` could benefit from a quicker way to access these URLs without switching to a browser and navigating.
+
+This feature would:
+*   Improve discoverability of important project and organization resources.
+*   Provide a quick reference for contributors and users directly from the CLI.
+*   Reduce the need to hunt through documentation for frequently accessed links.
+*   Offer a standardized way for projects using `ContextVibes CLI` to expose their key URLs.
+
+**3. Proposed Functionality & Behavior:**
+
+*   **Configuration Driven:** The list of links should be configurable, likely read from a file within the project or a user's global `ContextVibes CLI` configuration.
+    *   *Suggestion 1:* A dedicated file, e.g., `.contextvibes/links.yaml` or `links.json` in the project root.
+    *   *Suggestion 2:* A section within the existing `.contextvibes.yaml` project configuration file.
+*   **Structured Output:** The command should output the links in a clear, human-readable, and categorized format.
+    *   Example output:
+        ```
+        Context Vibes Initiative Links:
+
+        Repositories:
+          - ContextVibes CLI: https://github.com/contextvibes/cli
+          - THEA Guidance System: <URL_PLACEHOLDER_FOR_THEA_REPO>
+        
+        Contribution Guides:
+          - CLI Contributing: https://github.com/contextvibes/cli/blob/main/CONTRIBUTING.md
+        
+        Community & Support:
+          - Main Discussion Forum: <URL_PLACEHOLDER_FOR_FORUM>
+        ```
+*   **Context Awareness (Optional Enhancement):**
+    *   If run within a specific project configured with its own links file, it shows project-specific links.
+    *   If run from the Context Vibes organization profile repository (or with a global flag), it could show organization-wide links.
+    *   A flag like `--org` could force display of org links even from within a project.
+*   **Output Format (Optional Enhancement):**
+    *   A flag like `--markdown` could output the links in Markdown list format for easy pasting.
+
+**4. Example Configuration (Conceptual YAML for `.contextvibes/links.yaml`):**
+
+```yaml
+links:
+  - category: "Repositories"
+    items:
+      - name: "ContextVibes CLI"
+        url: "https://github.com/contextvibes/cli"
+      - name: "THEA Guidance System"
+        url: "https://example.com/thea-repo" # Placeholder - Update with actual link
+  - category: "Contribution Guides"
+    items:
+      - name: "CLI Contributing"
+        url: "https://github.com/contextvibes/cli/blob/main/CONTRIBUTING.md"
+  - category: "Community & Support"
+    items:
+      - name: "Report CLI Issues"
+        url: "https://github.com/contextvibes/cli/issues"
+# ... more categories and links
+```
+
+**5. Benefits:**
+
+*   Increased developer convenience and productivity.
+*   Better discoverability of essential project/organization resources.
+*   Standardized way for projects to share important links via the CLI they already use.
+*   Reinforces `ContextVibes CLI` as a central developer assistant tool.
+
+**6. Potential Technical Considerations:**
+
+*   Design of the configuration file schema for links (YAML, JSON, TOML?).
+*   Logic for discovering the links configuration file (project-specific vs. global).
+*   Implementation of the output formatting.
+
+This feature would align well with the Context Vibes mission of streamlining development and enhancing clarity.
+
+
+[2m----------------------------------------[22m
+[1;4m#14 Documentation: Examples of how Contextvibes generated output can be used with a LLM
+[0m[2m  Author: mhawksey
+[0m
+[37m- Body:
+[0mThe ContextVibes CLI `README.md` effectively describes the tool's purpose in generating context for AI assistants and lists the types of files it produces. Users could however benefit with being provided some examples demonstrating how a user would typically use these generated outputs with a LLM. For example, suggest how the user would copy this master prompt and use it to initiate a detailed planning session with their chosen LLM.
+
+
+
+[2m----------------------------------------[22m
+[1;4m#12 Doc: Recommend and exemplify using 'gh' CLI alongside ContextVibes
+[0m[2m  Author: duizendstra
+[0m
+[37m- Body:
+[0mAs a ContextVibes CLI user, I want clear documentation and examples on how to effectively use the GitHub CLI ('gh') in conjunction with ContextVibes CLI commands for a complete development workflow (especially for issue tracking and Pull Request management).
+
+**Tasks:**
+- Review existing ContextVibes CLI documentation (`README.md`, `CONTRIBUTING.md`, `COMMAND_REFERENCE.md`, and potentially a new `WORKFLOW_GUIDES.md`).
+- Identify places where integrating `gh` commands would naturally fit into user workflows. Examples:
+    - After `contextvibes kickoff` for daily branches, how to find relevant issues to work on using `gh issue list`.
+    - When using `contextvibes commit`, how to best reference GitHub issue numbers in commit messages.
+    - After `contextvibes sync`, how to use `gh pr create` to submit changes.
+    - How `gh issue develop` can be an alternative to `contextvibes kickoff` for starting work on a specific issue.
+- Add clear, concise examples of these combined workflows.
+- Ensure the guidance emphasizes that `gh` is a complementary tool, not replaced by ContextVibes for GitHub-specific interactions.
+
+**Acceptance Criteria:**
+- Relevant sections in existing (or new) documentation are updated with clear guidance and examples for using `gh` with `contextvibes`.
+- Users can understand how to combine both tools for efficient issue tracking and PR management.
+
+[2m----------------------------------------[22m
+[1;4m#10 Feature: Add Markdown Linting (`contextvibes lint markdown`)
+[0m[2m  Author: duizendstra
+[0m
+[37m- Body:
+[0mAs a developer using ContextVibes, I want a command to lint Markdown files in my project so that I can ensure consistency and quality in my documentation, especially when preparing context for AI. This was proposed by the AI Dev Framework Team.
+
+**Proposed Functionality:**
+- New command: `contextvibes lint markdown [target_path]` (or similar structure like `contextvibes lint --type markdown ...`).
+- Integrate `markdownlint-cli` (Node.js) or investigate a suitable Go-native alternative.
+    - *Dev Note: Decision required on Node.js dependency vs. Go-native linter. If Node.js, consider how CLI will manage/advise on this dependency.*
+- Lints a specific Markdown file or all `.md` files in a directory (recursively).
+- Supports a project-level configuration file (e.g., `.markdownlint.jsonc` or `.markdownlint.yaml`) for the chosen linter.
+- Outputs clear error messages with file names, line numbers, and rule IDs, formatted by the ContextVibes `Presenter`.
+- Consider integration into the `contextvibes quality` command flow (e.g., `quality` could automatically run markdown linting if `.md` files are present and linter is available).
+
+**Acceptance Criteria (MVP):**
+- `contextvibes lint markdown <file>` successfully lints the specified file using the chosen linter.
+- `contextvibes lint markdown <dir>` successfully lints all `.md` files in `<dir>` recursively.
+- Errors from the linter are parsed and displayed clearly using the standard ContextVibes `Presenter` format.
+- The command respects a standard linter configuration file in the project root if present.
+- The CLI either bundles the linter, provides clear instructions for its manual installation as a prerequisite, or checks for its existence and informs the user.
+- Basic documentation for the new command is added.
+
+[2m----------------------------------------[22m
+[1;4m#9 Kickoff: Implement Configuration Foundation
+[0m[2m  Author: duizendstra
+[0m
+[37m- Body:
+[0mAs a developer of ContextVibes CLI, I want to extend `internal/config/config.go` and related config handling so that new state (`projectState.*`) and AI collaboration preferences (`ai.collaborationPreferences.*`) can be robustly loaded, saved, and merged with defaults in `.contextvibes.yaml`.
+
+This enables the `kickoff` command to manage its state and user preferences.
+
+**Related Epic:** #EPIC_ISSUE_NUMBER 
+
+**Acceptance Criteria:**
+- `internal/config/config.go`:
+    - `Config` struct includes `ProjectState` and `AISettings` (with `AICollaborationPreferences`).
+    - `GetDefaultConfig()` initializes these new structs/fields with sensible defaults.
+    - `MergeWithDefaults()` correctly merges these new nested structs, prioritizing user-defined values.
+    - `UpdateAndSaveConfig()` successfully saves the updated config structure to `.contextvibes.yaml`.
+- Unit tests in `internal/config/config_test.go` cover:
+    - Default values for new fields.
+    - Correct merging of new fields.
+    - Successful saving and loading of new fields.
+- An initial `.contextvibes.yaml` (or update existing sample) is created in the `contextvibes/cli` repo root for dogfooding/testing, including placeholders/examples for the new sections.
+
+[2m----------------------------------------[22m
+[1;4m#8 Epic: Implement Enhanced Project Kickoff Feature (Target: v0.2.0)
+[0m[2m  Author: duizendstra
+[0m
+[37m- Body:
+[0mAs a ContextVibes CLI user, I want an enhanced `kickoff` command that supports both AI-assisted strategic project initiation and streamlined daily Git workflows, so that I can start new projects/phases effectively and manage daily development efficiently.
+
+This involves:
+- Dual-mode operation (strategic prompt generation vs. daily Git).
+- State management via `.contextvibes.yaml` (`projectState.strategicKickoffCompleted`).
+- Configuration for AI collaboration preferences (`ai.collaborationPreferences`).
+- Generation of a master prompt from an embedded template for strategic kickoffs.
+- A command/flag to mark strategic kickoff as complete.
+
+**Acceptance Criteria (for Epic):**
+- All child PBIs related to the MVP of this feature are completed and meet their individual ACs.
+- The `kickoff` command behaves as described in `docs/PROJECT_KICKOFF_GUIDE.MD` for both modes.
+- The CLI version can be tagged as `v0.2.0` (or subsequent patch) with this feature included.
+
+**Child Tasks (to be created as separate, linked issues):**
+- [ ] Kickoff: Implement Configuration Foundation
+- [ ] Kickoff: Implement Core Orchestrator & Strategic Prompt Generation
+- [ ] Kickoff: Integrate Orchestrator into `cmd/kickoff.go`
+- [ ] Kickoff: Unit Test Core Config & Orchestrator Logic
+- [ ] Kickoff: Integrate Daily Git Workflow into Orchestrator
+- [ ] Kickoff: Draft Initial User Documentation
+
+[2m----------------------------------------[22m
