@@ -5,6 +5,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -34,7 +35,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background()
@@ -46,6 +47,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		if err != nil {
 			logger.ErrorContext(ctx, "Diff: Failed getwd", slog.String("error", err.Error()))
 			presenter.Error("Failed getwd: %v", err)
+
 			return err
 		}
 		gitCfg := git.GitClientConfig{Logger: logger}
@@ -53,6 +55,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
+
 			return err
 		}
 		logger.DebugContext(ctx, "GitClient initialized", slog.String("source_command", "diff"))
@@ -65,6 +68,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		stagedOut, _, stagedErr := client.GetDiffCached(ctx)
 		if stagedErr != nil {
 			presenter.Error("Failed to get staged changes: %v", stagedErr)
+
 			return stagedErr // Client logs details
 		}
 		stagedOut = strings.TrimSpace(stagedOut)
@@ -79,6 +83,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		unstagedOut, _, unstagedErr := client.GetDiffUnstaged(ctx)
 		if unstagedErr != nil {
 			presenter.Error("Failed to get unstaged changes: %v", unstagedErr)
+
 			return unstagedErr // Client logs details
 		}
 		unstagedOut = strings.TrimSpace(unstagedOut)
@@ -93,6 +98,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		untrackedOut, _, untrackedErr := client.ListUntrackedFiles(ctx)
 		if untrackedErr != nil {
 			presenter.Error("Failed to list untracked files: %v", untrackedErr)
+
 			return untrackedErr // Client logs details
 		}
 		untrackedOut = strings.TrimSpace(untrackedOut)
@@ -119,6 +125,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 			if errWrite != nil {
 				presenter.Error("Failed to write output file '%s': %v", fixedDiffOutputFile, errWrite)
 				logger.ErrorContext(ctx, "Failed to write diff output file" /*...*/)
+
 				return errWrite
 			}
 			// Success message is printed by WriteBufferToFile currently.

@@ -42,16 +42,20 @@ func NewPresenter(outW, errW io.Writer, inR io.Reader) *Presenter {
 	// *** CORRECTED VARIABLE DECLARATIONS AND ASSIGNMENTS ***
 	// Declare local variables with the correct INTERFACE types
 	var out io.Writer = os.Stdout
+
 	var err io.Writer = os.Stderr
+
 	var in io.Reader = os.Stdin
 
 	// Assign parameters ONLY if they are not nil, overwriting defaults
 	if outW != nil {
 		out = outW
 	}
+
 	if errW != nil {
 		err = errW
 	}
+
 	if inR != nil {
 		in = inR
 	}
@@ -131,41 +135,54 @@ func (p *Presenter) Separator() {
 
 func (p *Presenter) PromptForInput(prompt string) (string, error) {
 	reader := bufio.NewReader(p.inR) // Use interface field
+
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, ":") {
 		prompt += ":"
 	}
+
 	prompt += " "
 	p.promptColor.Fprint(p.errW, prompt) // Write prompt to error stream
+
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
+
 		return "", fmt.Errorf("reading input failed: %w", err)
 	}
+
 	return strings.TrimSpace(input), nil
 }
 
 func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 	reader := bufio.NewReader(p.inR) // Use interface field
+
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, "?") {
 		prompt += "?"
 	}
+
 	fullPrompt := prompt + " [y/N]: "
+
 	for {
 		p.promptColor.Fprint(p.errW, fullPrompt) // Write prompt to error stream
+
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
+
 			return false, fmt.Errorf("reading confirmation failed: %w", err)
 		}
+
 		input = strings.ToLower(strings.TrimSpace(input))
 		if input == "y" || input == "yes" {
 			return true, nil
 		}
+
 		if input == "n" || input == "no" || input == "" {
 			return false, nil
 		}
+
 		p.warningColor.Fprintf(p.errW, "~ Invalid input. Please enter 'y' or 'n'.\n") // Write warning to error stream
 	}
 }

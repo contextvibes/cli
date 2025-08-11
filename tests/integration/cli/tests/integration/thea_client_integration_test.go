@@ -19,7 +19,7 @@ func newIntegrationTestLogger() *slog.Logger { // ... (as before) ...
 	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }
 
-// Build Tag: //go:build integration
+// Build Tag: //go:build integration.
 func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 	if os.Getenv("RUN_INTEGRATION_TESTS") == "" && !testing.Short() {
 		t.Skip("Skipping integration test: THEAClient_Integration_FetchRealManifest...")
@@ -40,6 +40,7 @@ func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 	defer cancel()
 
 	logger.Info("INTEGRATION TEST: Attempting to load manifest from live THEA repository (main branch)...")
+
 	manifest, err := client.LoadManifest(ctx)
 
 	require.NoError(t, err)
@@ -49,22 +50,27 @@ func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 
 	// Check specifically for our kickoff prompt artifact
 	foundKickoffPrompt := false
+
 	var kickoffArtifact thea.Artifact // Corrected type
+
 	for _, art := range manifest.Artifacts {
 		if art.ID == "playbooks/project_initiation/master_strategic_kickoff_prompt" {
 			foundKickoffPrompt = true
 			kickoffArtifact = art // Corrected assignment
+
 			break
 		}
 	}
+
 	assert.True(t, foundKickoffPrompt, "Manifest should contain the 'playbooks/project_initiation/master_strategic_kickoff_prompt' artifact")
+
 	if foundKickoffPrompt {
 		t.Logf("Found kickoff prompt artifact: Title: '%s', Version: '%s'", kickoffArtifact.Title, kickoffArtifact.ArtifactVersion)
 		assert.Equal(t, "md", kickoffArtifact.FileExtension)
 	}
 }
 
-// Build Tag: //go:build integration
+// Build Tag: //go:build integration.
 func TestTHEAClient_Integration_FetchRealArtifactContent(t *testing.T) {
 	if os.Getenv("RUN_INTEGRATION_TESTS") == "" && !testing.Short() {
 		t.Skip("Skipping integration test: TestTHEAClient_Integration_FetchRealArtifactContent...")

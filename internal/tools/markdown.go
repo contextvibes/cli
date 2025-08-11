@@ -16,9 +16,11 @@ func AppendSectionHeader(buf *bytes.Buffer, title string) {
 // AppendFencedCodeBlock adds a standard Markdown fenced code block to the buffer.
 func AppendFencedCodeBlock(buf *bytes.Buffer, content string, languageHint string) {
 	buf.WriteString("```")
+
 	if languageHint != "" {
 		buf.WriteString(languageHint)
 	}
+
 	buf.WriteString("\n")
 	// Ensure content ends with a newline before the closing fence
 	// But avoid adding a double newline if one already exists

@@ -26,11 +26,13 @@ and presents an interactive menu to choose one to execute with 'go run'.`,
 		examples, err := findRunnableExamples(".")
 		if err != nil {
 			presenter.Error("Failed to find examples: %v", err)
+
 			return err
 		}
 
 		if len(examples) == 0 {
 			presenter.Warning("No runnable examples found in the './examples' directory.")
+
 			return nil
 		}
 
@@ -42,8 +44,10 @@ and presents an interactive menu to choose one to execute with 'go run'.`,
 			// Check for empty choice which indicates user aborted (e.g., Ctrl+C)
 			if choice == "" {
 				presenter.Info("No selection made. Exiting.")
+
 				return nil
 			}
+
 			return fmt.Errorf("interactive menu failed: %w", err)
 		}
 
@@ -52,15 +56,17 @@ and presents an interactive menu to choose one to execute with 'go run'.`,
 		presenter.Newline()
 
 		// The ExecClient will pipe the stdout/stderr of the example directly to the user's terminal.
-		err = ExecClient.Execute(ctx, ".", "go", "run", fmt.Sprintf("./%s", choice))
+		err = ExecClient.Execute(ctx, ".", "go", "run", "./"+choice)
 		if err != nil {
 			// The ExecClient already logs the command and its failure.
 			// We just need to provide a user-friendly message.
 			presenter.Error("Failed to run example '%s'. See output above for details.", choice)
+
 			return errors.New("example execution failed")
 		}
 
 		AppLogger.InfoContext(ctx, "Successfully launched example", "example_path", choice)
+
 		return nil
 	},
 }
@@ -68,6 +74,7 @@ and presents an interactive menu to choose one to execute with 'go run'.`,
 // findRunnableExamples scans the given root directory for subdirectories within 'examples/'.
 func findRunnableExamples(rootDir string) ([]string, error) {
 	var examples []string
+
 	examplesDir := filepath.Join(rootDir, "examples")
 
 	entries, err := os.ReadDir(examplesDir)
@@ -76,6 +83,7 @@ func findRunnableExamples(rootDir string) ([]string, error) {
 			// It's not an error if the examples directory doesn't exist.
 			return nil, nil
 		}
+
 		return nil, fmt.Errorf("could not read examples directory: %w", err)
 	}
 
@@ -84,6 +92,7 @@ func findRunnableExamples(rootDir string) ([]string, error) {
 			examples = append(examples, filepath.Join("examples", entry.Name()))
 		}
 	}
+
 	return examples, nil
 }
 

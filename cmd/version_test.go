@@ -14,7 +14,6 @@ func TestVersionCmd(t *testing.T) {
 	// but typically package-level init() should handle this.
 	// If there were issues with init order across files (unlikely for same package),
 	// one might set AppVersion = "0.1.0" here for explicit test control.
-
 	testCases := []struct {
 		name           string
 		appVersion     string // To explicitly set for the test run
@@ -37,6 +36,7 @@ func TestVersionCmd(t *testing.T) {
 			// Set the global AppVersion for this specific test case run
 			originalAppVersion := AppVersion // Store original to restore later
 			AppVersion = tc.appVersion
+
 			defer func() { AppVersion = originalAppVersion }() // Restore original AppVersion
 
 			// Create a new root command for each test case to ensure isolation
@@ -62,6 +62,7 @@ func TestVersionCmd(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Execute() failed unexpectedly: %v", err)
 			}
+
 			assert.Equal(t, tc.expectedOutput, out.String())
 		})
 	}

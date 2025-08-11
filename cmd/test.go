@@ -12,7 +12,7 @@ import (
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
-	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed
+	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed.
 )
 
 // Define an interface matching the methods used by the helpers below.
@@ -40,10 +40,10 @@ For other project types, or if no specific test runner is found, it will indicat
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger    // From cmd/root.go
 		if ExecClient == nil { // From cmd/root.go
-			return fmt.Errorf("internal error: executor client not initialized")
+			return errors.New("internal error: executor client not initialized")
 		}
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin)
 		ctx := context.Background() // Get context
@@ -55,6 +55,7 @@ For other project types, or if no specific test runner is found, it will indicat
 			wrappedErr := fmt.Errorf("failed to get current working directory: %w", err)
 			logger.ErrorContext(ctx, "Test: Failed getwd", slog.String("error", err.Error()))
 			presenter.Error("Failed to get current working directory: %v", err)
+
 			return wrappedErr
 		}
 
@@ -64,6 +65,7 @@ For other project types, or if no specific test runner is found, it will indicat
 			wrappedErr := fmt.Errorf("failed to detect project type: %w", err)
 			logger.ErrorContext(ctx, "Test: Failed project detection", slog.String("error", err.Error()))
 			presenter.Error("Failed to detect project type: %v", err)
+
 			return wrappedErr
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
@@ -95,22 +97,25 @@ For other project types, or if no specific test runner is found, it will indicat
 		presenter.Newline()
 		if !testExecuted && testErr == nil {
 			presenter.Info("No tests were executed for the detected project type or configuration.")
+
 			return nil
 		}
 
 		if testErr != nil {
 			presenter.Error("Project tests failed.")
 			logger.Error("Test command finished with errors", slog.String("source_command", "test"), slog.String("error", testErr.Error()))
+
 			return testErr
 		}
 
 		presenter.Success("Project tests completed successfully.")
 		logger.Info("Test command successful", slog.String("source_command", "test"))
+
 		return nil
 	},
 }
 
-// Manually updated signature: accepts ctx, execClient
+// Manually updated signature: accepts ctx, execClient.
 func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execTestClientInterface, dir string, passThroughArgs []string) error {
 	tool := "go"
 	// This should have been updated by codemod
@@ -118,6 +123,7 @@ func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.L
 		errMsgForUser := fmt.Sprintf("'%s' command not found. Ensure Go is installed and in your PATH.", tool)
 		presenter.Error(errMsgForUser)
 		logger.Error("Go test prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
+
 		return errors.New("go command not found")
 	}
 
@@ -132,10 +138,11 @@ func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.L
 	if err != nil {
 		return fmt.Errorf("go test failed: %w", err)
 	}
+
 	return nil
 }
 
-// Manually updated signature: accepts ctx, execClient
+// Manually updated signature: accepts ctx, execClient.
 func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execTestClientInterface, dir string, passThroughArgs []string) error {
 	pytestTool := "pytest"
 	pythonTool := "python"
@@ -149,6 +156,7 @@ func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *sl
 		if err != nil {
 			return fmt.Errorf("pytest failed: %w", err)
 		}
+
 		return nil
 	}
 
@@ -164,12 +172,14 @@ func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *sl
 		if err != nil {
 			return fmt.Errorf("python -m unittest discover failed: %w", err)
 		}
+
 		return nil
 	}
 
 	errMsgForUser := "Neither `pytest` nor `python` found. Cannot run Python tests."
 	presenter.Error(errMsgForUser)
 	logger.Error("Python test prerequisite failed", slog.String("reason", errMsgForUser))
+
 	return errors.New("no python test runner found")
 }
 

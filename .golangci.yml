@@ -8,65 +8,187 @@ run:
   go: '1.24'
   modules-download-mode: readonly
   tests: true
+  skip-dirs:
+    - factory
+
+# The 'issues' section is the modern and correct way to control error reporting.
+issues:
+  fix: true
 
 formatters:
   gofumpt:
-    module-path: github.com/contextvibes/cli
+    module-path: github.com/flow-sdk
     extra-rules: true
   gci:
     sections:
       - standard
       - default
-      - prefix(github.com/contextvibes/cli)
+      - prefix(github.com/flow-sdk)
     custom-order: true
 linters:
+  # By default, all linters are enabled. We explicitly disable the ones we are not ready
+  # to enforce yet. They are organized into phases to be re-enabled incrementally.
   default: all
   disable:
-  - lll
-  - contextcheck
-  - copyloopvar
-  - cyclop
-  - depguard
-  - dogsled
-  - err113
-  - errcheck
-  - exhaustruct
-  - forbidigo
-  - funcorder
-  - funlen
-  - gochecknoglobals
-  - gochecknoinits
-  - gocognit
-  - goconst
-  - gocritic
-  - godot
-  - godox
-  - gosec
-  - iface
-  - ireturn
-  - mnd
-  - nestif
-  - nilerr
-  - nilnil
-  - nlreturn
-  - nonamedreturns
-  - paralleltest
-  - perfsprint
-  - prealloc
-  - revive
-  - sloglint
-  - staticcheck
-  - tagliatelle
-  - testifylint
-  - testpackage
-  - thelper
-  - unparam
-  - usetesting
-  - varnamelen
-  - wastedassign
-  - wrapcheck
-  - wsl
-  
-linters-settings:
-  lll:
-    line-length0
+    # --------------------------------------------------------------------------
+    # -- PHASE 1: Critical Correctness and Security
+    # -- These linters find the most severe issues: potential bugs, panics, and
+    # -- security vulnerabilities. They should be the first to be re-enabled.
+    # --------------------------------------------------------------------------
+    # - errcheck # Finds unchecked errors. HIGHEST PRIORITY.
+    # - gosec # Scans for common security vulnerabilities.
+    # - nilerr # Finds functions that return `nil` instead of a typed nil error.
+    # - nilnil # Checks for `if err != nil { return nil }` which is almost always a bug.
+
+    # --------------------------------------------------------------------------
+    # -- PHASE 2: Code Health and Maintainability
+    # -- This group focuses on code complexity and idiomatic Go patterns that
+    # -- make the code easier to understand and maintain.
+    # --------------------------------------------------------------------------
+    # - gocritic # A highly configurable linter with dozens of checks for style and correctness.
+    # - revive # A fast and configurable replacement for `golint`. Enforces common Go style.
+    # - cyclop # Checks for high cyclomatic complexity (too many paths through a function).
+    # - funlen # Checks for overly long functions.
+    # - gocognit # Checks for high cognitive complexity (how difficult a function is to understand).
+    # - unparam # Finds unused function parameters.
+
+    # --------------------------------------------------------------------------
+    # -- PHASE 3: Idiomatic Go and Advanced Practices
+    # -- This group enforces more advanced Go idioms related to interfaces,
+    # -- error handling, and resource management.
+    # --------------------------------------------------------------------------
+    - wrapcheck # Ensures that errors are wrapped with context using `%w`.
+    - prealloc # Finds slice allocations that could be pre-allocated for performance.
+    - ireturn # Checks for functions that could return an interface instead of a concrete type.
+    - err113 # Enforces that error-wrapping helpers follow the standard pattern.
+    - exhaustive # Ensures switch statements on enums cover all possible values.
+    - exhaustruct # Checks if all struct fields are initialized.
+    - usetesting # Finds tests that don't use the testing `t` parameter.
+    - thelper # Finds test helpers that should be marked with `t.Helper()`.
+
+    # --------------------------------------------------------------------------
+    # -- PHASE 4: Stylistic and Highly Opinionated Rules
+    # -- This group is the most subjective and may require configuration or team
+    # -- discussion before enabling.
+    # --------------------------------------------------------------------------
+    - lll # Checks for long lines.
+    - varnamelen # Checks for variable names that are too short (e.g., `i`, `w`).
+    - goconst # Finds repeated string literals that could be constants.
+    - forbidigo # Prevents the use of specific functions (e.g., `fmt.Println`).
+    - mnd # Magic Number Detector. Finds numbers that should be named constants.
+    - tagliatelle # Checks for consistent `json`, `yaml`, etc. struct tag formats.
+
+    # --------------------------------------------------------------------------
+    # -- PERMANENTLY DISABLED (Generally not applicable or too noisy for this project)
+    # --------------------------------------------------------------------------
+    - depguard # Manages allowed/denied dependencies (we manage this at the module level).
+    - gochecknoglobals # Forbids global variables (can be too strict for some cases).
+    - gochecknoinits # Forbids `init()` functions (sometimes necessary).
+    - errchkjson # Checks for errors in JSON marshaling (often too noisy).
+    - intrange # Checks for integer range violations (not a primary concern for this SDK).
+
+# linters-settings:
+#   errcheck:
+#     # report about not checking of errors in type assetions: `a := b.(MyStruct)`;
+#     # default is false: such cases aren't reported by default.
+#     check-type-assertions: false
+
+#     # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
+#     # default is false: such cases aren't reported by default.
+#     check-blank: false
+
+#     # [deprecated] comma-separated list of pairs of the form pkg:regex
+#     # the regex is used to ignore names within pkg. (default "fmt:.*").
+#     # see https://github.com/kisielk/errcheck#the-deprecated-method for details
+#     # ignore: fmt:.*,io/ioutil:^Read.*
+
+#     # path to a file containing a list of functions to exclude from checking
+#     # see https://github.com/kisielk/errcheck#excluding-functions for details
+#     # exclude: /path/to/file.txt
+
+#   # Disable error checking, as errorcheck detects more errors and is more configurable.
+#   gosec:
+#     exclude:
+#     - "G104"
+
+#   funlen:
+#     lines: 60
+#     statements: 40
+
+#   govet:
+#     # report about shadowed variables
+#     check-shadowing: true
+
+#     # settings per analyzer
+#     settings:
+#       printf: # analyzer name, run `go tool vet help` to see all analyzers
+#         funcs: # run `go tool vet help printf` to see available settings for `printf` analyzer
+#           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+#           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+#           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+#           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+
+#     # enable or disable analyzers by name
+#     # enable:
+#     #   - atomicalign
+#     # enable-all: false
+#     # disable:
+#     #   - shadow
+#     # disable-all: false
+#   gofmt:
+#     # simplify code: gofmt with `-s` option, true by default
+#     simplify: true
+#   goimports:
+#     # put imports beginning with prefix after 3rd-party packages;
+#     # it's a comma-separated list of prefixes
+#     # local-prefixes: github.com/org/project
+#   gocyclo:
+#     # minimal code complexity to report, 30 by default (but we recommend 10-20)
+#     min-complexity: 30
+#   gocognit:
+#     # minimal code complexity to report, 30 by default (but we recommend 10-20)
+#     min-complexity: 20
+#   maligned:
+#     # print struct with more effective memory layout or not, false by default
+#     suggest-new: true
+#   dupl:
+#     # tokens count to trigger issue, 150 by default
+#     threshold: 100
+#   goconst:
+#     # minimal length of string constant, 3 by default
+#     min-len: 3
+#     # minimal occurrences count to trigger, 3 by default
+#     min-occurrences: 3
+#   depguard:
+#     rules:
+#       test:
+#         files:
+#           - $test
+#         allow:
+#           - $gostd
+#           - github.com/duizendstra-com/flow-sdk/writers/bigquery
+#           - github.com/duizendstra-com/flow-sdk/etl
+#           - github.com/stretchr/testify/*
+#           - github.com/charmbracelet/huh
+#           - cloud.google.com/go/bigquery
+#           - github.com/joho/godotenv
+#           - github.com/spf13/cobra
+#           - gitlab.com/gitlab-org/gitlab-shell
+#           - gitlab.com/gitlab-org/labkit
+#           - gitlab.com/gitlab-org/gitaly
+#           - github.com/prometheus/client_golang/prometheus
+#           - github.com/pires/go-proxyproto
+#           - github.com/otiai10/copy
+#           - github.com/hashicorp/go-retryablehttp
+#           - github.com/golang-jwt/jwt
+#           - github.com/mikesmitty/edkey
+#           - github.com/sirupsen/logrus
+#           - github.com/grpc-ecosystem/go-grpc-prometheus
+#           - github.com/mattn/go-shellwords
+
+
+
+#   # Configure the 'lll' (line-length-limit) linter.
+#   lll:
+#     # Keep the default line length limit.
+#     maxlength: 180

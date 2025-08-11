@@ -22,6 +22,7 @@ var generateCommitCmd = &cobra.Command{
 	Short: "Generates context for a commit message.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+
 		return runGenerateCommitContext(cmd.Context(), presenter)
 	},
 }
@@ -31,6 +32,7 @@ var generatePrCmd = &cobra.Command{
 	Short: "Generates context for a Pull Request description.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+
 		return runGeneratePrContext(cmd.Context(), presenter)
 	},
 }
@@ -48,48 +50,83 @@ var exportAllCmd = &cobra.Command{
 		outputFile := "context_export_project.md"
 		presenter.Summary("Exporting full project context to %s...", outputFile)
 		header, err := contextgen.GenerateReportHeader("export-project-context.md", "Full Project Context")
-		if err != nil { return err }
-		if err := os.WriteFile(outputFile, []byte(header), 0644); err != nil { return err }
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(outputFile, []byte(header), 0644); err != nil {
+			return err
+		}
 		if err := contextgen.ExportBook(cmd.Context(), ExecClient, outputFile, "Project Files", "."); err != nil {
 			return err
 		}
 		presenter.Success("Full project export complete.")
+
 		return nil
 	},
 }
 
 func runGenerateCommitContext(ctx context.Context, presenter *ui.Presenter) error {
 	presenter.Summary("Generating context for commit message...")
+
 	header, err := contextgen.GenerateReportHeader("generate-commit-message.md", "Generate Conventional Commit Command")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	status, _, err := ExecClient.CaptureOutput(ctx, ".", "git", "status")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	stagedDiff, _, err := ExecClient.CaptureOutput(ctx, ".", "git", "diff", "--staged")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	unstagedDiff, _, err := ExecClient.CaptureOutput(ctx, ".", "git", "diff")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	var sb strings.Builder
+
 	sb.WriteString(header)
 	sb.WriteString("\n## Git Status\n```\n" + status + "\n```\n")
 	sb.WriteString("---\n## Diff of All Uncommitted Changes\n```diff\n" + stagedDiff + unstagedDiff + "\n```\n")
+
 	return os.WriteFile("context_commit.md", []byte(sb.String()), 0644)
 }
 
 func runGeneratePrContext(ctx context.Context, presenter *ui.Presenter) error {
 	presenter.Summary("Generating context for Pull Request description...")
+
 	header, err := contextgen.GenerateReportHeader("generate-pr-description.md", "Generate Pull Request Description")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Logger: AppLogger, Executor: ExecClient.UnderlyingExecutor()})
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	mainBranchRef := "origin/" + gitClient.MainBranchName()
+
 	presenter.Step("Fetching latest updates from remote...")
+
 	_ = ExecClient.Execute(ctx, ".", "git", "fetch", "origin")
+
 	log, diff, err := gitClient.GetLogAndDiffFromMergeBase(ctx, mainBranchRef)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+
 	var sb strings.Builder
+
 	sb.WriteString(header)
 	sb.WriteString(fmt.Sprintf("\n## Commit History on This Branch\n```\n%s\n```\n", log))
 	sb.WriteString(fmt.Sprintf("---\n## Full Diff for Branch (vs. %s)\n```diff\n%s\n```\n", mainBranchRef, diff))
+
 	return os.WriteFile("context_pr.md", []byte(sb.String()), 0644)
 }
 

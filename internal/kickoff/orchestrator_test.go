@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	// "strings" // Only re-add if specific string manipulations are needed in tests
+	// "strings" // Only re-add if specific string manipulations are needed in tests.
 
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/git"
@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- SourcedInputReader Helper ---
+// --- SourcedInputReader Helper ---.
 type SourcedInputReader struct {
 	inputs []string
 	index  int
@@ -33,12 +33,14 @@ func (sir *SourcedInputReader) Read(p []byte) (n int, err error) {
 	if sir.index >= len(sir.inputs) {
 		return 0, io.EOF
 	}
+
 	inputLine := sir.inputs[sir.index] + "\n"
 	sir.index++
+
 	return copy(p, []byte(inputLine)), nil
 }
 
-// --- Mock Presenter ---
+// --- Mock Presenter ---.
 type MockPresenter struct {
 	mock.Mock
 	OutputBuffer   *bytes.Buffer
@@ -65,21 +67,27 @@ func (m *MockPresenter) SetConfirmations(confirmations []bool) {
 func (m *MockPresenter) PromptForInput(prompt string) (string, error) {
 	m.Called(prompt)
 	m.ErrorBuffer.WriteString(prompt)
+
 	if m.inputIndex < len(m.InputResponses) {
 		input := m.InputResponses[m.inputIndex]
 		m.inputIndex++
+
 		return input, nil
 	}
+
 	return "", errors.New("mock presenter: no more inputs available")
 }
 func (m *MockPresenter) PromptForConfirmation(prompt string) (bool, error) {
 	m.Called(prompt)
 	m.ErrorBuffer.WriteString(prompt)
+
 	if m.confirmIndex < len(m.Confirmations) {
 		confirmation := m.Confirmations[m.confirmIndex]
 		m.confirmIndex++
+
 		return confirmation, nil
 	}
+
 	return false, errors.New("mock presenter: no more confirmations available")
 }
 func (m *MockPresenter) Header(format string, a ...any) {
@@ -114,31 +122,37 @@ func (m *MockPresenter) Newline()                     { fmt.Fprintln(m.OutputBuf
 func (m *MockPresenter) InfoPrefixOnly()              { fmt.Fprint(m.OutputBuffer, "INFO: ") }
 func (m *MockPresenter) Separator()                   { fmt.Fprintln(m.OutputBuffer, "---SEPARATOR---") }
 
-// --- Mock GitClient ---
+// --- Mock GitClient ---.
 type MockGitClient struct{ mock.Mock }
 
 func (m *MockGitClient) GetCurrentBranchName(ctx context.Context) (string, error) {
 	args := m.Called(ctx)
+
 	return args.String(0), args.Error(1)
 }
 func (m *MockGitClient) IsWorkingDirClean(ctx context.Context) (bool, error) {
 	args := m.Called(ctx)
+
 	return args.Bool(0), args.Error(1)
 }
 func (m *MockGitClient) PullRebase(ctx context.Context, branch string) error {
 	args := m.Called(ctx, branch)
+
 	return args.Error(0)
 }
 func (m *MockGitClient) LocalBranchExists(ctx context.Context, branchName string) (bool, error) {
 	args := m.Called(ctx, branchName)
+
 	return args.Bool(0), args.Error(1)
 }
 func (m *MockGitClient) CreateAndSwitchBranch(ctx context.Context, newBranch, baseBranch string) error {
 	args := m.Called(ctx, newBranch, baseBranch)
+
 	return args.Error(0)
 }
 func (m *MockGitClient) PushAndSetUpstream(ctx context.Context, branchName string) error {
 	args := m.Called(ctx, branchName)
+
 	return args.Error(0)
 }
 
@@ -151,7 +165,7 @@ func setupTestOrchestrator(t *testing.T) (
 	mockGit *MockGitClient,
 	configFilePath string,
 ) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 	appCfg = config.GetDefaultConfig()
 
 	tempDir := t.TempDir()
@@ -256,6 +270,7 @@ func TestMarkStrategicKickoffComplete(t *testing.T) {
 	if cfg.ProjectState.StrategicKickoffCompleted != nil {
 		initialKickoffCompleted = *cfg.ProjectState.StrategicKickoffCompleted
 	}
+
 	assert.False(t, initialKickoffCompleted, "Kickoff should not be complete initially by default")
 
 	err := orc.MarkStrategicKickoffComplete(ctx)

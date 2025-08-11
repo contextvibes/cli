@@ -51,7 +51,8 @@ Does NOT automatically push.`,
 		logger := AppLogger
 		if logger == nil {
 			fmt.Fprintln(os.Stderr, "[ERROR] Internal error: logger not initialized")
-			return fmt.Errorf("internal error: logger not initialized")
+
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background()
@@ -59,6 +60,7 @@ Does NOT automatically push.`,
 		if LoadedAppConfig == nil {
 			presenter.Error("Internal error: Application configuration not loaded.")
 			logger.ErrorContext(ctx, "Commit failed: LoadedAppConfig is nil", slog.String("source_command", "commit"))
+
 			return errors.New("application configuration not loaded")
 		}
 
@@ -69,6 +71,7 @@ Does NOT automatically push.`,
 			presenter.Error(errMsgForUser)
 			presenter.Advice("Example: `%s commit -m \"feat(module): Your message\"`", cmd.CommandPath())
 			logger.ErrorContext(ctx, "Commit failed: missing required message flag", slog.String("source_command", "commit"))
+
 			return errors.New(errMsgForError)
 		}
 		finalCommitMessage := commitMessageFlag
@@ -97,6 +100,7 @@ Does NOT automatically push.`,
 				// This should not happen if DefaultCommitMessagePattern is always defined
 				presenter.Error("Internal Error: Commit message validation is enabled but no pattern is defined or defaulted.")
 				logger.ErrorContext(ctx, "Commit failed: validation enabled but no pattern available", slog.String("source_command", "commit"))
+
 				return errors.New("commit validation pattern misconfiguration (empty effective pattern)")
 			}
 
@@ -112,6 +116,7 @@ Does NOT automatically push.`,
 					slog.String("pattern", effectivePattern),
 					slog.String("pattern_source", patternSource),
 					slog.String("error", compileErr.Error()))
+
 				return errors.New(errMsgForError)
 			}
 
@@ -133,6 +138,7 @@ Does NOT automatically push.`,
 					slog.String("commit_message", finalCommitMessage),
 					slog.String("pattern", effectivePattern),
 					slog.String("pattern_source", patternSource))
+
 				return errors.New(errMsgForError)
 			}
 			logger.DebugContext(ctx, "Commit message format validated successfully",
@@ -153,6 +159,7 @@ Does NOT automatically push.`,
 		if err != nil {
 			presenter.Error("Failed to get working directory: %v", err)
 			logger.ErrorContext(ctx, "Commit: Failed getwd", slog.String("error", err.Error()))
+
 			return err
 		}
 		// Pass relevant config values to GitClientConfig
@@ -168,6 +175,7 @@ Does NOT automatically push.`,
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed to initialize Git client: %v", err)
+
 			return err // Client logs details
 		}
 		logger.DebugContext(ctx, "GitClient initialized", slog.String("source_command", "commit"))
@@ -176,6 +184,7 @@ Does NOT automatically push.`,
 		currentBranch, err := client.GetCurrentBranchName(ctx)
 		if err != nil {
 			presenter.Error("Failed to get current branch name: %v", err)
+
 			return err
 		}
 		// Use client.MainBranchName() which gets the effective main branch from its config
@@ -184,6 +193,7 @@ Does NOT automatically push.`,
 			presenter.Error(errMsg)
 			presenter.Advice("Use `contextvibes kickoff` to start a new feature/fix branch first.")
 			logger.ErrorContext(ctx, "Commit failed: attempt to commit on main branch", slog.String("source_command", "commit"), slog.String("branch", currentBranch))
+
 			return errors.New("commit on main branch is disallowed by this command")
 		}
 
@@ -191,6 +201,7 @@ Does NOT automatically push.`,
 		logger.DebugContext(ctx, "Attempting to stage all changes (git add .)", slog.String("source_command", "commit"))
 		if err := client.AddAll(ctx); err != nil {
 			presenter.Error("Failed to stage changes: %v", err)
+
 			return err // Client logs details
 		}
 		logger.DebugContext(ctx, "Staging completed.", slog.String("source_command", "commit"))
@@ -198,11 +209,13 @@ Does NOT automatically push.`,
 		hasStaged, err := client.HasStagedChanges(ctx)
 		if err != nil {
 			presenter.Error("Failed to check for staged changes: %v", err)
+
 			return err // Client logs details
 		}
 		if !hasStaged {
 			presenter.Info("No changes were staged for commit (working directory may have been clean or `git add .` staged nothing).")
 			logger.InfoContext(ctx, "No staged changes found to commit.", slog.String("source_command", "commit"))
+
 			return nil
 		}
 
@@ -248,6 +261,7 @@ Does NOT automatically push.`,
 			confirmed, promptErr = presenter.PromptForConfirmation("Proceed with this commit?")
 			if promptErr != nil {
 				logger.ErrorContext(ctx, "Error reading confirmation for commit", slog.String("source_command", "commit"), slog.String("error", promptErr.Error()))
+
 				return promptErr
 			}
 		}
@@ -255,6 +269,7 @@ Does NOT automatically push.`,
 		if !confirmed {
 			presenter.Info("Commit aborted by user.")
 			logger.InfoContext(ctx, "Commit aborted by user confirmation.", slog.String("source_command", "commit"))
+
 			return nil
 		}
 		logger.DebugContext(ctx, "Proceeding with commit after confirmation.", slog.String("source_command", "commit"))
@@ -265,6 +280,7 @@ Does NOT automatically push.`,
 		if err := client.Commit(ctx, finalCommitMessage); err != nil {
 			presenter.Error("Commit command failed: %v", err)
 			logger.ErrorContext(ctx, "client.Commit method failed", slog.String("source_command", "commit"), slog.String("error", err.Error()))
+
 			return err
 		}
 
@@ -273,6 +289,7 @@ Does NOT automatically push.`,
 		presenter.Success("Commit created successfully locally.")
 		presenter.Advice("Consider syncing your changes using `contextvibes sync`.")
 		logger.InfoContext(ctx, "Commit successful", slog.String("source_command", "commit"), slog.String("commit_message", finalCommitMessage))
+
 		return nil
 	},
 }

@@ -14,6 +14,7 @@ func ReadFileContent(filePath string) ([]byte, error) {
 		// Wrap the error with more context.
 		return nil, fmt.Errorf("error reading file '%s': %w", filePath, err)
 	}
+
 	return content, nil
 }
 
@@ -30,11 +31,14 @@ func WriteBufferToFile(filePath string, buf *bytes.Buffer) error {
 	// They are currently used by cmd/diff and cmd/describe.
 	// Future refactoring might replace these with presenter calls from the cmd layer.
 	fmt.Printf("INFO: Writing output to %s...\n", filePath)
+
 	err := os.WriteFile(filePath, buf.Bytes(), 0644) // Use standard file permissions
 	if err != nil {
 		// Wrap the error with more context.
 		return fmt.Errorf("failed to write output file '%s': %w", filePath, err)
 	}
+
 	fmt.Printf("INFO: Successfully wrote %s.\n", filePath)
+
 	return nil
 }

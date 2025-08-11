@@ -8,11 +8,10 @@ pkgs.buildGoModule {
   src = pkgs.fetchFromGitHub {
     owner = "contextvibes";
     repo = "cli";
-    rev = "c6bbd35d451b68185397351fcd6b742142bddfcc";
-    hash = "sha256-+/6eZFQpSzhPsXmA/+RLXsEopOFnMY1UEP5khUClA2E=";
+    rev = "953256dfd1d1e66fadc47938b8c9e738d7d5a5af";
+    hash = "sha256-opDH5s0hKFKAIUhSEl8qgOPW92Es6NF4FB0eX1vvQQ4=";
   };
 
-  vendorHash = "sha256-Z89OrUXlGAu39ncl6R/MkADPnQje9xELxBT5Rl9QL3w=";
-
+  vendorHash = null;
   subPackages = [ "cmd/contextvibes" ];
 }

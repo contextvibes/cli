@@ -16,7 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// MockExecutor for FindRepoRootConfigPath tests
+// MockExecutor for FindRepoRootConfigPath tests.
 type mockExecutor struct {
 	CaptureOutputFunc func(ctx context.Context, dir string, commandName string, args ...string) (string, string, error)
 }
@@ -25,6 +25,7 @@ func (m *mockExecutor) CaptureOutput(ctx context.Context, dir string, commandNam
 	if m.CaptureOutputFunc != nil {
 		return m.CaptureOutputFunc(ctx, dir, commandName, args...)
 	}
+
 	return "", "", errors.New("CaptureOutputFunc not implemented in mock")
 }
 func (m *mockExecutor) Execute(ctx context.Context, dir string, commandName string, args ...string) error {
@@ -55,7 +56,7 @@ func TestGetDefaultConfig(t *testing.T) {
 
 	require.NotNil(t, cfg.ProjectState.StrategicKickoffCompleted)
 	assert.False(t, *cfg.ProjectState.StrategicKickoffCompleted)
-	assert.Equal(t, "", cfg.ProjectState.LastStrategicKickoffDate)
+	assert.Empty(t, cfg.ProjectState.LastStrategicKickoffDate)
 
 	// Check AI Collaboration Preferences defaults
 	assert.Equal(t, "bash_cat_eof", cfg.AI.CollaborationPreferences.CodeProvisioningStyle)
@@ -192,7 +193,7 @@ func TestMergeWithDefaults(t *testing.T) {
 		merged := MergeWithDefaults(loaded, defaults)
 		require.NotNil(t, merged.Validation.BranchName.Enable)
 		assert.False(t, *merged.Validation.BranchName.Enable)
-		assert.Equal(t, "", merged.Validation.BranchName.Pattern, "Pattern should be cleared if validation is disabled")
+		assert.Empty(t, merged.Validation.BranchName.Pattern, "Pattern should be cleared if validation is disabled")
 	})
 
 	t.Run("override one AI collaboration preference", func(t *testing.T) {
@@ -275,6 +276,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 				if commandName == "git" && args[0] == "rev-parse" {
 					return "", "git error", errors.New("git rev-parse failed")
 				}
+
 				return "", "", errors.New("unexpected command")
 			},
 		}
@@ -291,6 +293,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 				if commandName == "git" && args[0] == "rev-parse" {
 					return "  ", "", nil
 				}
+
 				return "", "", errors.New("unexpected command")
 			},
 		}
@@ -308,6 +311,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 				if commandName == "git" && args[0] == "rev-parse" && args[1] == "--show-toplevel" {
 					return tempDir + "\n", "", nil
 				}
+
 				return "", "", errors.New("unexpected command")
 			},
 		}
@@ -315,7 +319,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 
 		configPath, err := FindRepoRootConfigPath(client)
 		require.NoError(t, err)
-		assert.Equal(t, "", configPath, "Should return empty path if config file not found")
+		assert.Empty(t, configPath, "Should return empty path if config file not found")
 	})
 
 	t.Run("config file found in repo root", func(t *testing.T) {
@@ -329,6 +333,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 				if commandName == "git" && args[0] == "rev-parse" && args[1] == "--show-toplevel" {
 					return tempDir + "\n", "", nil
 				}
+
 				return "", "", errors.New("unexpected command")
 			},
 		}

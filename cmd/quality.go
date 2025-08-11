@@ -63,6 +63,7 @@ var qualityCmd = &cobra.Command{
 			presenter.Info("Running Python checks...")
 		default:
 			presenter.Info("No specific quality checks for project type: %s", projType)
+
 			return nil
 		}
 
@@ -71,9 +72,11 @@ var qualityCmd = &cobra.Command{
 		if len(criticalErrors) > 0 {
 			errMsg := fmt.Sprintf("%d critical quality check(s) failed.", len(criticalErrors))
 			presenter.Error(errMsg)
+
 			return errors.New("critical quality checks failed")
 		}
 		presenter.Success("All quality checks passed.")
+
 		return nil
 	},
 }
@@ -123,6 +126,7 @@ func executeEnhancedGoQualityChecks(ctx context.Context, presenter *ui.Presenter
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -141,10 +145,12 @@ func runSingleCheck(ctx context.Context, presenter *ui.Presenter, logger *slog.L
 		errMsg := fmt.Sprintf("Step %d ('%s') failed", step, check.Name)
 		presenter.Error("%s. See output above for details.", errMsg)
 		logger.ErrorContext(ctx, errMsg, "error", err)
-		return fmt.Errorf(errMsg)
+
+		return errors.New("%s", errMsg)
 	}
 
 	presenter.Success("✓ %s", check.Success)
+
 	return nil
 }
 

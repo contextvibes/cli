@@ -5,6 +5,7 @@ package cmd
 import (
 	"bufio" // For scanning output lines
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -28,7 +29,7 @@ This includes staged changes, unstaged changes, and untracked files.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background()
@@ -38,6 +39,7 @@ This includes staged changes, unstaged changes, and untracked files.`,
 		if err != nil {
 			logger.ErrorContext(ctx, "Status: Failed getwd", slog.String("error", err.Error()))
 			presenter.Error("Failed getwd: %v", err)
+
 			return err
 		}
 		gitCfg := git.GitClientConfig{Logger: logger}
@@ -45,6 +47,7 @@ This includes staged changes, unstaged changes, and untracked files.`,
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
+
 			return err
 		}
 		logger.DebugContext(ctx, "GitClient initialized", slog.String("source_command", "status"))

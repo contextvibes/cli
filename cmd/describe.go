@@ -15,7 +15,7 @@ import (
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/ui"
 
-	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed for exec functions
+	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed for exec functions.
 	"github.com/contextvibes/cli/internal/tools" // Keep for non-exec tools like ReadFileContent, markdown helpers for now
 
 	gitignore "github.com/denormal/go-gitignore"
@@ -53,10 +53,10 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
 		if ExecClient == nil {
-			return fmt.Errorf("internal error: executor client not initialized")
+			return errors.New("internal error: executor client not initialized")
 		}
 		if logger == nil {
-			return fmt.Errorf("internal error: logger not initialized")
+			return errors.New("internal error: logger not initialized")
 		}
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
 		ctx := context.Background() // Define context for helper functions
@@ -67,6 +67,7 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		if err != nil {
 			logger.ErrorContext(ctx, "Describe: Failed getwd", slog.String("err", err.Error()))
 			presenter.Error("Failed getwd: %v", err)
+
 			return err
 		}
 
@@ -90,6 +91,7 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init (is this a Git repository?): %v", err)
+
 			return err
 		}
 		logger.DebugContext(ctx, "GitClient initialized for describe", slog.String("source_command", "describe"))
@@ -111,6 +113,7 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		gitignoreErrorHandler := func(ignoreErr gitignore.Error) bool {
 			presenter.Warning("Parsing .aiexclude file: %v", ignoreErr)
 			logger.WarnContext(ctx, "Parsing .aiexclude file", slog.Any("error", ignoreErr))
+
 			return true
 		}
 		if readErr == nil {
@@ -142,6 +145,7 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		}
 		if userPrompt == "" {
 			presenter.Error("prompt cannot be empty")
+
 			return errors.New("prompt cannot be empty")
 		}
 		fmt.Fprintf(&outputBuffer, "%s\n\n", userPrompt)
@@ -286,19 +290,23 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		err = tools.WriteBufferToFile(outputFilePath, &outputBuffer) // tools.WriteBufferToFile is fine as it's just file I/O
 		if err != nil {
 			presenter.Error("Failed to write output file '%s': %v", outputFilePath, err)
+
 			return err
 		}
 		presenter.Success("Successfully generated context file: %s", outputFilePath)
+
 		return nil
 	},
 }
 
-// Updated signature to include ctx
+// Updated signature to include ctx.
 func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd, displayName, commandName string, args ...string) {
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Explicitly ignore ctx if only passed through
+
 	fmt.Fprintf(buf, "  %s: ", displayName)
+
 	logger := AppLogger // Assuming AppLogger is accessible as a package variable from cmd/root.go
 
 	// Prefer --version first, use ExecClient
@@ -306,6 +314,7 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 	if versionErr == nil && strings.TrimSpace(versionOutput) != "" {
 		output := versionOutput
 		parsedOutput := strings.TrimSpace(output)
+
 		if commandName == "go" && strings.HasPrefix(output, "go version") {
 			parts := strings.Fields(output)
 			if len(parts) >= 3 {
@@ -319,25 +328,31 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 		} else if commandName == "gcloud" && strings.Contains(output, "Google Cloud SDK") {
 			lines := strings.Split(output, "\n")
 			sdkLineFound := false
+
 			for _, line := range lines {
 				trimmedLine := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmedLine, "Google Cloud SDK") {
 					parsedOutput = trimmedLine
 					sdkLineFound = true
+
 					break
 				}
 			}
+
 			if !sdkLineFound {
 				parsedOutput = strings.SplitN(strings.TrimSpace(output), "\n", 2)[0]
 			}
 		} else {
 			parsedOutput = strings.SplitN(parsedOutput, "\n", 2)[0]
 		}
+
 		buf.WriteString(parsedOutput)
 		buf.WriteString("\n")
 		logger.Debug("Tool version found", slog.String("tool", commandName), slog.String("version", parsedOutput))
+
 		return
 	}
+
 	logger.Debug("Tool --version flag failed or gave empty output", slog.String("tool", commandName), slog.Any("error", versionErr))
 
 	// Fallback to original args, use ExecClient
@@ -352,10 +367,12 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 			p.Warning("Could not determine version for '%s'.", commandName)
 			logger.Warn("Tool version check failed or empty output", slog.String("tool", commandName), slog.Any("error", err))
 		}
+
 		return
 	}
 	// (Parsing logic remains the same as before)
 	parsedOutput := strings.TrimSpace(output)
+
 	if commandName == "go" && strings.HasPrefix(output, "go version") {
 		parts := strings.Fields(output)
 		if len(parts) >= 3 {
@@ -369,33 +386,39 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 	} else if commandName == "gcloud" && strings.Contains(output, "Google Cloud SDK") {
 		lines := strings.Split(output, "\n")
 		sdkLineFound := false
+
 		for _, line := range lines {
 			trimmedLine := strings.TrimSpace(line)
 			if strings.HasPrefix(trimmedLine, "Google Cloud SDK") {
 				parsedOutput = trimmedLine
 				sdkLineFound = true
+
 				break
 			}
 		}
+
 		if !sdkLineFound {
 			parsedOutput = strings.SplitN(strings.TrimSpace(output), "\n", 2)[0]
 		}
 	} else {
 		parsedOutput = strings.SplitN(parsedOutput, "\n", 2)[0]
 	}
+
 	buf.WriteString(parsedOutput)
 	buf.WriteString("\n")
 	logger.Debug("Tool version found (via fallback args)", slog.String("tool", commandName), slog.String("version", parsedOutput))
 }
 
-// Updated signature to include ctx (though not used by ExecClient.CommandExists directly)
+// Updated signature to include ctx (though not used by ExecClient.CommandExists directly).
 func appendCommandAvailability(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd string, commandName string) {
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Explicitly ignore ctx if only passed through
 	// Renamed unused parameter from _ to cwd to match the call signature, even if not used directly by CommandExists
 	_ = cwd // Explicitly ignore cwd if CommandExists doesn't need it
+
 	fmt.Fprintf(buf, "  %s: ", commandName)
+
 	logger := AppLogger
 
 	// Use ExecClient.CommandExists
@@ -409,7 +432,7 @@ func appendCommandAvailability(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 	}
 }
 
-// Updated signature to include ctx, though not directly used by os.Stat or tools.ReadFileContent
+// Updated signature to include ctx, though not directly used by os.Stat or tools.ReadFileContent.
 func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd, filePath string, maxSizeBytes int64) error {
 	_ = ctx // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic
 	_ = ctx // Explicitly ignore ctx for now if unused by current logic
@@ -417,6 +440,7 @@ func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 	fullPath := filepath.Join(cwd, filePath)
 	logger := AppLogger
 	logger.Debug("Attempting to append file content", slog.String("path", filePath), slog.String("full_path", fullPath))
+
 	info, err := os.Stat(fullPath)
 	if err != nil {
 		errMsg := ""
@@ -425,33 +449,45 @@ func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 		} else {
 			errMsg = fmt.Sprintf("Skipping '%s' (cannot stat: %v)", filePath, err)
 		}
+
 		p.Warning(errMsg)
+
 		return errors.New(errMsg)
 	}
+
 	if !info.Mode().IsRegular() {
 		errMsg := fmt.Sprintf("Skipping '%s' (not a regular file)", filePath)
 		p.Warning(errMsg)
+
 		return errors.New(errMsg)
 	}
+
 	if info.Size() == 0 {
 		logger.Debug("Skipping empty file", slog.String("path", filePath))
+
 		return fmt.Errorf("skipping empty file %s", filePath)
 	}
+
 	if info.Size() > maxSizeBytes {
 		errMsg := fmt.Sprintf("Skipping '%s' (too large: %dB > %dB limit)", filePath, info.Size(), maxSizeBytes)
 		p.Warning(errMsg)
+
 		return errors.New(errMsg)
 	}
+
 	content, err := tools.ReadFileContent(fullPath) // tools.ReadFileContent is fine (file I/O)
 	if err != nil {
 		errMsg := fmt.Sprintf("Skipping '%s' (read error: %v)", filePath, err)
 		p.Warning(errMsg)
+
 		return errors.New(errMsg)
 	}
+
 	tools.AppendFileMarkerHeader(buf, filePath) // markdown util
 	buf.Write(content)
 	tools.AppendFileMarkerFooter(buf, filePath) // markdown util
 	logger.Debug("Appended file content successfully", slog.String("path", filePath), slog.Int64("size", info.Size()))
+
 	return nil
 }
 

@@ -105,6 +105,7 @@ func GetDefaultConfig() *Config {
 			},
 		},
 	}
+
 	return cfg
 }
 
@@ -112,13 +113,16 @@ func LoadConfig(filePath string) (*Config, error) {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return nil, nil
 	}
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file '%s': %w", filePath, err)
 	}
+
 	if len(data) == 0 {
 		return nil, nil
 	}
+
 	var cfg Config
 	// Use yaml.UnmarshalStrict to catch more errors if needed, but v3.Unmarshal is usually fine.
 	err = yaml.Unmarshal(data, &cfg)
@@ -126,6 +130,7 @@ func LoadConfig(filePath string) (*Config, error) {
 		// Wrap the specific YAML parsing error
 		return nil, fmt.Errorf("failed to parse YAML config file '%s': %w", filePath, err)
 	}
+
 	return &cfg, nil
 }
 
@@ -133,11 +138,14 @@ func FindRepoRootConfigPath(execClient *exec.ExecutorClient) (string, error) {
 	if execClient == nil {
 		return "", errors.New("executor client is nil, cannot find repo root")
 	}
+
 	ctx := context.Background()
+
 	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", fmt.Errorf("failed to determine git repository root (is this a git repo, or is 'git' not in PATH? details: %s): %w", strings.TrimSpace(stderr), err)
 	}
+
 	repoRoot := filepath.Clean(strings.TrimSpace(stdout))
 	if repoRoot == "" || repoRoot == "." {
 		return "", errors.New("git rev-parse --show-toplevel returned an empty or invalid path, not in a git repository")
@@ -149,6 +157,7 @@ func FindRepoRootConfigPath(execClient *exec.ExecutorClient) (string, error) {
 	} else if statErr != nil {
 		return "", fmt.Errorf("error checking for config file at '%s': %w", configPath, statErr)
 	}
+
 	return configPath, nil
 }
 
@@ -156,6 +165,7 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if defaultConfig == nil {
 		panic("MergeWithDefaults called with nil defaultConfig")
 	}
+
 	if loadedCfg == nil {
 		return defaultConfig
 	}
@@ -165,9 +175,11 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if loadedCfg.Git.DefaultRemote != "" {
 		finalCfg.Git.DefaultRemote = loadedCfg.Git.DefaultRemote
 	}
+
 	if loadedCfg.Git.DefaultMainBranch != "" {
 		finalCfg.Git.DefaultMainBranch = loadedCfg.Git.DefaultMainBranch
 	}
+
 	if loadedCfg.Logging.DefaultAILogFile != "" {
 		finalCfg.Logging.DefaultAILogFile = loadedCfg.Logging.DefaultAILogFile
 	}
@@ -175,6 +187,7 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if loadedCfg.Validation.BranchName.Enable != nil {
 		finalCfg.Validation.BranchName.Enable = loadedCfg.Validation.BranchName.Enable
 	}
+
 	if finalCfg.Validation.BranchName.Enable == nil || *finalCfg.Validation.BranchName.Enable {
 		if loadedCfg.Validation.BranchName.Pattern != "" {
 			finalCfg.Validation.BranchName.Pattern = loadedCfg.Validation.BranchName.Pattern
@@ -186,6 +199,7 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if loadedCfg.Validation.CommitMessage.Enable != nil {
 		finalCfg.Validation.CommitMessage.Enable = loadedCfg.Validation.CommitMessage.Enable
 	}
+
 	if finalCfg.Validation.CommitMessage.Enable == nil || *finalCfg.Validation.CommitMessage.Enable {
 		if loadedCfg.Validation.CommitMessage.Pattern != "" {
 			finalCfg.Validation.CommitMessage.Pattern = loadedCfg.Validation.CommitMessage.Pattern
@@ -197,6 +211,7 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if loadedCfg.ProjectState.StrategicKickoffCompleted != nil {
 		finalCfg.ProjectState.StrategicKickoffCompleted = loadedCfg.ProjectState.StrategicKickoffCompleted
 	}
+
 	if loadedCfg.ProjectState.LastStrategicKickoffDate != "" {
 		finalCfg.ProjectState.LastStrategicKickoffDate = loadedCfg.ProjectState.LastStrategicKickoffDate
 	}
@@ -205,15 +220,19 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if userAICollabPrefs.CodeProvisioningStyle != "" {
 		finalCfg.AI.CollaborationPreferences.CodeProvisioningStyle = userAICollabPrefs.CodeProvisioningStyle
 	}
+
 	if userAICollabPrefs.MarkdownDocsStyle != "" {
 		finalCfg.AI.CollaborationPreferences.MarkdownDocsStyle = userAICollabPrefs.MarkdownDocsStyle
 	}
+
 	if userAICollabPrefs.DetailedTaskMode != "" {
 		finalCfg.AI.CollaborationPreferences.DetailedTaskMode = userAICollabPrefs.DetailedTaskMode
 	}
+
 	if userAICollabPrefs.ProactiveDetailLevel != "" {
 		finalCfg.AI.CollaborationPreferences.ProactiveDetailLevel = loadedCfg.AI.CollaborationPreferences.ProactiveDetailLevel
 	}
+
 	if userAICollabPrefs.AIProactivity != "" {
 		finalCfg.AI.CollaborationPreferences.AIProactivity = loadedCfg.AI.CollaborationPreferences.AIProactivity
 	}
@@ -246,13 +265,17 @@ func UpdateAndSaveConfig(cfgToSave *Config, filePath string) error {
 
 	if _, err := tempFile.Write(yamlData); err != nil {
 		_ = tempFile.Close()
+
 		return fmt.Errorf("failed to write to temporary config file '%s': %w", tempFile.Name(), err)
 	}
+
 	if err := tempFile.Close(); err != nil {
 		return fmt.Errorf("failed to close temporary config file '%s': %w", tempFile.Name(), err)
 	}
+
 	if err := os.Rename(tempFile.Name(), filePath); err != nil {
 		return fmt.Errorf("failed to rename temporary config file to '%s': %w", filePath, err)
 	}
+
 	return nil
 }

@@ -5,21 +5,21 @@ import (
 	"context"
 	"encoding/json"
 
-	// "fmt" // Only if used
+	// "fmt" // Only if used.
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 
-	// "strings" // Only if used for more complex path/URL assertions
+	// "strings" // Only if used for more complex path/URL assertions.
 	"testing"
-	// "time" // Only if used for time-related tests (e.g., caching)
+	// "time" // Only if used for time-related tests (e.g., caching).
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Helper to create a test logger
+// Helper to create a test logger.
 func newTestLogger() *slog.Logger {
 	// For CI or quiet tests, use io.Discard. For local debugging, os.Stdout is fine.
 	// return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -62,6 +62,7 @@ func TestFetchManifest_Success(t *testing.T) {
 	assert.NotNil(t, manifest)
 	assert.Equal(t, expectedManifest.ManifestSchemaVersion, manifest.ManifestSchemaVersion)
 	assert.Len(t, manifest.Artifacts, 1)
+
 	if len(manifest.Artifacts) > 0 { // Guard against panic if artifacts slice is unexpectedly empty
 		assert.Equal(t, "test-id", manifest.Artifacts[0].ID)
 	}
@@ -87,6 +88,7 @@ func TestFetchManifest_ServerReturns404(t *testing.T) {
 
 	_, err = client.fetchManifest(context.Background())
 	assert.Error(t, err)
+
 	if err != nil { // Guard for err being non-nil before calling Contains
 		assert.Contains(t, err.Error(), "received status 404")
 	}

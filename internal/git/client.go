@@ -32,6 +32,7 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	if err != nil {
 		return nil, fmt.Errorf("invalid GitClientConfig: %w", err)
 	}
+
 	logger := validatedConfig.Logger     // This is the GitClient's own logger
 	executor := validatedConfig.Executor // This is the exec.CommandExecutor
 
@@ -42,6 +43,7 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 			slog.String("source_component", "GitClient.NewClient"),
 			slog.String("error", err.Error()),
 			slog.String("executable_path", validatedConfig.GitExecutable))
+
 		return nil, err
 	}
 
@@ -50,32 +52,39 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 		effectiveWorkDir, err = os.Getwd()
 		if err != nil {
 			logger.ErrorContext(ctx, "GitClient setup failed: getwd", slog.String("error", err.Error()))
+
 			return nil, fmt.Errorf("failed to get current working directory: %w", err)
 		}
 	}
 
 	// Use the executor to find repo top-level
 	topLevelCmdArgs := []string{"rev-parse", "--show-toplevel"}
+
 	topLevel, stderr, err := executor.CaptureOutput(ctx, effectiveWorkDir, validatedConfig.GitExecutable, topLevelCmdArgs...)
 	if err != nil {
 		logger.ErrorContext(ctx, "GitClient setup failed: rev-parse --show-toplevel",
 			slog.String("error", err.Error()),
 			slog.String("stderr", strings.TrimSpace(stderr)),
 			slog.String("initial_workdir", effectiveWorkDir))
+
 		return nil, fmt.Errorf("path '%s' is not within a Git repository (or git command '%s' failed)", effectiveWorkDir, validatedConfig.GitExecutable)
 	}
+
 	repoPath := strings.TrimSpace(topLevel)
 
 	// Use the executor to find .git directory
 	gitDirCmdArgs := []string{"rev-parse", "--git-dir"}
+
 	gitDirOutput, stderr, err := executor.CaptureOutput(ctx, repoPath, validatedConfig.GitExecutable, gitDirCmdArgs...)
 	if err != nil {
 		logger.ErrorContext(ctx, "GitClient setup failed: rev-parse --git-dir",
 			slog.String("error", err.Error()),
 			slog.String("stderr", strings.TrimSpace(stderr)),
 			slog.String("repo_path", repoPath))
+
 		return nil, fmt.Errorf("could not determine .git directory for repo at '%s': %w", repoPath, err)
 	}
+
 	gitDir := strings.TrimSpace(gitDirOutput)
 	if !filepath.IsAbs(gitDir) {
 		gitDir = filepath.Join(repoPath, gitDir)
@@ -91,6 +100,7 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	logger.InfoContext(ctx, "GitClient initialized successfully",
 		slog.String("repository_path", client.repoPath),
 		slog.String("git_dir", client.gitDir))
+
 	return client, nil
 }
 
@@ -118,15 +128,19 @@ func (c *GitClient) GetCurrentBranchName(ctx context.Context) (string, error) {
 	stdout, stderr, err := c.captureGitOutput(ctx, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		c.logger.ErrorContext(ctx, "Failed to get current branch name", "error", err, "stderr", strings.TrimSpace(stderr))
+
 		return "", fmt.Errorf("failed to get current branch name: %w", err)
 	}
+
 	branch := strings.TrimSpace(stdout)
 	if branch == "HEAD" {
-		return "", fmt.Errorf("currently in detached HEAD state")
+		return "", errors.New("currently in detached HEAD state")
 	}
+
 	if branch == "" {
-		return "", fmt.Errorf("could not determine current branch name (empty output)")
+		return "", errors.New("could not determine current branch name (empty output)")
 	}
+
 	return branch, nil
 }
 
@@ -135,17 +149,20 @@ func (c *GitClient) AddAll(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("git add . failed: %w", err)
 	}
+
 	return nil
 }
 
 func (c *GitClient) Commit(ctx context.Context, message string) error {
 	if strings.TrimSpace(message) == "" {
-		return fmt.Errorf("commit message cannot be empty")
+		return errors.New("commit message cannot be empty")
 	}
+
 	err := c.runGit(ctx, "commit", "-m", message)
 	if err != nil {
 		return fmt.Errorf("commit command failed: %w", err)
 	}
+
 	return nil
 }
 
@@ -154,10 +171,12 @@ func (c *GitClient) HasStagedChanges(ctx context.Context) (bool, error) {
 	if err == nil {
 		return false, nil // Exit 0: no changes
 	}
+
 	var exitErr *osexec.ExitError // Use osexec.ExitError
 	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
 		return true, nil // Exit 1: changes found
 	}
+
 	return false, fmt.Errorf("failed to determine staged status: %w", err)
 }
 
@@ -172,8 +191,10 @@ func (c *GitClient) GetDiffCached(ctx context.Context) (string, string, error) {
 		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
 			return stdout, stderr, nil // Exit 1 (changes found) is not an error for this func
 		}
+
 		return stdout, stderr, err // Actual error
 	}
+
 	return stdout, stderr, nil // No error, no diff
 }
 
@@ -184,8 +205,10 @@ func (c *GitClient) GetDiffUnstaged(ctx context.Context) (string, string, error)
 		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
 			return stdout, stderr, nil // Exit 1 (changes found) is not an error for this func
 		}
+
 		return stdout, stderr, err // Actual error
 	}
+
 	return stdout, stderr, nil // No error, no diff
 }
 
@@ -200,31 +223,39 @@ func (c *GitClient) IsWorkingDirClean(ctx context.Context) (bool, error) {
 		if errors.As(errDiff, &exitErr) && exitErr.ExitCode() == 1 {
 			return false, nil // Unstaged changes
 		}
+
 		return false, fmt.Errorf("failed checking unstaged changes: %w", errDiff)
 	}
+
 	hasStaged, errStaged := c.HasStagedChanges(ctx)
 	if errStaged != nil {
 		return false, fmt.Errorf("failed checking staged changes: %w", errStaged)
 	}
+
 	if hasStaged {
 		return false, nil // Staged changes
 	}
+
 	untrackedOut, _, errUntracked := c.ListUntrackedFiles(ctx)
 	if errUntracked != nil {
 		return false, fmt.Errorf("failed checking untracked files: %w", errUntracked)
 	}
+
 	if strings.TrimSpace(untrackedOut) != "" {
 		return false, nil // Untracked files
 	}
+
 	return true, nil
 }
 
 func (c *GitClient) PullRebase(ctx context.Context, branch string) error {
 	remote := c.RemoteName()
 	err := c.runGit(ctx, "pull", "--rebase", remote, branch)
+
 	if err != nil {
 		return fmt.Errorf("git pull --rebase %s %s failed: %w", remote, branch, err)
 	}
+
 	return nil
 }
 
@@ -233,11 +264,13 @@ func (c *GitClient) IsBranchAhead(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get status to check if branch is ahead: %w", err)
 	}
+
 	return strings.Contains(stdout, "[ahead "), nil
 }
 
 func (c *GitClient) Push(ctx context.Context, branch string) error {
 	remote := c.RemoteName()
+
 	args := []string{"push", remote}
 	if branch != "" {
 		args = append(args, branch)
@@ -250,23 +283,29 @@ func (c *GitClient) Push(ctx context.Context, branch string) error {
 		errMsg := strings.ToLower(err.Error() + " " + stderr) // Combine for checking
 		if strings.Contains(errMsg, "everything up-to-date") || strings.Contains(errMsg, "already up-to-date") {
 			c.logger.InfoContext(ctx, "'git push' reported everything up-to-date.", "remote", remote, "branch_arg", branch)
+
 			return nil // Not a failure
 		}
+
 		return fmt.Errorf("git push failed: %w", err)
 	}
+
 	return nil
 }
 
 func (c *GitClient) LocalBranchExists(ctx context.Context, branchName string) (bool, error) {
-	ref := fmt.Sprintf("refs/heads/%s", branchName)
+	ref := "refs/heads/" + branchName
+
 	_, _, err := c.captureGitOutput(ctx, "show-ref", "--verify", "--quiet", ref)
 	if err == nil {
 		return true, nil // Exit 0 means it exists
 	}
+
 	var exitErr *osexec.ExitError
 	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
 		return false, nil // Exit 1 means it doesn't exist
 	}
+
 	return false, fmt.Errorf("failed to check existence of local branch '%s': %w", branchName, err)
 }
 
@@ -275,6 +314,7 @@ func (c *GitClient) SwitchBranch(ctx context.Context, branchName string) error {
 	if err != nil {
 		return fmt.Errorf("git switch %s failed: %w", branchName, err)
 	}
+
 	return nil
 }
 
@@ -283,19 +323,23 @@ func (c *GitClient) CreateAndSwitchBranch(ctx context.Context, newBranchName str
 	if baseBranch != "" {
 		args = append(args, baseBranch)
 	}
+
 	err := c.runGit(ctx, args...)
 	if err != nil {
 		return fmt.Errorf("git switch -c %s failed: %w", newBranchName, err)
 	}
+
 	return nil
 }
 
 func (c *GitClient) PushAndSetUpstream(ctx context.Context, branchName string) error {
 	remote := c.RemoteName()
 	err := c.runGit(ctx, "push", "--set-upstream", remote, branchName)
+
 	if err != nil {
 		return fmt.Errorf("git push --set-upstream %s %s failed: %w", remote, branchName, err)
 	}
+
 	return nil
 }
 
@@ -309,12 +353,15 @@ func TruncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
+
 	if maxLen < 4 {
 		if maxLen < 0 {
 			return ""
 		}
+
 		return s[:maxLen]
 	}
+
 	return s[:maxLen-3] + "..."
 }
 
@@ -332,6 +379,7 @@ func (c *GitClient) GetLogAndDiffFromMergeBase(ctx context.Context, baseBranchRe
 	if err != nil {
 		return "", "", fmt.Errorf("git merge-base against '%s' failed: %w", baseBranchRef, err)
 	}
+
 	mergeBase := strings.TrimSpace(string(mergeBaseBytes))
 
 	log, _, err = c.captureGitOutput(ctx, "log", "--pretty=format:%h %s (%an, %cr)", mergeBase+"..HEAD")

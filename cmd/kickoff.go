@@ -64,11 +64,13 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 		if LoadedAppConfig == nil {
 			presenter.Error("Internal error: Application configuration not loaded.")
 			logger.ErrorContext(ctx, "Kickoff cmd failed: LoadedAppConfig is nil", slog.String("source_command", "kickoff"))
+
 			return errors.New("application configuration not loaded")
 		}
 		if ExecClient == nil {
 			presenter.Error("Internal error: Executor client not initialized.")
 			logger.ErrorContext(ctx, "Kickoff cmd failed: ExecClient is nil", slog.String("source_command", "kickoff"))
+
 			return errors.New("executor client not initialized")
 		}
 
@@ -99,6 +101,7 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 		if err != nil {
 			presenter.Error("Failed to get working directory: %v", err)
 			logger.ErrorContext(ctx, "Kickoff cmd: Failed getwd", slog.String("error", err.Error()))
+
 			return err
 		}
 
@@ -136,10 +139,12 @@ Global --yes flag (from root command) bypasses confirmations for daily kickoff a
 			logger.ErrorContext(ctx, "Kickoff command execution resulted in error",
 				slog.String("source_command", "kickoff"),
 				slog.Any("error", err))
+
 			return err
 		}
 
 		logger.InfoContext(ctx, "Kickoff command completed successfully.", slog.String("source_command", "kickoff"))
+
 		return nil
 	},
 }

@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
 	"github.com/spf13/cobra"
@@ -26,7 +25,7 @@ var rootCmd = &cobra.Command{
 	Long:  `ContextVibes: Your Project Development Assistant CLI.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Bootstrap logger and exec client
-		bootstrapOSExecutor := exec.NewOSCommandExecutor(slog.New(slog.NewTextHandler(io.Discard, nil)))
+		bootstrapOSExecutor := exec.NewOSCommandExecutor(slog.New(slog.DiscardHandler))
 		bootstrapExecClient := exec.NewClient(bootstrapOSExecutor)
 
 		// Load and merge config
@@ -50,7 +49,7 @@ var rootCmd = &cobra.Command{
 			targetAILogFile = aiLogFileFlagValue
 		}
 		logFileHandle, errLogFile := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
-		var aiOut io.Writer = io.Discard
+		var aiOut = io.Discard
 		if errLogFile == nil {
 			aiOut = logFileHandle
 		}
@@ -59,7 +58,7 @@ var rootCmd = &cobra.Command{
 		// Initialize final exec client
 		mainOSExecutor := exec.NewOSCommandExecutor(AppLogger)
 		ExecClient = exec.NewClient(mainOSExecutor)
-		
+
 		return nil
 	},
 }
@@ -107,10 +106,15 @@ func init() {
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {
 	switch strings.ToLower(levelStr) {
-	case "debug": return slog.LevelDebug
-	case "info": return slog.LevelInfo
-	case "warn": return slog.LevelWarn
-	case "error": return slog.LevelError
-	default: return defaultLevel
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return defaultLevel
 	}
 }
