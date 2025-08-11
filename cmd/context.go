@@ -54,7 +54,7 @@ var exportAllCmd = &cobra.Command{
 		if err := os.WriteFile(outputFile, []byte(header), 0600); err != nil {
 			return err
 		}
-		if err := contextgen.ExportBook(cmd.Context(), ExecClient, outputFile, "Project Files", "."); err != nil {
+		if err := contextgen.ExportBook(cmd.Context(), ExecClient, outputFile, "Project Files", LoadedAppConfig.Export.ExcludePatterns, "."); err != nil {
 			return err
 		}
 		presenter.Success("Full project export complete.")
