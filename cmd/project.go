@@ -1,4 +1,4 @@
-// FILE: cmd/project.go
+// cmd/project.go
 package cmd
 
 import (
@@ -32,26 +32,41 @@ type Comment struct {
 	Body   string `json:"body"`
 }
 
-func (i *Issue) WriteTo(w io.Writer) {
-	presenter := ui.NewPresenter(w, io.Discard, nil) // Use a presenter that writes to the target
+// WriteTo conforms to the io.WriterTo interface, which is a Go standard.
+func (i *Issue) WriteTo(w io.Writer) (n int64, err error) {
+	// Use a temporary presenter to format output to the provided writer.
+	presenter := ui.NewPresenter(w, io.Discard, nil)
+	var totalBytes int
+
+	// Helper to write and track byte count
+	write := func(format string, a ...any) {
+		if err != nil {
+			return
+		}
+		var written int
+		written, err = fmt.Fprintf(w, format, a...)
+		totalBytes += written
+	}
+
 	presenter.Header(fmt.Sprintf("#%d %s", i.Number, i.Title))
 	presenter.Detail("Author: %s", i.Author.Login)
 	presenter.Newline()
 	presenter.Step("Body:")
-	// Use a different style for body/comment to distinguish from other presenter messages
-	_, _ = fmt.Fprintln(w, i.Body)
-	presenter.Newline()
+	write("%s\n\n", i.Body)
 
 	if len(i.Comments) > 0 {
 		presenter.Step("Comments (%d):", len(i.Comments))
 		for _, comment := range i.Comments {
 			presenter.Separator()
 			presenter.Detail("Comment by %s:", comment.Author.Login)
-			_, _ = fmt.Fprintln(w, comment.Body)
+			write("%s\n", comment.Body)
 		}
 	}
 	presenter.Separator()
+
+	return int64(totalBytes), err
 }
+
 
 // --- Cobra Command Definitions ---
 
@@ -71,8 +86,7 @@ var listIssuesCmd = &cobra.Command{
 		ctx := cmd.Context()
 
 		// Determine the target for the main content output
-		var outputTarget io.Writer = os.Stdout
-		var outputClosers []io.Closer
+		var outputTarget io.WriteCloser = os.Stdout
 
 		if outputFile != "" {
 			file, err := os.Create(outputFile)
@@ -81,14 +95,8 @@ var listIssuesCmd = &cobra.Command{
 				return err
 			}
 			outputTarget = file
-			outputClosers = append(outputClosers, file)
+			defer outputTarget.Close()
 		}
-		// Ensure any opened files are closed
-		defer func() {
-			for _, closer := range outputClosers {
-				_ = closer.Close()
-			}
-		}()
 
 		consolePresenter.Summary("Fetching GitHub issues for the current repository...")
 
