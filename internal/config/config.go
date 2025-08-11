@@ -71,6 +71,10 @@ type RunSettings struct {
 	Examples map[string]ExampleSettings `yaml:"examples,omitempty"`
 }
 
+// --- NEW: Configuration for the 'export' command ---
+type ExportSettings struct {
+	ExcludePatterns []string `yaml:"excludePatterns,omitempty"`
+}
 // --- End NEW ---
 
 type Config struct {
@@ -82,7 +86,8 @@ type Config struct {
 	} `yaml:"validation,omitempty"`
 	ProjectState ProjectState `yaml:"projectState,omitempty"`
 	AI           AISettings   `yaml:"ai,omitempty"`
-	Run          RunSettings  `yaml:"run,omitempty"` // NEW
+	Run          RunSettings  `yaml:"run,omitempty"`
+	Export     ExportSettings `yaml:"export,omitempty"` // NEW
 }
 
 func GetDefaultConfig() *Config {
@@ -127,6 +132,10 @@ func GetDefaultConfig() *Config {
 		// NEW: Initialize Run settings
 		Run: RunSettings{
 			Examples: make(map[string]ExampleSettings),
+		},
+		// NEW: Initialize Export settings
+		Export: ExportSettings{
+			ExcludePatterns: []string{"vendor/"},
 		},
 	}
 	return cfg
@@ -245,6 +254,11 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	// NEW: Merge Run settings
 	if loadedCfg.Run.Examples != nil {
 		finalCfg.Run.Examples = loadedCfg.Run.Examples
+	}
+
+	// NEW: Merge Export settings
+	if loadedCfg.Export.ExcludePatterns != nil {
+		finalCfg.Export.ExcludePatterns = loadedCfg.Export.ExcludePatterns
 	}
 
 	return &finalCfg
