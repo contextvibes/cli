@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/contextvibes/cli/internal/thea"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +38,9 @@ func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	logger.Info("INTEGRATION TEST: Attempting to load manifest from live THEA repository (main branch)...")
+	logger.Info(
+		"INTEGRATION TEST: Attempting to load manifest from live THEA repository (main branch)...",
+	)
 
 	manifest, err := client.LoadManifest(ctx)
 
@@ -62,10 +63,18 @@ func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 		}
 	}
 
-	assert.True(t, foundKickoffPrompt, "Manifest should contain the 'playbooks/project_initiation/master_strategic_kickoff_prompt' artifact")
+	assert.True(
+		t,
+		foundKickoffPrompt,
+		"Manifest should contain the 'playbooks/project_initiation/master_strategic_kickoff_prompt' artifact",
+	)
 
 	if foundKickoffPrompt {
-		t.Logf("Found kickoff prompt artifact: Title: '%s', Version: '%s'", kickoffArtifact.Title, kickoffArtifact.ArtifactVersion)
+		t.Logf(
+			"Found kickoff prompt artifact: Title: '%s', Version: '%s'",
+			kickoffArtifact.Title,
+			kickoffArtifact.ArtifactVersion,
+		)
 		assert.Equal(t, "md", kickoffArtifact.FileExtension)
 	}
 }
@@ -94,9 +103,11 @@ func TestTHEAClient_Integration_FetchRealArtifactContent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	logger.Info("INTEGRATION TEST: Attempting to fetch content for artifact ID from live THEA repository...",
+	logger.Info(
+		"INTEGRATION TEST: Attempting to fetch content for artifact ID from live THEA repository...",
 		slog.String("id", testArtifactID),
-		slog.String("ref_hint", testArtifactRef))
+		slog.String("ref_hint", testArtifactRef),
+	)
 
 	content, err := client.FetchArtifactContentByID(ctx, testArtifactID, testArtifactRef)
 
@@ -104,5 +115,9 @@ func TestTHEAClient_Integration_FetchRealArtifactContent(t *testing.T) {
 	require.NotEmpty(t, content)
 	assert.Contains(t, content, expectedContentSubstring)
 
-	t.Logf("Successfully fetched content for artifact '%s'. Length: %d chars.", testArtifactID, len(content))
+	t.Logf(
+		"Successfully fetched content for artifact '%s'. Length: %d chars.",
+		testArtifactID,
+		len(content),
+	)
 }

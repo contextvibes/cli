@@ -1,0 +1,93 @@
+{
+    // -------------------------------------------------------------------------
+    // IDX AI Features
+    // Settings for Firebase's integrated AI code assistance.
+    // -------------------------------------------------------------------------
+    "IDX.aI.enableInlineCompletion": true,
+    "IDX.aI.enableCodebaseIndexing": true,
+    "inlineChat.mode": "preview",
+
+    // -------------------------------------------------------------------------
+    // General Workbench UI & Behavior
+    // Controls the overall appearance and behavior of the VS Code window.
+    // -------------------------------------------------------------------------
+    "workbench.startupEditor": "none",
+    "workbench.layoutControl.enabled": false,
+    "window.commandCenter": false,
+    "workbench.activityBar.location": "top",
+    "workbench.iconTheme": "monospace",
+    "workbench.preferredDarkColorTheme": "Tomorrow Night Blue",
+    "workbench.preferredLightColorTheme": "Monospace Light",
+    "window.autoDetectColorScheme": true,
+
+    // -------------------------------------------------------------------------
+    // Editor: Font & Display
+    // Controls how text is rendered, including font, spacing, and guides.
+    // -------------------------------------------------------------------------
+    "editor.fontFamily": "JetBrains Mono, Menlo, Monaco, Courier New, monospace",
+    "editor.fontSize": 13,
+    "editor.fontWeight": "normal",
+    "editor.lineHeight": 1.5,
+    "editor.letterSpacing": 0,
+    "editor.renderWhitespace": "boundary",
+    "editor.guides.highlightActiveIndentation": true,
+
+    // -------------------------------------------------------------------------
+    // Editor: Behavior & Formatting
+    // Controls how the editor behaves on actions like typing and saving.
+    // -------------------------------------------------------------------------
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    // -------------------------------------------------------------------------
+    // File Explorer & Search
+    // Optimizes file navigation and search by excluding irrelevant files.
+    // -------------------------------------------------------------------------
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/dist": true,
+        "**/build": true
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+
+    // -------------------------------------------------------------------------
+    // Terminal & Debug Console
+    // Settings for the integrated terminal and debug output panels.
+    // -------------------------------------------------------------------------
+    "terminal.integrated.fontSize": 13,
+    "terminal.integrated.localEchoEnabled": "off",
+    "terminal.integrated.localEchoLatencyThreshold": -1,
+    "debug.console.fontSize": 13,
+
+    // -------------------------------------------------------------------------
+    // Git & GitLens Integration
+    // Enhances the built-in version control capabilities.
+    // -------------------------------------------------------------------------
+    "git.autofetch": true,
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    "git.useEditorAsCommitInput": true,
+    "diffEditor.ignoreTrimWhitespace": true,
+    "gitlens.currentLine.enabled": true,
+
+    // -------------------------------------------------------------------------
+    // Go Extension Specific Settings
+    // Language-specific configurations for the Go extension.
+    // -------------------------------------------------------------------------
+    "go.buildTags": "integration",
+    "go.testTimeout": "120s",
+    "go.testEnvFile": ".env",
+    "go.testFlags": [
+        "-v"
+    ]
+}

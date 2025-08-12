@@ -12,7 +12,6 @@ import (
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
-	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed.
 )
 
 // Define an interface matching the methods used by the helpers below.
@@ -64,13 +63,21 @@ For other project types, or if no specific test runner is found, it will indicat
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			wrappedErr := fmt.Errorf("failed to detect project type: %w", err)
-			logger.ErrorContext(ctx, "Test: Failed project detection", slog.String("error", err.Error()))
+			logger.ErrorContext(
+				ctx,
+				"Test: Failed project detection",
+				slog.String("error", err.Error()),
+			)
 			presenter.Error("Failed to detect project type: %v", err)
 
 			return wrappedErr
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
-		logger.Info("Project detection result", slog.String("source_command", "test"), slog.String("type", string(projType)))
+		logger.Info(
+			"Project detection result",
+			slog.String("source_command", "test"),
+			slog.String("type", string(projType)),
+		)
 
 		var testErr error
 		testExecuted := false
@@ -87,8 +94,13 @@ For other project types, or if no specific test runner is found, it will indicat
 			testErr = executePythonTests(ctx, presenter, logger, ExecClient, cwd, args)
 			testExecuted = true
 		case project.Terraform, project.Pulumi:
-			presenter.Info("Automated testing for %s projects is not yet implemented in this command.", projType)
-			presenter.Advice("Consider using tools like Terratest or language-specific test frameworks manually.")
+			presenter.Info(
+				"Automated testing for %s projects is not yet implemented in this command.",
+				projType,
+			)
+			presenter.Advice(
+				"Consider using tools like Terratest or language-specific test frameworks manually.",
+			)
 		case project.Unknown:
 			presenter.Warning("Unknown project type. Cannot determine how to run tests.")
 		default:
@@ -104,7 +116,11 @@ For other project types, or if no specific test runner is found, it will indicat
 
 		if testErr != nil {
 			presenter.Error("Project tests failed.")
-			logger.Error("Test command finished with errors", slog.String("source_command", "test"), slog.String("error", testErr.Error()))
+			logger.Error(
+				"Test command finished with errors",
+				slog.String("source_command", "test"),
+				slog.String("error", testErr.Error()),
+			)
 
 			return testErr
 		}
@@ -117,13 +133,27 @@ For other project types, or if no specific test runner is found, it will indicat
 }
 
 // Manually updated signature: accepts ctx, execClient.
-func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execTestClientInterface, dir string, passThroughArgs []string) error {
+func executeGoTests(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	logger *slog.Logger,
+	execClient execTestClientInterface,
+	dir string,
+	passThroughArgs []string,
+) error {
 	tool := "go"
 	// This should have been updated by codemod
 	if !execClient.CommandExists(tool) {
-		errMsgForUser := fmt.Sprintf("'%s' command not found. Ensure Go is installed and in your PATH.", tool)
+		errMsgForUser := fmt.Sprintf(
+			"'%s' command not found. Ensure Go is installed and in your PATH.",
+			tool,
+		)
 		presenter.Error(errMsgForUser)
-		logger.Error("Go test prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
+		logger.Error(
+			"Go test prerequisite failed",
+			slog.String("reason", errMsgForUser),
+			slog.String("tool", tool),
+		)
 
 		return errors.New("go command not found")
 	}
@@ -132,7 +162,12 @@ func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.L
 	testArgs = append(testArgs, passThroughArgs...)
 
 	presenter.Info("Executing: %s %s", tool, strings.Join(testArgs, " "))
-	logger.Info("Executing go test", slog.String("source_command", "test"), slog.String("tool", tool), slog.Any("args", testArgs))
+	logger.Info(
+		"Executing go test",
+		slog.String("source_command", "test"),
+		slog.String("tool", tool),
+		slog.Any("args", testArgs),
+	)
 
 	// This should have been updated by codemod
 	err := execClient.Execute(ctx, dir, tool, testArgs...)
@@ -144,14 +179,26 @@ func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.L
 }
 
 // Manually updated signature: accepts ctx, execClient.
-func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execTestClientInterface, dir string, passThroughArgs []string) error {
+func executePythonTests(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	logger *slog.Logger,
+	execClient execTestClientInterface,
+	dir string,
+	passThroughArgs []string,
+) error {
 	pytestTool := "pytest"
 	pythonTool := "python"
 
 	// This should have been updated by codemod
 	if execClient.CommandExists(pytestTool) {
 		presenter.Info("Executing: %s %s", pytestTool, strings.Join(passThroughArgs, " "))
-		logger.Info("Executing pytest", slog.String("source_command", "test"), slog.String("tool", pytestTool), slog.Any("args", passThroughArgs))
+		logger.Info(
+			"Executing pytest",
+			slog.String("source_command", "test"),
+			slog.String("tool", pytestTool),
+			slog.Any("args", passThroughArgs),
+		)
 		// This should have been updated by codemod
 		err := execClient.Execute(ctx, dir, pytestTool, passThroughArgs...)
 		if err != nil {
@@ -167,7 +214,12 @@ func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *sl
 		unittestArgs := []string{"-m", "unittest", "discover"}
 
 		presenter.Info("Executing: %s %s", pythonTool, strings.Join(unittestArgs, " "))
-		logger.Info("Executing python unittest", slog.String("source_command", "test"), slog.String("tool", pythonTool), slog.Any("args", unittestArgs))
+		logger.Info(
+			"Executing python unittest",
+			slog.String("source_command", "test"),
+			slog.String("tool", pythonTool),
+			slog.Any("args", unittestArgs),
+		)
 		// This should have been updated by codemod
 		err := execClient.Execute(ctx, dir, pythonTool, unittestArgs...)
 		if err != nil {

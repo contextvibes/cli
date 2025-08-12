@@ -95,35 +95,47 @@ func (p *Presenter) Err() io.Writer {
 func (p *Presenter) Header(format string, a ...any) {
 	_, _ = p.headerColor.Fprintf(p.outW, format+"\n", a...)
 }
+
 func (p *Presenter) Summary(format string, a ...any) {
 	_, _ = p.summaryColor.Fprint(p.outW, "SUMMARY:\n")
 	_, _ = fmt.Fprintf(p.outW, "  "+format+"\n", a...)
 	p.Newline()
 }
+
 func (p *Presenter) Step(format string, a ...any) {
 	_, _ = p.stepColor.Fprintf(p.outW, "- "+format+"\n", a...)
 }
+
 func (p *Presenter) Info(format string, a ...any) {
 	_, _ = p.infoColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
+
 func (p *Presenter) InfoPrefixOnly() { _, _ = p.infoColor.Fprint(p.outW, "~ ") }
+
 func (p *Presenter) Success(format string, a ...any) {
 	_, _ = p.successColor.Fprintf(p.outW, "+ "+format+"\n", a...)
 }
+
 func (p *Presenter) Error(format string, a ...any) {
 	_, _ = p.errorColor.Fprintf(p.errW, "! "+format+"\n", a...)
 }
+
 func (p *Presenter) Warning(format string, a ...any) {
 	_, _ = p.warningColor.Fprintf(p.errW, "~ "+format+"\n", a...)
 }
+
 func (p *Presenter) Advice(format string, a ...any) {
 	_, _ = p.warningColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
+
 func (p *Presenter) Detail(format string, a ...any) {
 	_, _ = p.detailColor.Fprintf(p.outW, "  "+format+"\n", a...)
 }
+
 func (p *Presenter) Highlight(text string) string { return p.boldColor.Sprint(text) }
-func (p *Presenter) Newline()                     { _, _ = fmt.Fprintln(p.outW) }
+
+func (p *Presenter) Newline() { _, _ = fmt.Fprintln(p.outW) }
+
 func (p *Presenter) Separator() {
 	_, _ = color.New(color.Faint).Fprintln(p.outW, "----------------------------------------")
 }
@@ -168,7 +180,10 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 		if input == "n" || input == "no" || input == "" {
 			return false, nil
 		}
-		_, _ = p.warningColor.Fprintf(p.errW, "~ Invalid input. Please enter 'y' or 'n'.\n") // Write warning to error stream
+		_, _ = p.warningColor.Fprintf(
+			p.errW,
+			"~ Invalid input. Please enter 'y' or 'n'.\n",
+		) // Write warning to error stream
 	}
 }
 

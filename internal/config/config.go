@@ -170,11 +170,17 @@ func FindRepoRootConfigPath(execClient *exec.ExecutorClient) (string, error) {
 	ctx := context.Background()
 	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "git", "rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", fmt.Errorf("failed to determine git repository root (is this a git repo, or is 'git' not in PATH? details: %s): %w", strings.TrimSpace(stderr), err)
+		return "", fmt.Errorf(
+			"failed to determine git repository root (is this a git repo, or is 'git' not in PATH? details: %s): %w",
+			strings.TrimSpace(stderr),
+			err,
+		)
 	}
 	repoRoot := filepath.Clean(strings.TrimSpace(stdout))
 	if repoRoot == "" || repoRoot == "." {
-		return "", errors.New("git rev-parse --show-toplevel returned an empty or invalid path, not in a git repository")
+		return "", errors.New(
+			"git rev-parse --show-toplevel returned an empty or invalid path, not in a git repository",
+		)
 	}
 
 	configPath := filepath.Join(repoRoot, DefaultConfigFileName)
@@ -220,7 +226,8 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if loadedCfg.Validation.CommitMessage.Enable != nil {
 		finalCfg.Validation.CommitMessage.Enable = loadedCfg.Validation.CommitMessage.Enable
 	}
-	if finalCfg.Validation.CommitMessage.Enable == nil || *finalCfg.Validation.CommitMessage.Enable {
+	if finalCfg.Validation.CommitMessage.Enable == nil ||
+		*finalCfg.Validation.CommitMessage.Enable {
 		if loadedCfg.Validation.CommitMessage.Pattern != "" {
 			finalCfg.Validation.CommitMessage.Pattern = loadedCfg.Validation.CommitMessage.Pattern
 		}
@@ -277,7 +284,7 @@ func UpdateAndSaveConfig(cfgToSave *Config, filePath string) error {
 
 	dir := filepath.Dir(filePath)
 	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0750); err != nil {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return fmt.Errorf("failed to create directory for config file '%s': %w", dir, err)
 		}
 	}

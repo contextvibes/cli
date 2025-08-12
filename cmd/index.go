@@ -90,7 +90,9 @@ or for programmatic access to document metadata.`,
 		)
 
 		allMetadata := []DocumentMetadata{}
-		processedFiles := make(map[string]bool) // To avoid processing same file twice if paths overlap
+		processedFiles := make(
+			map[string]bool,
+		) // To avoid processing same file twice if paths overlap
 
 		// Process the THEA directory
 		if indexPathTHEA != "" {
@@ -109,16 +111,26 @@ or for programmatic access to document metadata.`,
 		if indexPathTemplate != "" {
 			presenter.Step("Scanning Template directory: %s", indexPathTemplate)
 			// Assuming "Template" as the base name for paths derived from this source
-			templateMetadata, err := processDirectory(indexPathTemplate, "Template", processedFiles, logger)
+			templateMetadata, err := processDirectory(
+				indexPathTemplate,
+				"Template",
+				processedFiles,
+				logger,
+			)
 			if err != nil {
-				presenter.Error("Error processing Template directory: %v (continuing if possible)", err)
+				presenter.Error(
+					"Error processing Template directory: %v (continuing if possible)",
+					err,
+				)
 			}
 			allMetadata = append(allMetadata, templateMetadata...)
 			presenter.Info("Found %d documents in Template directory.", len(templateMetadata))
 		}
 
 		if len(allMetadata) == 0 {
-			presenter.Warning("No documents found or processed. The output file will be empty or not created.")
+			presenter.Warning(
+				"No documents found or processed. The output file will be empty or not created.",
+			)
 			// Optionally, write an empty JSON array or handle as needed
 			// For now, let it proceed to write an empty array if that's the case.
 		}
@@ -126,17 +138,30 @@ or for programmatic access to document metadata.`,
 		presenter.Step("Generating JSON manifest...")
 		jsonData, err := json.MarshalIndent(allMetadata, "", "  ")
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to marshal metadata to JSON", slog.String("error", err.Error()))
+			logger.ErrorContext(
+				ctx,
+				"Failed to marshal metadata to JSON",
+				slog.String("error", err.Error()),
+			)
 			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
 		}
 
-		err = os.WriteFile(indexPathOut, jsonData, 0644)
+		err = os.WriteFile(indexPathOut, jsonData, 0o644)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to write index file", slog.String("path", indexPathOut), slog.String("error", err.Error()))
+			logger.ErrorContext(
+				ctx,
+				"Failed to write index file",
+				slog.String("path", indexPathOut),
+				slog.String("error", err.Error()),
+			)
 			return fmt.Errorf("failed to write index file to %s: %w", indexPathOut, err)
 		}
 
-		presenter.Success("Successfully created document manifest at: %s (%d documents indexed)", indexPathOut, len(allMetadata))
+		presenter.Success(
+			"Successfully created document manifest at: %s (%d documents indexed)",
+			indexPathOut,
+			len(allMetadata),
+		)
 		return nil
 	},
 }
@@ -144,60 +169,98 @@ or for programmatic access to document metadata.`,
 // processDirectory walks a directory and extracts metadata from supported files.
 // baseDirName is used to prefix the 'SourceFilePath' for clarity on origin.
 // processedFiles map is used to avoid processing the same absolute file path multiple times.
-func processDirectory(rootPath string, baseDirName string, processedFiles map[string]bool, logger *slog.Logger) ([]DocumentMetadata, error) {
+func processDirectory(
+	rootPath string,
+	baseDirName string,
+	processedFiles map[string]bool,
+	logger *slog.Logger,
+) ([]DocumentMetadata, error) {
 	var metadataList []DocumentMetadata
 	absRootPath, err := filepath.Abs(rootPath)
 	if err != nil {
-		logger.Error("Could not get absolute path for root", slog.String("rootPath", rootPath), slog.String("error", err.Error()))
+		logger.Error(
+			"Could not get absolute path for root",
+			slog.String("rootPath", rootPath),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("could not get absolute path for %s: %w", rootPath, err)
 	}
 
-	err = filepath.WalkDir(absRootPath, func(currentPath string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			logger.Warn("Error accessing path during walk, skipping entry", slog.String("path", currentPath), slog.String("error", walkErr.Error()))
-			if d != nil && d.IsDir() && errors.Is(walkErr, fs.ErrPermission) { // Example: skip permission-denied dirs
-				return fs.SkipDir
+	err = filepath.WalkDir(
+		absRootPath,
+		func(currentPath string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				logger.Warn(
+					"Error accessing path during walk, skipping entry",
+					slog.String("path", currentPath),
+					slog.String("error", walkErr.Error()),
+				)
+				if d != nil && d.IsDir() &&
+					errors.Is(walkErr, fs.ErrPermission) { // Example: skip permission-denied dirs
+					return fs.SkipDir
+				}
+				return nil // Skip this problematic entry, try to continue
 			}
-			return nil // Skip this problematic entry, try to continue
-		}
 
-		// Check if already processed (handles symlinks or overlapping input paths)
-		absCurrentPath, err := filepath.Abs(currentPath)
-		if err != nil {
-			logger.Warn("Could not get absolute path for item, skipping", slog.String("path", currentPath), slog.String("error", err.Error()))
-			return nil
-		}
-		if processedFiles[absCurrentPath] {
-			return nil // Already processed
-		}
-
-		// We only care about files, and specific types (e.g., .md for front matter)
-		// Add other extensions if they can also contain YAML front matter (e.g., .yaml, .yml itself)
-		if !d.IsDir() && (strings.HasSuffix(d.Name(), ".md") || strings.HasSuffix(d.Name(), ".markdown")) {
-			fileInfo, statErr := d.Info()
-			if statErr != nil {
-				logger.Warn("Could not get file info, skipping file", slog.String("path", currentPath), slog.String("error", statErr.Error()))
+			// Check if already processed (handles symlinks or overlapping input paths)
+			absCurrentPath, err := filepath.Abs(currentPath)
+			if err != nil {
+				logger.Warn(
+					"Could not get absolute path for item, skipping",
+					slog.String("path", currentPath),
+					slog.String("error", err.Error()),
+				)
 				return nil
 			}
-
-			docMeta, parseErr := parseFrontMatterAndDerive(currentPath, absRootPath, baseDirName, fileInfo)
-			if parseErr != nil {
-				logger.Warn("Could not parse metadata, skipping file", slog.String("path", currentPath), slog.String("error", parseErr.Error()))
-				// Optionally, use presenter.Warning here if user needs to know about individual skips.
-				return nil // Skip files we can't parse or that don't meet criteria (e.g., no title)
+			if processedFiles[absCurrentPath] {
+				return nil // Already processed
 			}
 
-			if docMeta != nil { // parseFrontMatterAndDerive returns nil if essential fields missing (e.g. title)
-				metadataList = append(metadataList, *docMeta)
-				processedFiles[absCurrentPath] = true // Mark as processed
-			}
-		}
-		return nil
-	})
+			// We only care about files, and specific types (e.g., .md for front matter)
+			// Add other extensions if they can also contain YAML front matter (e.g., .yaml, .yml itself)
+			if !d.IsDir() &&
+				(strings.HasSuffix(d.Name(), ".md") || strings.HasSuffix(d.Name(), ".markdown")) {
+				fileInfo, statErr := d.Info()
+				if statErr != nil {
+					logger.Warn(
+						"Could not get file info, skipping file",
+						slog.String("path", currentPath),
+						slog.String("error", statErr.Error()),
+					)
+					return nil
+				}
 
+				docMeta, parseErr := parseFrontMatterAndDerive(
+					currentPath,
+					absRootPath,
+					baseDirName,
+					fileInfo,
+				)
+				if parseErr != nil {
+					logger.Warn(
+						"Could not parse metadata, skipping file",
+						slog.String("path", currentPath),
+						slog.String("error", parseErr.Error()),
+					)
+					// Optionally, use presenter.Warning here if user needs to know about individual skips.
+					return nil // Skip files we can't parse or that don't meet criteria (e.g., no title)
+				}
+
+				if docMeta != nil { // parseFrontMatterAndDerive returns nil if essential fields missing (e.g. title)
+					metadataList = append(metadataList, *docMeta)
+					processedFiles[absCurrentPath] = true // Mark as processed
+				}
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		// This error is from WalkDir itself if it encountered a non-skippable error.
-		logger.Error("Fatal error walking directory", slog.String("rootPath", absRootPath), slog.String("error", err.Error()))
+		logger.Error(
+			"Fatal error walking directory",
+			slog.String("rootPath", absRootPath),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("error walking directory %s: %w", rootPath, err)
 	}
 	return metadataList, nil
@@ -205,7 +268,12 @@ func processDirectory(rootPath string, baseDirName string, processedFiles map[st
 
 // parseFrontMatterAndDerive reads a file, parses its YAML front matter,
 // and derives additional metadata fields.
-func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName string, fileInfo fs.FileInfo) (*DocumentMetadata, error) {
+func parseFrontMatterAndDerive(
+	filePath string,
+	rootPath string,
+	baseDirName string,
+	fileInfo fs.FileInfo,
+) (*DocumentMetadata, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("opening file %s: %w", filePath, err)
@@ -221,7 +289,11 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 	for scanner.Scan() {
 		linesRead++
 		if linesRead > maxFrontMatterLines && inFrontMatter {
-			return nil, fmt.Errorf("front matter block in %s seems unusually large or unterminated after %d lines", filePath, maxFrontMatterLines)
+			return nil, fmt.Errorf(
+				"front matter block in %s seems unusually large or unterminated after %d lines",
+				filePath,
+				maxFrontMatterLines,
+			)
 		}
 		line := scanner.Text()
 		trimmedLine := strings.TrimSpace(line)
@@ -236,7 +308,8 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 		if inFrontMatter {
 			frontMatterLines = append(frontMatterLines, line) // Keep original lines for YAML parser
 		}
-		if !inFrontMatter && linesRead > 10 && len(frontMatterLines) == 0 { // Heuristic: if no '---' after 10 lines
+		if !inFrontMatter && linesRead > 10 &&
+			len(frontMatterLines) == 0 { // Heuristic: if no '---' after 10 lines
 			return nil, nil // Assume no front matter
 		}
 	}
@@ -262,7 +335,11 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 	relPath, err := filepath.Rel(rootPath, filePath)
 	if err != nil {
 		// Fallback to full path if Rel fails, though this should ideally not happen if rootPath is an ancestor.
-		AppLogger.Warn("Could not make path relative, using full path for ID basis", slog.String("filePath", filePath), slog.String("rootPath", rootPath))
+		AppLogger.Warn(
+			"Could not make path relative, using full path for ID basis",
+			slog.String("filePath", filePath),
+			slog.String("rootPath", rootPath),
+		)
 		relPath = filePath
 	}
 	ext := filepath.Ext(relPath)
@@ -296,7 +373,9 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 		LastModifiedDate:  lastModified,
 		DefaultTargetPath: defaultTarget,
 		Tags:              fmData.Tags,
-		SourceFilePath:    filepath.ToSlash(filepath.Join(baseDirName, relPath)), // Store with consistent forward slashes
+		SourceFilePath: filepath.ToSlash(
+			filepath.Join(baseDirName, relPath),
+		), // Store with consistent forward slashes
 	}
 
 	return docMeta, nil
@@ -305,9 +384,13 @@ func parseFrontMatterAndDerive(filePath string, rootPath string, baseDirName str
 func init() {
 	rootCmd.AddCommand(indexCmd)
 
-	indexCmd.Flags().StringVar(&indexPathTHEA, "thea-path", "", "Path to the root of a THEA-like structured directory to index.")
-	indexCmd.Flags().StringVar(&indexPathTemplate, "template-path", "", "Path to the root of a project template directory to index.")
-	indexCmd.Flags().StringVarP(&indexPathOut, "output", "o", "project_manifest.json", "Output path for the generated JSON manifest file.")
+	indexCmd.Flags().
+		StringVar(&indexPathTHEA, "thea-path", "", "Path to the root of a THEA-like structured directory to index.")
+	indexCmd.Flags().
+		StringVar(&indexPathTemplate, "template-path", "", "Path to the root of a project template directory to index.")
+	indexCmd.Flags().
+		StringVarP(&indexPathOut, "output", "o", "project_manifest.json", "Output path for the generated JSON manifest file.")
+
 	// Example of marking flags required:
 	// indexCmd.MarkFlagRequired("output") // Though not strictly required as it has a default
 }

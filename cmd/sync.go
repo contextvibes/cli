@@ -8,12 +8,8 @@ import (
 	"log/slog"
 	"os"
 
-	// "strings" // No longer needed directly here.
-
 	"github.com/contextvibes/cli/internal/git" // Use GitClient
 	"github.com/contextvibes/cli/internal/ui"  // Use Presenter
-
-	// "github.com/contextvibes/cli/internal/tools" // No longer needed for Git/Prompts.
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +52,9 @@ Workflow:
 
 			return err
 		}
-		gitCfg := git.GitClientConfig{Logger: logger} // Use defaults for remote/main branch from config if needed later
+		gitCfg := git.GitClientConfig{
+			Logger: logger,
+		} // Use defaults for remote/main branch from config if needed later
 		logger.DebugContext(ctx, "Initializing GitClient", slog.String("source_command", "sync"))
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
@@ -77,8 +75,14 @@ Workflow:
 		if !isClean {
 			errMsg := "Working directory has uncommitted changes (staged, unstaged, or untracked)."
 			presenter.Error(errMsg)
-			presenter.Advice("Please commit or stash your changes before syncing. Try `contextvibes commit -m \"...\"`.")
-			logger.WarnContext(ctx, "Sync prerequisite failed: working directory not clean", slog.String("source_command", "sync"))
+			presenter.Advice(
+				"Please commit or stash your changes before syncing. Try `contextvibes commit -m \"...\"`.",
+			)
+			logger.WarnContext(
+				ctx,
+				"Sync prerequisite failed: working directory not clean",
+				slog.String("source_command", "sync"),
+			)
 
 			return errors.New("working directory not clean") // Use specific error
 		}
@@ -95,14 +99,26 @@ Workflow:
 		// --- Confirmation ---
 		presenter.Newline()
 		presenter.Info("Proposed Sync Actions:")
-		presenter.Detail("1. Update local branch '%s' from remote '%s' (git pull --rebase).", currentBranch, remoteName)
-		presenter.Detail("2. Push local changes to remote '%s' if local branch is ahead after update (git push).", remoteName)
+		presenter.Detail(
+			"1. Update local branch '%s' from remote '%s' (git pull --rebase).",
+			currentBranch,
+			remoteName,
+		)
+		presenter.Detail(
+			"2. Push local changes to remote '%s' if local branch is ahead after update (git push).",
+			remoteName,
+		)
 		presenter.Newline()
 
 		confirmed := false
 		if assumeYes {
 			presenter.Info("Confirmation prompt bypassed via --yes flag.")
-			logger.InfoContext(ctx, "Confirmation bypassed via flag", slog.String("source_command", "sync"), slog.Bool("yes_flag", true))
+			logger.InfoContext(
+				ctx,
+				"Confirmation bypassed via flag",
+				slog.String("source_command", "sync"),
+				slog.Bool("yes_flag", true),
+			)
 			confirmed = true
 		} else {
 			var promptErr error
@@ -116,18 +132,30 @@ Workflow:
 
 		if !confirmed {
 			presenter.Info("Sync aborted by user.")
-			logger.InfoContext(ctx, "Sync aborted by user confirmation", slog.String("source_command", "sync"), slog.Bool("confirmed", false))
+			logger.InfoContext(
+				ctx,
+				"Sync aborted by user confirmation",
+				slog.String("source_command", "sync"),
+				slog.Bool("confirmed", false),
+			)
 
 			return nil
 		}
-		logger.DebugContext(ctx, "Proceeding after sync confirmation", slog.String("source_command", "sync"), slog.Bool("confirmed", true))
+		logger.DebugContext(
+			ctx,
+			"Proceeding after sync confirmation",
+			slog.String("source_command", "sync"),
+			slog.Bool("confirmed", true),
+		)
 
 		// --- Execute Sync ---
 		presenter.Newline()
 		presenter.Info("Step 1: Updating local branch '%s' from '%s'...", currentBranch, remoteName)
 		// Note: PullRebase uses runGit, which pipes output. User will see git's output directly.
 		if err := client.PullRebase(ctx, currentBranch); err != nil {
-			presenter.Error("Error during 'git pull --rebase'. Resolve conflicts manually and then run 'contextvibes sync' again if needed.")
+			presenter.Error(
+				"Error during 'git pull --rebase'. Resolve conflicts manually and then run 'contextvibes sync' again if needed.",
+			)
 			// Client logs details
 			// Return specific error from PullRebase
 			return err
@@ -145,8 +173,16 @@ Workflow:
 		}
 
 		if !isAhead {
-			presenter.Info("Local branch '%s' is not ahead of remote '%s'. Push is not required.", currentBranch, remoteName)
-			logger.InfoContext(ctx, "Push not required after pull", slog.String("source_command", "sync"))
+			presenter.Info(
+				"Local branch '%s' is not ahead of remote '%s'. Push is not required.",
+				currentBranch,
+				remoteName,
+			)
+			logger.InfoContext(
+				ctx,
+				"Push not required after pull",
+				slog.String("source_command", "sync"),
+			)
 		} else {
 			presenter.Info("Local branch '%s' is ahead of remote '%s'. Pushing changes...", currentBranch, remoteName)
 			logger.DebugContext(ctx, "Attempting push via client.Push", slog.String("source_command", "sync"))

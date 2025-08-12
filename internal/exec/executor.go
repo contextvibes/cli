@@ -21,7 +21,12 @@ type CommandExecutor interface {
 	// commandName: the name or path of the command to run.
 	// args: arguments for the command.
 	// Returns stdout, stderr, and any error (including *exec.PkgExitError).
-	CaptureOutput(ctx context.Context, dir string, commandName string, args ...string) (stdout, stderr string, err error)
+	CaptureOutput(
+		ctx context.Context,
+		dir string,
+		commandName string,
+		args ...string,
+	) (stdout, stderr string, err error)
 
 	// CommandExists checks if a command is available in the PATH or at the specified path.
 	CommandExists(commandName string) bool

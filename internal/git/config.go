@@ -2,7 +2,6 @@
 package git
 
 import (
-	// "io" // No longer needed for discard logger if logger is required.
 	"log/slog"
 
 	"github.com/contextvibes/cli/internal/exec" // Import the new exec package

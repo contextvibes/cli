@@ -9,8 +9,7 @@ import (
 // ReadFileContent reads the entire content of the file at the specified path.
 // Returns the content as a byte slice or an error if reading fails.
 func ReadFileContent(filePath string) ([]byte, error) {
-	//gosec:G304
-
+	// gosec:G304
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		// Wrap the error with more context.
@@ -34,7 +33,7 @@ func WriteBufferToFile(filePath string, buf *bytes.Buffer) error {
 	// Future refactoring might replace these with presenter calls from the cmd layer.
 	fmt.Printf("INFO: Writing output to %s...\n", filePath)
 
-	err := os.WriteFile(filePath, buf.Bytes(), 0600) // Use standard file permissions
+	err := os.WriteFile(filePath, buf.Bytes(), 0o600) // Use standard file permissions
 	if err != nil {
 		// Wrap the error with more context.
 		return fmt.Errorf("failed to write output file '%s': %w", filePath, err)

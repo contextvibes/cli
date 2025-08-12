@@ -13,11 +13,8 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/git"
-	"github.com/contextvibes/cli/internal/ui"
-
-	// "github.com/contextvibes/cli/internal/tools" // Should no longer be needed for exec functions.
 	"github.com/contextvibes/cli/internal/tools" // Keep for non-exec tools like ReadFileContent, markdown helpers for now
-
+	"github.com/contextvibes/cli/internal/ui"
 	gitignore "github.com/denormal/go-gitignore"
 	"github.com/spf13/cobra"
 )
@@ -87,14 +84,22 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 			gitCfg.DefaultMainBranchName = LoadedAppConfig.Git.DefaultMainBranch
 		}
 
-		logger.DebugContext(ctx, "Initializing GitClient for describe", slog.String("source_command", "describe"))
+		logger.DebugContext(
+			ctx,
+			"Initializing GitClient for describe",
+			slog.String("source_command", "describe"),
+		)
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init (is this a Git repository?): %v", err)
 
 			return err
 		}
-		logger.DebugContext(ctx, "GitClient initialized for describe", slog.String("source_command", "describe"))
+		logger.DebugContext(
+			ctx,
+			"GitClient initialized for describe",
+			slog.String("source_command", "describe"),
+		)
 		cwd := client.Path()
 
 		includeRe, err := regexp.Compile(includeExtensionsRegex)
@@ -117,7 +122,11 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 			return true
 		}
 		if readErr == nil {
-			aiExcluder = gitignore.New(bytes.NewReader(aiExcludeContent), cwd, gitignoreErrorHandler)
+			aiExcluder = gitignore.New(
+				bytes.NewReader(aiExcludeContent),
+				cwd,
+				gitignoreErrorHandler,
+			)
 			if aiExcluder != nil {
 				presenter.Info("Loaded exclusion rules from %s", presenter.Highlight(".aiexclude"))
 			} else if len(bytes.TrimSpace(aiExcludeContent)) > 0 {
@@ -136,7 +145,9 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 
 		tools.AppendSectionHeader(&outputBuffer, "Prompt")
 		presenter.Separator()
-		presenter.Step("Enter a prompt for the AI (e.g., 'Refactor X module', 'Add Y feature to script').")
+		presenter.Step(
+			"Enter a prompt for the AI (e.g., 'Refactor X module', 'Add Y feature to script').",
+		)
 		presenter.Step("Be specific about goals, files, resources, or errors.")
 		presenter.Separator()
 		userPrompt, err := presenter.PromptForInput("> Prompt: ")
@@ -152,8 +163,12 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 
 		tools.AppendSectionHeader(&outputBuffer, "Collaboration Notes")
 		outputBuffer.WriteString("For future reviews:\n")
-		outputBuffer.WriteString("- If code changes are significant or span multiple areas, please provide the full updated file(s) using this task.\n")
-		outputBuffer.WriteString("- If changes are small and localized (e.g., fixing a typo, a few lines in one function), you can provide just the relevant snippet, but clearly state the filename and function/context.\n")
+		outputBuffer.WriteString(
+			"- If code changes are significant or span multiple areas, please provide the full updated file(s) using this task.\n",
+		)
+		outputBuffer.WriteString(
+			"- If changes are small and localized (e.g., fixing a typo, a few lines in one function), you can provide just the relevant snippet, but clearly state the filename and function/context.\n",
+		)
 		outputBuffer.WriteString("- Always describe the goal of the changes in the prompt.\n\n")
 
 		presenter.Step("Gathering environment context...")
@@ -174,7 +189,11 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		appendCommandAvailability(ctx, &outputBuffer, presenter, cwd, "jq")
 		appendCommandAvailability(ctx, &outputBuffer, presenter, cwd, "tree")
 		outputBuffer.WriteString("Relevant environment variables:\n")
-		fmt.Fprintf(&outputBuffer, "  GOOGLE_CLOUD_PROJECT: %s\n", os.Getenv("GOOGLE_CLOUD_PROJECT"))
+		fmt.Fprintf(
+			&outputBuffer,
+			"  GOOGLE_CLOUD_PROJECT: %s\n",
+			os.Getenv("GOOGLE_CLOUD_PROJECT"),
+		)
 		fmt.Fprintf(&outputBuffer, "  GOOGLE_REGION: %s\n", os.Getenv("GOOGLE_REGION"))
 		nixFilePath := filepath.Join(cwd, ".idx", "dev.nix")
 		if _, statErr := os.Stat(nixFilePath); statErr == nil {
@@ -198,7 +217,16 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		tools.AppendSectionHeader(&outputBuffer, "Project Structure (Top Levels)")
 		outputBuffer.WriteString("Directory layout (up to 2 levels deep):\n\n")
 		// Pass ctx to ExecClient calls
-		treeOutput, _, treeErr := ExecClient.CaptureOutput(ctx, cwd, "tree", "-L", "2", "-a", "-I", treeIgnorePattern)
+		treeOutput, _, treeErr := ExecClient.CaptureOutput(
+			ctx,
+			cwd,
+			"tree",
+			"-L",
+			"2",
+			"-a",
+			"-I",
+			treeIgnorePattern,
+		)
 		structureOutput := ""
 		if treeErr != nil {
 			presenter.Warning("'tree' command failed or not found, falling back to 'ls'.")
@@ -247,7 +275,14 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 			}
 
 			// Pass ctx to appendFileContentToBuffer, though it doesn't use it yet
-			err := appendFileContentToBuffer(ctx, &outputBuffer, presenter, cwd, cleanPath, maxSizeBytes)
+			err := appendFileContentToBuffer(
+				ctx,
+				&outputBuffer,
+				presenter,
+				cwd,
+				cleanPath,
+				maxSizeBytes,
+			)
 			if err == nil {
 				includedFiles[cleanPath] = true
 				filesAddedCount++
@@ -274,7 +309,14 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 					if !includedFiles[cleanCriticalPath] {
 						presenter.Detail("Including critical file: %s", cleanCriticalPath)
 						// Pass ctx to appendFileContentToBuffer
-						err := appendFileContentToBuffer(ctx, &outputBuffer, presenter, cwd, cleanCriticalPath, maxSizeBytes)
+						err := appendFileContentToBuffer(
+							ctx,
+							&outputBuffer,
+							presenter,
+							cwd,
+							cleanCriticalPath,
+							maxSizeBytes,
+						)
 						if err == nil {
 							filesAddedCount++
 						}
@@ -286,8 +328,15 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		}
 
 		presenter.Newline()
-		presenter.Step("Writing context file %s (%d files included)...", presenter.Highlight(outputFilePath), filesAddedCount)
-		err = tools.WriteBufferToFile(outputFilePath, &outputBuffer) // tools.WriteBufferToFile is fine as it's just file I/O
+		presenter.Step(
+			"Writing context file %s (%d files included)...",
+			presenter.Highlight(outputFilePath),
+			filesAddedCount,
+		)
+		err = tools.WriteBufferToFile(
+			outputFilePath,
+			&outputBuffer,
+		) // tools.WriteBufferToFile is fine as it's just file I/O
 		if err != nil {
 			presenter.Error("Failed to write output file '%s': %v", outputFilePath, err)
 
@@ -300,7 +349,13 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 }
 
 // Updated signature to include ctx.
-func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd, displayName, commandName string, args ...string) {
+func appendToolVersion(
+	ctx context.Context,
+	buf *bytes.Buffer,
+	p *ui.Presenter,
+	cwd, displayName, commandName string,
+	args ...string,
+) {
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Explicitly ignore ctx if only passed through
@@ -348,12 +403,20 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 
 		buf.WriteString(parsedOutput)
 		buf.WriteString("\n")
-		logger.Debug("Tool version found", slog.String("tool", commandName), slog.String("version", parsedOutput))
+		logger.Debug(
+			"Tool version found",
+			slog.String("tool", commandName),
+			slog.String("version", parsedOutput),
+		)
 
 		return
 	}
 
-	logger.Debug("Tool --version flag failed or gave empty output", slog.String("tool", commandName), slog.Any("error", versionErr))
+	logger.Debug(
+		"Tool --version flag failed or gave empty output",
+		slog.String("tool", commandName),
+		slog.Any("error", versionErr),
+	)
 
 	// Fallback to original args, use ExecClient
 	output, _, err := ExecClient.CaptureOutput(ctx, cwd, commandName, args...)
@@ -362,7 +425,10 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 		// Use ExecClient.CommandExists
 		if !ExecClient.CommandExists(commandName) { // Check with ExecClient
 			p.Warning("Required tool '%s' not found in PATH.", commandName)
-			logger.Error("Required tool version check failed: not found", slog.String("tool", commandName))
+			logger.Error(
+				"Required tool version check failed: not found",
+				slog.String("tool", commandName),
+			)
 		} else {
 			p.Warning("Could not determine version for '%s'.", commandName)
 			logger.Warn("Tool version check failed or empty output", slog.String("tool", commandName), slog.Any("error", err))
@@ -406,11 +472,21 @@ func appendToolVersion(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, 
 
 	buf.WriteString(parsedOutput)
 	buf.WriteString("\n")
-	logger.Debug("Tool version found (via fallback args)", slog.String("tool", commandName), slog.String("version", parsedOutput))
+	logger.Debug(
+		"Tool version found (via fallback args)",
+		slog.String("tool", commandName),
+		slog.String("version", parsedOutput),
+	)
 }
 
 // Updated signature to include ctx (though not used by ExecClient.CommandExists directly).
-func appendCommandAvailability(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd string, commandName string) {
+func appendCommandAvailability(
+	ctx context.Context,
+	buf *bytes.Buffer,
+	p *ui.Presenter,
+	cwd string,
+	commandName string,
+) {
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
 	_ = ctx // Explicitly ignore ctx if only passed through
@@ -433,13 +509,23 @@ func appendCommandAvailability(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 }
 
 // Updated signature to include ctx, though not directly used by os.Stat or tools.ReadFileContent.
-func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Presenter, cwd, filePath string, maxSizeBytes int64) error {
+func appendFileContentToBuffer(
+	ctx context.Context,
+	buf *bytes.Buffer,
+	p *ui.Presenter,
+	cwd, filePath string,
+	maxSizeBytes int64,
+) error {
 	_ = ctx // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic
 	_ = ctx // Explicitly ignore ctx for now if unused by current logic
 	_ = ctx // Explicitly ignore ctx for now
 	fullPath := filepath.Join(cwd, filePath)
 	logger := AppLogger
-	logger.Debug("Attempting to append file content", slog.String("path", filePath), slog.String("full_path", fullPath))
+	logger.Debug(
+		"Attempting to append file content",
+		slog.String("path", filePath),
+		slog.String("full_path", fullPath),
+	)
 
 	info, err := os.Stat(fullPath)
 	if err != nil {
@@ -469,7 +555,12 @@ func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 	}
 
 	if info.Size() > maxSizeBytes {
-		errMsg := fmt.Sprintf("Skipping '%s' (too large: %dB > %dB limit)", filePath, info.Size(), maxSizeBytes)
+		errMsg := fmt.Sprintf(
+			"Skipping '%s' (too large: %dB > %dB limit)",
+			filePath,
+			info.Size(),
+			maxSizeBytes,
+		)
 		p.Warning(errMsg)
 
 		return errors.New(errMsg)
@@ -486,12 +577,17 @@ func appendFileContentToBuffer(ctx context.Context, buf *bytes.Buffer, p *ui.Pre
 	tools.AppendFileMarkerHeader(buf, filePath) // markdown util
 	buf.Write(content)
 	tools.AppendFileMarkerFooter(buf, filePath) // markdown util
-	logger.Debug("Appended file content successfully", slog.String("path", filePath), slog.Int64("size", info.Size()))
+	logger.Debug(
+		"Appended file content successfully",
+		slog.String("path", filePath),
+		slog.Int64("size", info.Size()),
+	)
 
 	return nil
 }
 
 func init() {
 	rootCmd.AddCommand(describeCmd)
-	describeCmd.Flags().StringVarP(&describeOutputFile, "output", "o", defaultDescribeOutputFile, "Path to write the context markdown file")
+	describeCmd.Flags().
+		StringVarP(&describeOutputFile, "output", "o", defaultDescribeOutputFile, "Path to write the context markdown file")
 }

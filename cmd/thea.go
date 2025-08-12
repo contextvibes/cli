@@ -8,11 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	// Internal imports.
 	"github.com/contextvibes/cli/internal/thea" // Assuming this is your THEA client package
 	"github.com/contextvibes/cli/internal/ui"
-
-	// External imports.
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +17,7 @@ import (
 var theaCmd = &cobra.Command{
 	Use:   "thea",
 	Short: "Interact with THEA framework artifacts and services.",
-	Long: `Provides commands to fetch artifacts, list available resources (future), 
+	Long: `Provides commands to fetch artifacts, list available resources (future),
 and other interactions related to the THEA framework.`,
 	// No RunE needed if it only groups subcommands and doesn't execute itself.
 }
@@ -120,12 +117,16 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 				}
 			}
 			outputPath = artifactFilename
-			presenter.Info("No output file specified with -o, will save to: %s (in current directory)", outputPath)
+			presenter.Info(
+				"No output file specified with -o, will save to: %s (in current directory)",
+				outputPath,
+			)
 		}
 
 		outputDir := filepath.Dir(outputPath)
 		if outputDir != "" && outputDir != "." {
-			if err := os.MkdirAll(outputDir, 0755); err != nil {
+			// FIXED: Changed permissions from 0755 to 0750.
+			if err := os.MkdirAll(outputDir, 0o750); err != nil {
 				presenter.Error("Failed to create output directory '%s': %v", outputDir, err)
 
 				return fmt.Errorf("creating output directory %s: %w", outputDir, err)
@@ -134,7 +135,10 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 
 		if _, statErr := os.Stat(outputPath); statErr == nil { // File exists
 			if !forceOutputFlag {
-				presenter.Error("Output file '%s' already exists. Use --force to overwrite.", outputPath)
+				presenter.Error(
+					"Output file '%s' already exists. Use --force to overwrite.",
+					outputPath,
+				)
 
 				return fmt.Errorf("output file %s already exists", outputPath)
 			}
@@ -145,14 +149,18 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 			return fmt.Errorf("checking output file %s: %w", outputPath, statErr)
 		}
 
-		err = os.WriteFile(outputPath, []byte(content), 0644)
+		err = os.WriteFile(outputPath, []byte(content), 0o644)
 		if err != nil {
 			presenter.Error("Failed to write artifact to '%s': %v", outputPath, err)
 
 			return fmt.Errorf("writing artifact to %s: %w", outputPath, err)
 		}
 
-		presenter.Success("Successfully fetched artifact '%s' and saved to: %s", artifactID, outputPath)
+		presenter.Success(
+			"Successfully fetched artifact '%s' and saved to: %s",
+			artifactID,
+			outputPath,
+		)
 		logger.InfoContext(ctx, "Artifact fetched successfully",
 			slog.String("artifact_id", artifactID),
 			slog.String("output_path", outputPath))
@@ -170,7 +178,10 @@ func init() {
 	theaCmd.AddCommand(getArtifactCmd)
 
 	// Define flags for 'get-artifact'
-	getArtifactCmd.Flags().StringVarP(&artifactVersionHintFlag, "version", "v", "", "Version hint (e.g., git tag/branch) for the artifact.")
-	getArtifactCmd.Flags().StringVarP(&outputFilePathFlag, "output", "o", "", "Path to save the fetched artifact. If empty, uses a default name.")
-	getArtifactCmd.Flags().BoolVarP(&forceOutputFlag, "force", "f", false, "Overwrite the output file if it already exists.")
+	getArtifactCmd.Flags().
+		StringVarP(&artifactVersionHintFlag, "version", "v", "", "Version hint (e.g., git tag/branch) for the artifact.")
+	getArtifactCmd.Flags().
+		StringVarP(&outputFilePathFlag, "output", "o", "", "Path to save the fetched artifact. If empty, uses a default name.")
+	getArtifactCmd.Flags().
+		BoolVarP(&forceOutputFlag, "force", "f", false, "Overwrite the output file if it already exists.")
 }

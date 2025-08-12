@@ -26,7 +26,11 @@ request, filling in details and opening it in a web browser.`,
 
 		presenter.Summary("Finishing work on the current branch.")
 
-		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Logger: logger, Executor: ExecClient.UnderlyingExecutor()})
+		gitClient, err := git.NewClient(
+			ctx,
+			".",
+			git.GitClientConfig{Logger: logger, Executor: ExecClient.UnderlyingExecutor()},
+		)
 		if err != nil {
 			presenter.Error("Failed to initialize Git client: %v", err)
 			return err
@@ -39,12 +43,17 @@ request, filling in details and opening it in a web browser.`,
 		}
 
 		if currentBranch == gitClient.MainBranchName() {
-			presenter.Error("You cannot create a pull request from the main branch ('%s').", gitClient.MainBranchName())
+			presenter.Error(
+				"You cannot create a pull request from the main branch ('%s').",
+				gitClient.MainBranchName(),
+			)
 			return errors.New("cannot finish from main branch")
 		}
 
 		presenter.Info("Current branch is '%s'.", currentBranch)
-		pushConfirmed, err := presenter.PromptForConfirmation("Push this branch to the remote repository?")
+		pushConfirmed, err := presenter.PromptForConfirmation(
+			"Push this branch to the remote repository?",
+		)
 		if err != nil {
 			return err
 		}
@@ -62,7 +71,9 @@ request, filling in details and opening it in a web browser.`,
 
 		if !ExecClient.CommandExists("gh") {
 			presenter.Warning("GitHub CLI ('gh') not found in your PATH.")
-			presenter.Advice("Cannot create the PR automatically. Please install 'gh' or create the PR manually on GitHub.")
+			presenter.Advice(
+				"Cannot create the PR automatically. Please install 'gh' or create the PR manually on GitHub.",
+			)
 			return nil
 		}
 

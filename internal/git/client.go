@@ -38,7 +38,10 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 
 	// Check if the configured git executable exists using the provided executor
 	if !executor.CommandExists(validatedConfig.GitExecutable) {
-		err := fmt.Errorf("git executable '%s' not found in PATH or specified path", validatedConfig.GitExecutable)
+		err := fmt.Errorf(
+			"git executable '%s' not found in PATH or specified path",
+			validatedConfig.GitExecutable,
+		)
 		logger.ErrorContext(ctx, "GitClient setup failed: executable check",
 			slog.String("source_component", "GitClient.NewClient"),
 			slog.String("error", err.Error()),
@@ -51,7 +54,11 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	if effectiveWorkDir == "" {
 		effectiveWorkDir, err = os.Getwd()
 		if err != nil {
-			logger.ErrorContext(ctx, "GitClient setup failed: getwd", slog.String("error", err.Error()))
+			logger.ErrorContext(
+				ctx,
+				"GitClient setup failed: getwd",
+				slog.String("error", err.Error()),
+			)
 
 			return nil, fmt.Errorf("failed to get current working directory: %w", err)
 		}
@@ -60,14 +67,22 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	// Use the executor to find repo top-level
 	topLevelCmdArgs := []string{"rev-parse", "--show-toplevel"}
 
-	topLevel, stderr, err := executor.CaptureOutput(ctx, effectiveWorkDir, validatedConfig.GitExecutable, topLevelCmdArgs...)
+	topLevel, stderr, err := executor.CaptureOutput(
+		ctx,
+		effectiveWorkDir,
+		validatedConfig.GitExecutable,
+		topLevelCmdArgs...)
 	if err != nil {
 		logger.ErrorContext(ctx, "GitClient setup failed: rev-parse --show-toplevel",
 			slog.String("error", err.Error()),
 			slog.String("stderr", strings.TrimSpace(stderr)),
 			slog.String("initial_workdir", effectiveWorkDir))
 
-		return nil, fmt.Errorf("path '%s' is not within a Git repository (or git command '%s' failed)", effectiveWorkDir, validatedConfig.GitExecutable)
+		return nil, fmt.Errorf(
+			"path '%s' is not within a Git repository (or git command '%s' failed)",
+			effectiveWorkDir,
+			validatedConfig.GitExecutable,
+		)
 	}
 
 	repoPath := strings.TrimSpace(topLevel)
@@ -75,14 +90,22 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	// Use the executor to find .git directory
 	gitDirCmdArgs := []string{"rev-parse", "--git-dir"}
 
-	gitDirOutput, stderr, err := executor.CaptureOutput(ctx, repoPath, validatedConfig.GitExecutable, gitDirCmdArgs...)
+	gitDirOutput, stderr, err := executor.CaptureOutput(
+		ctx,
+		repoPath,
+		validatedConfig.GitExecutable,
+		gitDirCmdArgs...)
 	if err != nil {
 		logger.ErrorContext(ctx, "GitClient setup failed: rev-parse --git-dir",
 			slog.String("error", err.Error()),
 			slog.String("stderr", strings.TrimSpace(stderr)),
 			slog.String("repo_path", repoPath))
 
-		return nil, fmt.Errorf("could not determine .git directory for repo at '%s': %w", repoPath, err)
+		return nil, fmt.Errorf(
+			"could not determine .git directory for repo at '%s': %w",
+			repoPath,
+			err,
+		)
 	}
 
 	gitDir := strings.TrimSpace(gitDirOutput)
@@ -104,11 +127,15 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	return client, nil
 }
 
-func (c *GitClient) Path() string           { return c.repoPath }
-func (c *GitClient) GitDir() string         { return c.gitDir }
+func (c *GitClient) Path() string { return c.repoPath }
+
+func (c *GitClient) GitDir() string { return c.gitDir }
+
 func (c *GitClient) MainBranchName() string { return c.config.DefaultMainBranchName }
-func (c *GitClient) RemoteName() string     { return c.config.DefaultRemoteName }
-func (c *GitClient) Logger() *slog.Logger   { return c.logger }
+
+func (c *GitClient) RemoteName() string { return c.config.DefaultRemoteName }
+
+func (c *GitClient) Logger() *slog.Logger { return c.logger }
 
 func (c *GitClient) runGit(ctx context.Context, args ...string) error {
 	// Logger().Debug(...) is already part of executor.Execute
@@ -127,7 +154,14 @@ func (c *GitClient) captureGitOutput(ctx context.Context, args ...string) (strin
 func (c *GitClient) GetCurrentBranchName(ctx context.Context) (string, error) {
 	stdout, stderr, err := c.captureGitOutput(ctx, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		c.logger.ErrorContext(ctx, "Failed to get current branch name", "error", err, "stderr", strings.TrimSpace(stderr))
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to get current branch name",
+			"error",
+			err,
+			"stderr",
+			strings.TrimSpace(stderr),
+		)
 
 		return "", fmt.Errorf("failed to get current branch name: %w", err)
 	}
@@ -251,7 +285,6 @@ func (c *GitClient) IsWorkingDirClean(ctx context.Context) (bool, error) {
 func (c *GitClient) PullRebase(ctx context.Context, branch string) error {
 	remote := c.RemoteName()
 	err := c.runGit(ctx, "pull", "--rebase", remote, branch)
-
 	if err != nil {
 		return fmt.Errorf("git pull --rebase %s %s failed: %w", remote, branch, err)
 	}
@@ -281,8 +314,16 @@ func (c *GitClient) Push(ctx context.Context, branch string) error {
 		// Check if stderr (or err.Error() if it includes stderr) indicates "up-to-date"
 		// This is a bit fragile. A better way would be for CaptureOutput to return specific error types.
 		errMsg := strings.ToLower(err.Error() + " " + stderr) // Combine for checking
-		if strings.Contains(errMsg, "everything up-to-date") || strings.Contains(errMsg, "already up-to-date") {
-			c.logger.InfoContext(ctx, "'git push' reported everything up-to-date.", "remote", remote, "branch_arg", branch)
+		if strings.Contains(errMsg, "everything up-to-date") ||
+			strings.Contains(errMsg, "already up-to-date") {
+			c.logger.InfoContext(
+				ctx,
+				"'git push' reported everything up-to-date.",
+				"remote",
+				remote,
+				"branch_arg",
+				branch,
+			)
 
 			return nil // Not a failure
 		}
@@ -318,7 +359,11 @@ func (c *GitClient) SwitchBranch(ctx context.Context, branchName string) error {
 	return nil
 }
 
-func (c *GitClient) CreateAndSwitchBranch(ctx context.Context, newBranchName string, baseBranch string) error {
+func (c *GitClient) CreateAndSwitchBranch(
+	ctx context.Context,
+	newBranchName string,
+	baseBranch string,
+) error {
 	args := []string{"switch", "-c", newBranchName}
 	if baseBranch != "" {
 		args = append(args, baseBranch)
@@ -335,7 +380,6 @@ func (c *GitClient) CreateAndSwitchBranch(ctx context.Context, newBranchName str
 func (c *GitClient) PushAndSetUpstream(ctx context.Context, branchName string) error {
 	remote := c.RemoteName()
 	err := c.runGit(ctx, "push", "--set-upstream", remote, branchName)
-
 	if err != nil {
 		return fmt.Errorf("git push --set-upstream %s %s failed: %w", remote, branchName, err)
 	}
@@ -366,7 +410,10 @@ func TruncateString(s string, maxLen int) string {
 }
 
 // GetLogAndDiffFromMergeBase finds the common ancestor with a branch and returns the log and diff since that point.
-func (c *GitClient) GetLogAndDiffFromMergeBase(ctx context.Context, baseBranchRef string) (log, diff string, err error) {
+func (c *GitClient) GetLogAndDiffFromMergeBase(
+	ctx context.Context,
+	baseBranchRef string,
+) (log, diff string, err error) {
 	// First, check if the remote branch even exists.
 	_, _, err = c.captureGitOutput(ctx, "rev-parse", "--verify", baseBranchRef)
 	if err != nil {
@@ -382,7 +429,12 @@ func (c *GitClient) GetLogAndDiffFromMergeBase(ctx context.Context, baseBranchRe
 
 	mergeBase := strings.TrimSpace(string(mergeBaseBytes))
 
-	log, _, err = c.captureGitOutput(ctx, "log", "--pretty=format:%h %s (%an, %cr)", mergeBase+"..HEAD")
+	log, _, err = c.captureGitOutput(
+		ctx,
+		"log",
+		"--pretty=format:%h %s (%an, %cr)",
+		mergeBase+"..HEAD",
+	)
 	if err != nil {
 		return "", "", fmt.Errorf("git log failed: %w", err)
 	}

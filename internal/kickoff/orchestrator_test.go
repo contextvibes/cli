@@ -29,36 +29,48 @@ func NewMockPresenter() *MockPresenter {
 func (m *MockPresenter) Header(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "HEADER: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Summary(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "SUMMARY: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Step(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "STEP: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Info(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "INFO: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Success(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "SUCCESS: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Error(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "ERROR: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Warning(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "WARNING: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Advice(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "ADVICE: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Detail(format string, a ...any) {
 	fmt.Fprintf(m.OutputBuffer, "DETAIL: "+format+"\n", a...)
 }
+
 func (m *MockPresenter) Highlight(text string) string { return "*" + text + "*" }
-func (m *MockPresenter) Newline()                     { fmt.Fprintln(m.OutputBuffer) }
+
+func (m *MockPresenter) Newline() { fmt.Fprintln(m.OutputBuffer) }
+
 func (m *MockPresenter) PromptForInput(prompt string) (string, error) {
 	args := m.Called(prompt)
 	return args.String(0), args.Error(1)
 }
+
 func (m *MockPresenter) PromptForConfirmation(prompt string) (bool, error) {
 	args := m.Called(prompt)
 	return args.Bool(0), args.Error(1)
@@ -97,6 +109,10 @@ func TestExecuteKickoff_ModeSelection(t *testing.T) {
 
 		err := orc.ExecuteKickoff(ctx, true, "")
 		require.NoError(t, err)
-		assert.Contains(t, mockPresenter.OutputBuffer.String(), "ContextVibes: Strategic Project Kickoff - Prompt Generation")
+		assert.Contains(
+			t,
+			mockPresenter.OutputBuffer.String(),
+			"ContextVibes: Strategic Project Kickoff - Prompt Generation",
+		)
 	})
 }

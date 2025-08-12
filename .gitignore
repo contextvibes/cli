@@ -1,5 +1,4 @@
 # IDE and OS specific
-.vscode/settings.json
 .DS_Store
 
 # Generated output files & logs
