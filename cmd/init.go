@@ -25,7 +25,13 @@ configuration values, including Git settings and validation patterns.`,
 		presenter.Summary("Initializing ContextVibes configuration...")
 
 		// Find the git repository root
-		stdout, stderr, err := ExecClient.CaptureOutput(ctx, ".", "git", "rev-parse", "--show-toplevel")
+		stdout, stderr, err := ExecClient.CaptureOutput(
+			ctx,
+			".",
+			"git",
+			"rev-parse",
+			"--show-toplevel",
+		)
 		if err != nil {
 			presenter.Error("Failed to determine project root. Are you inside a Git repository?")
 			presenter.Detail("Error: %v", err)

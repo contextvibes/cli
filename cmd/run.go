@@ -41,7 +41,10 @@ and then presents an interactive menu to choose an example to execute with 'go r
 		presenter.Info("Discovered %d example(s).", len(examples))
 		presenter.Newline()
 
-		choice, err := presenter.PromptForSelect("Please select an example application to run:", examples)
+		choice, err := presenter.PromptForSelect(
+			"Please select an example application to run:",
+			examples,
+		)
 		if err != nil {
 			if choice == "" {
 				presenter.Info("No selection made. Exiting.")

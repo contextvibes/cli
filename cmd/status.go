@@ -74,7 +74,11 @@ This includes staged changes, unstaged changes, and untracked files.`,
 		trimmedStdout := strings.TrimSpace(stdout)
 		if trimmedStdout == "" {
 			presenter.Info("Working tree is clean.") // Use Info for clean status
-			logger.InfoContext(ctx, "Status check reported clean working tree", slog.String("source_command", "status"))
+			logger.InfoContext(
+				ctx,
+				"Status check reported clean working tree",
+				slog.String("source_command", "status"),
+			)
 		} else {
 			// Use the Info block to display the short status lines
 			presenter.InfoPrefixOnly()                                                  // Print "INFO:" prefix

@@ -4,7 +4,6 @@ package cmd
 import (
 	"context"
 	"errors"
-
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +45,13 @@ var kickoffCmd = &cobra.Command{
 		var configFilePath string
 		repoCfgPath, _ := config.FindRepoRootConfigPath(ExecClient)
 		if repoCfgPath == "" {
-			repoRootForCreation, _, _ := ExecClient.CaptureOutput(context.Background(), ".", "git", "rev-parse", "--show-toplevel")
+			repoRootForCreation, _, _ := ExecClient.CaptureOutput(
+				context.Background(),
+				".",
+				"git",
+				"rev-parse",
+				"--show-toplevel",
+			)
 			cleanRoot := strings.TrimSpace(repoRootForCreation)
 			if cleanRoot == "" || cleanRoot == "." {
 				cwd, _ := os.Getwd()
@@ -72,7 +77,14 @@ var kickoffCmd = &cobra.Command{
 		}
 		gitClt, _ = git.NewClient(ctx, workDir, gitClientConfig)
 
-		orchestrator := kickoff.NewOrchestrator(logger, LoadedAppConfig, presenter, gitClt, configFilePath, assumeYes)
+		orchestrator := kickoff.NewOrchestrator(
+			logger,
+			LoadedAppConfig,
+			presenter,
+			gitClt,
+			configFilePath,
+			assumeYes,
+		)
 
 		if markStrategicCompleteFlag {
 			return orchestrator.MarkStrategicKickoffComplete(ctx)
@@ -82,8 +94,11 @@ var kickoffCmd = &cobra.Command{
 }
 
 func init() {
-	kickoffCmd.Flags().StringVarP(&branchNameFlag, "branch", "b", "", "Name for the new daily/feature branch (e.g., feature/JIRA-123)")
-	kickoffCmd.Flags().BoolVar(&isStrategicKickoffFlag, "strategic", false, "Generates a master prompt for an AI-guided strategic project kickoff session.")
-	kickoffCmd.Flags().BoolVar(&markStrategicCompleteFlag, "mark-strategic-complete", false, "Marks the strategic kickoff as complete in .contextvibes.yaml.")
+	kickoffCmd.Flags().
+		StringVarP(&branchNameFlag, "branch", "b", "", "Name for the new daily/feature branch (e.g., feature/JIRA-123)")
+	kickoffCmd.Flags().
+		BoolVar(&isStrategicKickoffFlag, "strategic", false, "Generates a master prompt for an AI-guided strategic project kickoff session.")
+	kickoffCmd.Flags().
+		BoolVar(&markStrategicCompleteFlag, "mark-strategic-complete", false, "Marks the strategic kickoff as complete in .contextvibes.yaml.")
 	rootCmd.AddCommand(kickoffCmd)
 }

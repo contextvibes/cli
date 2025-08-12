@@ -49,8 +49,12 @@ var rootCmd = &cobra.Command{
 		if aiLogFileFlagValue != "" {
 			targetAILogFile = aiLogFileFlagValue
 		}
-		logFileHandle, errLogFile := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
-		var aiOut = io.Discard
+		logFileHandle, errLogFile := os.OpenFile(
+			targetAILogFile,
+			os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+			0o660,
+		)
+		aiOut := io.Discard
 		if errLogFile == nil {
 			aiOut = logFileHandle
 		}
@@ -80,8 +84,10 @@ func init() {
 		AppVersion = "v0.2.0-dev" // Updated version
 	}
 
-	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
-	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
+	rootCmd.PersistentFlags().
+		StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
+	rootCmd.PersistentFlags().
+		StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
 	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all prompts")
 }
 

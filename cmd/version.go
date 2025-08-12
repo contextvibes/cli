@@ -3,9 +3,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"github.com/contextvibes/cli/internal/ui"
+	"github.com/spf13/cobra"
 )
 
 // versionCmd represents the version command.

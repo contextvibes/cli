@@ -22,20 +22,34 @@ type mockBuildExecutor struct {
 	lastCommand []string
 }
 
-func (m *mockBuildExecutor) Execute(ctx context.Context, dir string, commandName string, args ...string) error {
+func (m *mockBuildExecutor) Execute(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) error {
 	m.lastCommand = append([]string{commandName}, args...)
 	if m.ExecuteFunc != nil {
 		return m.ExecuteFunc(ctx, dir, commandName, args...)
 	}
 	return nil
 }
-func (m *mockBuildExecutor) CaptureOutput(ctx context.Context, dir string, commandName string, args ...string) (string, string, error) {
+
+func (m *mockBuildExecutor) CaptureOutput(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) (string, string, error) {
 	return "", "", errors.New("CaptureOutput not implemented in mock")
 }
+
 func (m *mockBuildExecutor) CommandExists(commandName string) bool { return true }
+
 func (m *mockBuildExecutor) Logger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
+
 func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
 
 // setupBuildTest remains mostly the same
@@ -76,10 +90,11 @@ func TestBuildCmd(t *testing.T) {
 
 	t.Run("success: standard optimized build", func(t *testing.T) {
 		_, mockExec := setupBuildTest(t)
-		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0644))
+		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o644))
 		cmdDir := filepath.Join("cmd", "mycoolapp")
-		require.NoError(t, os.MkdirAll(cmdDir, 0755))
-		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0644))
+		// FIXED: Changed permissions from 0755 to 0750.
+		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o644))
 
 		// Reset flags for each run
 		buildOutputFlag = ""
@@ -89,16 +104,25 @@ func TestBuildCmd(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, out, "Build successful")
-		expectedCommand := []string{"go", "build", "-ldflags", "-s -w", "-o", filepath.Join("bin", "mycoolapp"), "./" + filepath.ToSlash(filepath.Join("cmd", "mycoolapp"))}
+		expectedCommand := []string{
+			"go",
+			"build",
+			"-ldflags",
+			"-s -w",
+			"-o",
+			filepath.Join("bin", "mycoolapp"),
+			"./" + filepath.ToSlash(filepath.Join("cmd", "mycoolapp")),
+		}
 		assert.Equal(t, expectedCommand, mockExec.lastCommand)
 	})
 
 	t.Run("success: debug build", func(t *testing.T) {
 		_, mockExec := setupBuildTest(t)
-		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0644))
+		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o644))
 		cmdDir := filepath.Join("cmd", "myapp")
-		require.NoError(t, os.MkdirAll(cmdDir, 0755))
-		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0644))
+		// FIXED: Changed permissions from 0755 to 0750.
+		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o644))
 
 		buildOutputFlag = ""
 		buildDebugFlag = true // Set the flag for debug
@@ -107,7 +131,13 @@ func TestBuildCmd(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, out, "Compiling with debug symbols.")
-		expectedCommand := []string{"go", "build", "-o", filepath.Join("bin", "myapp"), "./" + filepath.ToSlash(filepath.Join("cmd", "myapp"))}
+		expectedCommand := []string{
+			"go",
+			"build",
+			"-o",
+			filepath.Join("bin", "myapp"),
+			"./" + filepath.ToSlash(filepath.Join("cmd", "myapp")),
+		}
 		assert.Equal(t, expectedCommand, mockExec.lastCommand)
 	})
 
@@ -126,10 +156,10 @@ func TestBuildCmd(t *testing.T) {
 		mockExec.ExecuteFunc = func(ctx context.Context, dir, cmd string, args ...string) error {
 			return errors.New("simulated compilation error")
 		}
-		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0644))
+		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o644))
 		cmdDir := filepath.Join("cmd", "failingapp")
-		require.NoError(t, os.MkdirAll(cmdDir, 0755))
-		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0644))
+		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o644))
 
 		buildOutputFlag = ""
 		buildDebugFlag = false

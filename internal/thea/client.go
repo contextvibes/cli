@@ -72,7 +72,9 @@ func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (
 	}
 	if cfg.DefaultArtifactRef == "" {
 		// Could default to "main" if not set, or error out
-		logger.Warn("THEA default artifact ref is not configured, consider setting it. Defaulting to 'main'.")
+		logger.Warn(
+			"THEA default artifact ref is not configured, consider setting it. Defaulting to 'main'.",
+		)
 		cfg.DefaultArtifactRef = "main" // Or handle as error
 	}
 
@@ -97,30 +99,58 @@ func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (
 func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.config.ManifestURL, nil)
 	if err != nil {
-		c.logger.ErrorContext(ctx, "Failed to create manifest request", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to create manifest request",
+			slog.String("url", c.config.ManifestURL),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("creating manifest request: %w", err)
 	}
 
 	c.logger.InfoContext(ctx, "Fetching THEA manifest", slog.String("url", c.config.ManifestURL))
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		c.logger.ErrorContext(ctx, "Failed to fetch manifest", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to fetch manifest",
+			slog.String("url", c.config.ManifestURL),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("fetching manifest from %s: %w", c.config.ManifestURL, err)
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			c.logger.WarnContext(ctx, "Failed to close manifest response body", slog.String("error", closeErr.Error()))
+			c.logger.WarnContext(
+				ctx,
+				"Failed to close manifest response body",
+				slog.String("error", closeErr.Error()),
+			)
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		c.logger.ErrorContext(ctx, "Failed to fetch manifest, unexpected status", slog.String("url", c.config.ManifestURL), slog.Int("status", resp.StatusCode))
-		return nil, fmt.Errorf("fetching manifest: received status %d from %s", resp.StatusCode, c.config.ManifestURL)
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to fetch manifest, unexpected status",
+			slog.String("url", c.config.ManifestURL),
+			slog.Int("status", resp.StatusCode),
+		)
+		return nil, fmt.Errorf(
+			"fetching manifest: received status %d from %s",
+			resp.StatusCode,
+			c.config.ManifestURL,
+		)
 	}
 
 	var manifest Manifest
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
-		c.logger.ErrorContext(ctx, "Failed to decode manifest JSON", slog.String("url", c.config.ManifestURL), slog.String("error", err.Error()))
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to decode manifest JSON",
+			slog.String("url", c.config.ManifestURL),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("decoding manifest JSON from %s: %w", c.config.ManifestURL, err)
 	}
 	// TODO: Add manifest caching logic here (save to c.config.CacheDir)
@@ -156,7 +186,11 @@ func (m *Manifest) GetArtifactByID(id string) (*Artifact, error) {
 
 // FetchArtifactContentByID fetches the content of a specific artifact version.
 // If version is empty, it might fetch the one specified in the manifest or use DefaultArtifactRef.
-func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifactVersionHint string) (string, error) {
+func (c *Client) FetchArtifactContentByID(
+	ctx context.Context,
+	id string,
+	artifactVersionHint string,
+) (string, error) {
 	manifest, err := c.LoadManifest(ctx) // Ensure manifest is loaded (potentially from cache)
 	if err != nil {
 		return "", fmt.Errorf("loading manifest: %w", err)
@@ -192,7 +226,10 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 	} else {
 		effectiveSourcePathInRepo = artifact.ID // For files like .editorconfig where ID is full name
 	}
-	effectiveSourcePathInRepo = strings.TrimPrefix(effectiveSourcePathInRepo, "/") // Ensure no leading slash for JoinPath
+	effectiveSourcePathInRepo = strings.TrimPrefix(
+		effectiveSourcePathInRepo,
+		"/",
+	) // Ensure no leading slash for JoinPath
 
 	// Construct the full raw download URL
 	// Example: https://raw.githubusercontent.com/contextvibes/THEA/main/docs/templates/contributing-guide.md
@@ -222,17 +259,28 @@ func (c *Client) FetchArtifactContentByID(ctx context.Context, id string, artifa
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			c.logger.WarnContext(ctx, "Failed to close artifact content response body", slog.String("url", fullURL), slog.String("error", closeErr.Error()))
+			c.logger.WarnContext(
+				ctx,
+				"Failed to close artifact content response body",
+				slog.String("url", fullURL),
+				slog.String("error", closeErr.Error()),
+			)
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024)) // Read a bit of the body for error context
+		bodyBytes, _ := io.ReadAll(
+			io.LimitReader(resp.Body, 1024),
+		) // Read a bit of the body for error context
 		c.logger.ErrorContext(ctx, "Failed to fetch artifact content, unexpected status",
 			slog.String("url", fullURL),
 			slog.Int("status", resp.StatusCode),
 			slog.String("response_snippet", string(bodyBytes)))
-		return "", fmt.Errorf("fetching artifact content: received status %d from %s", resp.StatusCode, fullURL)
+		return "", fmt.Errorf(
+			"fetching artifact content: received status %d from %s",
+			resp.StatusCode,
+			fullURL,
+		)
 	}
 
 	contentBytes, err := io.ReadAll(resp.Body)

@@ -101,20 +101,32 @@ var listIssuesCmd = &cobra.Command{
 
 		if !ExecClient.CommandExists("gh") {
 			consolePresenter.Error("GitHub CLI ('gh') not found. This command is required.")
-			consolePresenter.Advice("Please install it from https://cli.github.com/ and authenticate with 'gh auth login'.")
+			consolePresenter.Advice(
+				"Please install it from https://cli.github.com/ and authenticate with 'gh auth login'.",
+			)
 			return errors.New("gh cli not found")
 		}
 
 		consolePresenter.Step("Running 'gh issue list'...")
 		jsonFields := "number,title,author,body,comments"
-		stdout, stderr, err := ExecClient.CaptureOutput(ctx, ".", "gh", "issue", "list", "--json", jsonFields)
+		stdout, stderr, err := ExecClient.CaptureOutput(
+			ctx,
+			".",
+			"gh",
+			"issue",
+			"list",
+			"--json",
+			jsonFields,
+		)
 		if err != nil {
 			consolePresenter.Error("Failed to fetch issues from GitHub CLI.")
 			consolePresenter.Detail("Error: %v", err)
 			if stderr != "" {
 				consolePresenter.Detail("Stderr: %s", stderr)
 			}
-			consolePresenter.Advice("Ensure you are in a GitHub repository and have run 'gh auth login'.")
+			consolePresenter.Advice(
+				"Ensure you are in a GitHub repository and have run 'gh auth login'.",
+			)
 			return errors.New("gh issue list command failed")
 		}
 
@@ -135,7 +147,11 @@ var listIssuesCmd = &cobra.Command{
 		}
 
 		if outputFile != "" {
-			consolePresenter.Success("Successfully wrote %d issue(s) to %s", len(issues), outputFile)
+			consolePresenter.Success(
+				"Successfully wrote %d issue(s) to %s",
+				len(issues),
+				outputFile,
+			)
 		}
 
 		return nil
@@ -143,7 +159,8 @@ var listIssuesCmd = &cobra.Command{
 }
 
 func init() {
-	listIssuesCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Path to save the output file.")
+	listIssuesCmd.Flags().
+		StringVarP(&outputFile, "output", "o", "", "Path to save the output file.")
 	rootCmd.AddCommand(projectCmd)
 	projectCmd.AddCommand(listIssuesCmd)
 }

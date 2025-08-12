@@ -50,10 +50,19 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		scriptToLoad := codemodScriptPath
 
 		if scriptToLoad == "" {
-			presenter.Info("No --script provided, attempting to load default: %s", defaultCodemodFilename)
+			presenter.Info(
+				"No --script provided, attempting to load default: %s",
+				defaultCodemodFilename,
+			)
 			if _, err := os.Stat(defaultCodemodFilename); os.IsNotExist(err) {
-				presenter.Error("Default codemod script '%s' not found and no --script flag provided.", defaultCodemodFilename)
-				presenter.Advice("Create '%s' in the current directory or use the --script flag to specify a file.", defaultCodemodFilename)
+				presenter.Error(
+					"Default codemod script '%s' not found and no --script flag provided.",
+					defaultCodemodFilename,
+				)
+				presenter.Advice(
+					"Create '%s' in the current directory or use the --script flag to specify a file.",
+					defaultCodemodFilename,
+				)
 
 				return errors.New("no codemod script specified or found")
 			}
@@ -65,7 +74,11 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		scriptData, err := os.ReadFile(scriptToLoad)
 		if err != nil {
 			presenter.Error("Failed to read codemod script file '%s': %v", scriptToLoad, err)
-			logger.Error("codemod: failed to read script file", slog.String("path", scriptToLoad), slog.Any("error", err))
+			logger.Error(
+				"codemod: failed to read script file",
+				slog.String("path", scriptToLoad),
+				slog.Any("error", err),
+			)
 
 			return err
 		}
@@ -73,7 +86,11 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		var script codemod.ChangeScript
 		if err := json.Unmarshal(scriptData, &script); err != nil {
 			presenter.Error("Failed to parse codemod script JSON from '%s': %v", scriptToLoad, err)
-			logger.Error("codemod: failed to parse script json", slog.String("path", scriptToLoad), slog.Any("error", err))
+			logger.Error(
+				"codemod: failed to parse script json",
+				slog.String("path", scriptToLoad),
+				slog.Any("error", err),
+			)
 
 			return err
 		}
@@ -92,7 +109,8 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		for _, fileChangeSet := range script {
 			presenter.Header("Processing target: %s", fileChangeSet.FilePath)
 
-			onlyDelete := len(fileChangeSet.Operations) == 1 && fileChangeSet.Operations[0].Type == "delete_file"
+			onlyDelete := len(fileChangeSet.Operations) == 1 &&
+				fileChangeSet.Operations[0].Type == "delete_file"
 			fileExists := false
 			fileInfo, statErr := os.Stat(fileChangeSet.FilePath)
 			if statErr == nil {
@@ -105,8 +123,14 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 			}
 
 			if !fileExists && !onlyDelete {
-				presenter.Error("File not found: %s. Skipping operations (except delete_file).", fileChangeSet.FilePath)
-				logger.Error("codemod: file not found, skipping changeset", slog.String("path", fileChangeSet.FilePath))
+				presenter.Error(
+					"File not found: %s. Skipping operations (except delete_file).",
+					fileChangeSet.FilePath,
+				)
+				logger.Error(
+					"codemod: file not found, skipping changeset",
+					slog.String("path", fileChangeSet.FilePath),
+				)
 
 				continue
 			}
@@ -116,8 +140,16 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 			if fileExists && !onlyDelete {
 				fileContentBytes, readErr := os.ReadFile(fileChangeSet.FilePath)
 				if readErr != nil {
-					presenter.Error("Failed to read file %s: %v. Skipping.", fileChangeSet.FilePath, readErr)
-					logger.Error("codemod: failed to read file for modification", slog.String("path", fileChangeSet.FilePath), slog.Any("error", readErr))
+					presenter.Error(
+						"Failed to read file %s: %v. Skipping.",
+						fileChangeSet.FilePath,
+						readErr,
+					)
+					logger.Error(
+						"codemod: failed to read file for modification",
+						slog.String("path", fileChangeSet.FilePath),
+						slog.Any("error", readErr),
+					)
 
 					continue
 				}
@@ -252,7 +284,10 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 
 				confirmedWrite := false
 				if assumeYes {
-					presenter.Info("Writing changes to '%s' (confirmation bypassed via --yes).", fileChangeSet.FilePath)
+					presenter.Info(
+						"Writing changes to '%s' (confirmation bypassed via --yes).",
+						fileChangeSet.FilePath,
+					)
 					confirmedWrite = true
 				} else {
 					var promptErr error
@@ -266,7 +301,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 				}
 
 				if confirmedWrite {
-					var perm os.FileMode = 0644
+					var perm os.FileMode = 0o644
 					if fileInfo != nil { // Use the FileInfo from the initial Stat if file existed
 						perm = fileInfo.Mode().Perm()
 					} else {
@@ -276,8 +311,16 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 
 					err := os.WriteFile(fileChangeSet.FilePath, []byte(currentFileContent), perm)
 					if err != nil {
-						presenter.Error("Failed to write changes to %s: %v", fileChangeSet.FilePath, err)
-						logger.Error("codemod: failed to write file", slog.String("path", fileChangeSet.FilePath), slog.Any("error", err))
+						presenter.Error(
+							"Failed to write changes to %s: %v",
+							fileChangeSet.FilePath,
+							err,
+						)
+						logger.Error(
+							"codemod: failed to write file",
+							slog.String("path", fileChangeSet.FilePath),
+							slog.Any("error", err),
+						)
 					} else {
 						presenter.Success("Successfully updated %s", fileChangeSet.FilePath)
 						totalFilesModified++
@@ -297,13 +340,17 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 		presenter.Detail("Files Modified: %d", totalFilesModified)
 		presenter.Detail("Files Deleted: %d", totalFilesDeleted)
 		presenter.Detail("Operations Attempted: %d", totalOperationsAttempted)
-		presenter.Detail("Operations Succeeded (may include no-ops/already deleted): %d", totalOperationsSucceeded)
+		presenter.Detail(
+			"Operations Succeeded (may include no-ops/already deleted): %d",
+			totalOperationsSucceeded,
+		)
 
 		return nil
 	},
 }
 
 func init() {
-	codemodCmd.Flags().StringVarP(&codemodScriptPath, "script", "s", "", "Path to the JSON codemod script file (default: "+defaultCodemodFilename+")")
+	codemodCmd.Flags().
+		StringVarP(&codemodScriptPath, "script", "s", "", "Path to the JSON codemod script file (default: "+defaultCodemodFilename+")")
 	rootCmd.AddCommand(codemodCmd)
 }

@@ -21,19 +21,32 @@ type mockExecutor struct {
 	CaptureOutputFunc func(ctx context.Context, dir string, commandName string, args ...string) (string, string, error)
 }
 
-func (m *mockExecutor) CaptureOutput(ctx context.Context, dir string, commandName string, args ...string) (string, string, error) {
+func (m *mockExecutor) CaptureOutput(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) (string, string, error) {
 	if m.CaptureOutputFunc != nil {
 		return m.CaptureOutputFunc(ctx, dir, commandName, args...)
 	}
 
 	return "", "", errors.New("CaptureOutputFunc not implemented in mock")
 }
-func (m *mockExecutor) Execute(ctx context.Context, dir string, commandName string, args ...string) error {
+
+func (m *mockExecutor) Execute(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) error {
 	return errors.New("Execute not implemented in mock")
 }
+
 func (m *mockExecutor) CommandExists(commandName string) bool {
 	return false
 }
+
 func (m *mockExecutor) Logger() *slog.Logger {
 	return nil
 }
@@ -77,7 +90,7 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("empty file", func(t *testing.T) {
 		emptyFilePath := filepath.Join(tempDir, "empty.yaml")
-		require.NoError(t, os.WriteFile(emptyFilePath, []byte{}, 0600))
+		require.NoError(t, os.WriteFile(emptyFilePath, []byte{}, 0o600))
 		cfg, err := LoadConfig(emptyFilePath)
 		assert.NoError(t, err)
 		assert.Nil(t, cfg, "LoadConfig with empty file should return nil config and no error")
@@ -88,7 +101,7 @@ func TestLoadConfig(t *testing.T) {
 		// This YAML is malformed because 'defaultMainBranch' is not properly indented under 'git'
 		// and the string for defaultMainBranch is not closed.
 		malformedYAMLContent := "git: { defaultRemote: origin\n  defaultMainBranch: \"not_closed_string"
-		require.NoError(t, os.WriteFile(malformedFilePath, []byte(malformedYAMLContent), 0600))
+		require.NoError(t, os.WriteFile(malformedFilePath, []byte(malformedYAMLContent), 0o600))
 
 		cfg, err := LoadConfig(malformedFilePath)
 		assert.Error(t, err)
@@ -98,14 +111,25 @@ func TestLoadConfig(t *testing.T) {
 		// Example: "yaml: line 2: found character that cannot start any token"
 		// Or for unclosed string: "yaml: found unexpected end of stream"
 		// The LoadConfig wraps it, so we check our wrapper's prefix and that it wraps *some* yaml error.
-		assert.Contains(t, err.Error(), fmt.Sprintf("failed to parse YAML config file '%s'", malformedFilePath))
+		assert.Contains(
+			t,
+			err.Error(),
+			fmt.Sprintf("failed to parse YAML config file '%s'", malformedFilePath),
+		)
 
 		// To specifically check for the underlying yaml error type if needed:
 		var yamlErr *yaml.TypeError // This might not be the exact type, yaml.Unmarshal returns a generic error
 		// that might not always be a TypeError for all parsing issues.
 		// A more general check is that an error occurred during parsing.
-		isYamlError := strings.Contains(err.Error(), "yaml:") // A common indicator from the yaml package
-		assert.True(t, isYamlError || errors.As(err, &yamlErr), "Error should be or wrap a YAML parsing error")
+		isYamlError := strings.Contains(
+			err.Error(),
+			"yaml:",
+		) // A common indicator from the yaml package
+		assert.True(
+			t,
+			isYamlError || errors.As(err, &yamlErr),
+			"Error should be or wrap a YAML parsing error",
+		)
 	})
 
 	t.Run("valid YAML", func(t *testing.T) {
@@ -131,7 +155,7 @@ ai:
     codeProvisioningStyle: "raw_markdown"
     detailedTaskMode: "mode_a"
 `
-		require.NoError(t, os.WriteFile(validFilePath, []byte(validYAML), 0600))
+		require.NoError(t, os.WriteFile(validFilePath, []byte(validYAML), 0o600))
 		cfg, err := LoadConfig(validFilePath)
 		require.NoError(t, err)
 		require.NotNil(t, cfg)
@@ -169,10 +193,18 @@ func TestMergeWithDefaults(t *testing.T) {
 		assert.Equal(t, defaults.Logging.DefaultAILogFile, merged.Logging.DefaultAILogFile)
 		require.NotNil(t, merged.Validation.BranchName.Enable)
 		assert.True(t, *merged.Validation.BranchName.Enable)
-		assert.Equal(t, defaults.Validation.BranchName.Pattern, merged.Validation.BranchName.Pattern)
+		assert.Equal(
+			t,
+			defaults.Validation.BranchName.Pattern,
+			merged.Validation.BranchName.Pattern,
+		)
 		require.NotNil(t, merged.ProjectState.StrategicKickoffCompleted)
 		assert.False(t, *merged.ProjectState.StrategicKickoffCompleted)
-		assert.Equal(t, defaults.AI.CollaborationPreferences.CodeProvisioningStyle, merged.AI.CollaborationPreferences.CodeProvisioningStyle)
+		assert.Equal(
+			t,
+			defaults.AI.CollaborationPreferences.CodeProvisioningStyle,
+			merged.AI.CollaborationPreferences.CodeProvisioningStyle,
+		)
 	})
 
 	t.Run("partial git override", func(t *testing.T) {
@@ -188,12 +220,19 @@ func TestMergeWithDefaults(t *testing.T) {
 			BranchName    ValidationRule `yaml:"branchName,omitempty"`
 			CommitMessage ValidationRule `yaml:"commitMessage,omitempty"`
 		}{
-			BranchName: ValidationRule{Enable: &disableValidation, Pattern: "should_be_ignored_if_disabled"},
+			BranchName: ValidationRule{
+				Enable:  &disableValidation,
+				Pattern: "should_be_ignored_if_disabled",
+			},
 		}}
 		merged := MergeWithDefaults(loaded, defaults)
 		require.NotNil(t, merged.Validation.BranchName.Enable)
 		assert.False(t, *merged.Validation.BranchName.Enable)
-		assert.Empty(t, merged.Validation.BranchName.Pattern, "Pattern should be cleared if validation is disabled")
+		assert.Empty(
+			t,
+			merged.Validation.BranchName.Pattern,
+			"Pattern should be cleared if validation is disabled",
+		)
 	})
 
 	t.Run("override one AI collaboration preference", func(t *testing.T) {
@@ -206,8 +245,16 @@ func TestMergeWithDefaults(t *testing.T) {
 		}
 		merged := MergeWithDefaults(loaded, defaults)
 		assert.Equal(t, "mode_a", merged.AI.CollaborationPreferences.DetailedTaskMode)
-		assert.Equal(t, defaults.AI.CollaborationPreferences.CodeProvisioningStyle, merged.AI.CollaborationPreferences.CodeProvisioningStyle)
-		assert.Equal(t, defaults.AI.CollaborationPreferences.AIProactivity, merged.AI.CollaborationPreferences.AIProactivity)
+		assert.Equal(
+			t,
+			defaults.AI.CollaborationPreferences.CodeProvisioningStyle,
+			merged.AI.CollaborationPreferences.CodeProvisioningStyle,
+		)
+		assert.Equal(
+			t,
+			defaults.AI.CollaborationPreferences.AIProactivity,
+			merged.AI.CollaborationPreferences.AIProactivity,
+		)
 	})
 
 	t.Run("override strategicKickoffCompleted to true", func(t *testing.T) {
@@ -218,7 +265,11 @@ func TestMergeWithDefaults(t *testing.T) {
 		merged := MergeWithDefaults(loaded, defaults)
 		require.NotNil(t, merged.ProjectState.StrategicKickoffCompleted)
 		assert.True(t, *merged.ProjectState.StrategicKickoffCompleted)
-		assert.Equal(t, defaults.ProjectState.LastStrategicKickoffDate, merged.ProjectState.LastStrategicKickoffDate)
+		assert.Equal(
+			t,
+			defaults.ProjectState.LastStrategicKickoffDate,
+			merged.ProjectState.LastStrategicKickoffDate,
+		)
 	})
 }
 
@@ -251,7 +302,7 @@ func TestUpdateAndSaveConfig(t *testing.T) {
 		filePath := filepath.Join(tempDir, "overwrite_config.yaml")
 		initialCfg := GetDefaultConfig()
 		initialData, _ := yaml.Marshal(initialCfg)
-		require.NoError(t, os.WriteFile(filePath, initialData, 0600))
+		require.NoError(t, os.WriteFile(filePath, initialData, 0o600))
 
 		updatedCfg := GetDefaultConfig()
 		updatedCfg.Logging.DefaultAILogFile = "overwrite.log"
@@ -325,7 +376,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 	t.Run("config file found in repo root", func(t *testing.T) {
 		tempDir := t.TempDir()
 		expectedConfigPath := filepath.Join(tempDir, DefaultConfigFileName)
-		require.NoError(t, os.WriteFile(expectedConfigPath, []byte("git: {}"), 0600))
+		require.NoError(t, os.WriteFile(expectedConfigPath, []byte("git: {}"), 0o600))
 
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {

@@ -31,7 +31,11 @@ deletes the local feature branch you were on.`,
 
 		presenter.Summary("--- Finishing Merged Branch Workflow ---")
 
-		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Logger: logger, Executor: ExecClient.UnderlyingExecutor()})
+		gitClient, err := git.NewClient(
+			ctx,
+			".",
+			git.GitClientConfig{Logger: logger, Executor: ExecClient.UnderlyingExecutor()},
+		)
 		if err != nil {
 			presenter.Error("Failed to initialize Git client: %v", err)
 			return err
@@ -47,7 +51,11 @@ deletes the local feature branch you were on.`,
 			return errors.New("you are already on the main branch; there is no branch to finish")
 		}
 
-		prompt := fmt.Sprintf("This will delete your local branch '%s' and switch to '%s'. Are you sure it has been merged?", currentBranch, mainBranch)
+		prompt := fmt.Sprintf(
+			"This will delete your local branch '%s' and switch to '%s'. Are you sure it has been merged?",
+			currentBranch,
+			mainBranch,
+		)
 		confirmed, err := presenter.PromptForConfirmation(prompt)
 		if err != nil {
 			return err
@@ -68,13 +76,19 @@ deletes the local feature branch you were on.`,
 		}
 		presenter.Step("Deleting local branch '%s'...", currentBranch)
 		if err := ExecClient.Execute(ctx, ".", "git", "branch", "-d", currentBranch); err != nil {
-			presenter.Warning("Could not delete branch with '-d' (likely not fully merged). Trying '-D'...")
+			presenter.Warning(
+				"Could not delete branch with '-d' (likely not fully merged). Trying '-D'...",
+			)
 			if errForce := ExecClient.Execute(ctx, ".", "git", "branch", "-D", currentBranch); errForce != nil {
 				presenter.Error("Failed to force delete branch '%s': %v", currentBranch, errForce)
 				return errForce
 			}
 		}
-		presenter.Success("Successfully cleaned up '%s' and updated '%s'.", currentBranch, mainBranch)
+		presenter.Success(
+			"Successfully cleaned up '%s' and updated '%s'.",
+			currentBranch,
+			mainBranch,
+		)
 		return nil
 	},
 }

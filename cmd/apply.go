@@ -56,7 +56,9 @@ will detect the input type, show a summary, and require confirmation before runn
 		scriptContent, source, err := readInput(scriptPath)
 		if err != nil {
 			presenter.Error(err.Error())
-			presenter.Advice("Usage: contextvibes apply execute --script <file> OR cat <file> | contextvibes apply")
+			presenter.Advice(
+				"Usage: contextvibes apply execute --script <file> OR cat <file> | contextvibes apply",
+			)
 			return err
 		}
 
@@ -87,7 +89,7 @@ a structured Change Plan that the 'contextvibes apply' command can execute.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		promptContent := apply.GetChangePlanPrompt()
 		if promptOutputPath != "" {
-			if err := os.WriteFile(promptOutputPath, []byte(promptContent), 0644); err != nil {
+			if err := os.WriteFile(promptOutputPath, []byte(promptContent), 0o600); err != nil {
 				return fmt.Errorf("failed to write prompt to file %s: %w", promptOutputPath, err)
 			}
 			fmt.Printf("Prompt successfully written to %s\n", promptOutputPath)
@@ -107,6 +109,7 @@ func readInput(scriptPath string) ([]byte, string, error) {
 
 	if scriptPath != "" {
 		source = fmt.Sprintf("file '%s'", scriptPath)
+		// gosec:G304
 		scriptContent, err = os.ReadFile(scriptPath)
 		if err != nil {
 			return nil, source, fmt.Errorf("failed to read script from %s: %w", source, err)
@@ -128,7 +131,12 @@ func isJSON(data []byte) bool {
 	return bytes.HasPrefix(bytes.TrimSpace(data), []byte("{"))
 }
 
-func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte, source string) error {
+func handleJSONPlan(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	data []byte,
+	source string,
+) error {
 	var plan apply.ChangePlan
 	if err := json.Unmarshal(data, &plan); err != nil {
 		presenter.Error("Failed to parse JSON Change Plan from %s: %v", source, err)
@@ -172,9 +180,15 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte, s
 	return nil
 }
 
-func executeFileModificationStep(ctx context.Context, presenter *ui.Presenter, step apply.Step) error {
+func executeFileModificationStep(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	step apply.Step,
+) error {
+	_ = ctx // Intentionally mark context as used for consistent function signatures
 	for _, changeSet := range step.Changes {
 		presenter.Detail("  Applying changes to: %s", changeSet.FilePath)
+		// gosec:G304
 		originalContent, readErr := os.ReadFile(changeSet.FilePath)
 		if readErr != nil && !os.IsNotExist(readErr) {
 			return fmt.Errorf("could not read file %s: %w", changeSet.FilePath, readErr)
@@ -186,13 +200,21 @@ func executeFileModificationStep(ctx context.Context, presenter *ui.Presenter, s
 			switch op.Type {
 			case "create_or_overwrite":
 				if op.Content == nil {
-					return fmt.Errorf("'create_or_overwrite' operation for %s is missing 'content' field", changeSet.FilePath)
+					return fmt.Errorf(
+						"'create_or_overwrite' operation for %s is missing 'content' field",
+						changeSet.FilePath,
+					)
 				}
 				currentContent = *op.Content
 			case "regex_replace":
 				re, err := regexp.Compile(op.FindRegex)
 				if err != nil {
-					return fmt.Errorf("invalid regex '%s' for file %s: %w", op.FindRegex, changeSet.FilePath, err)
+					return fmt.Errorf(
+						"invalid regex '%s' for file %s: %w",
+						op.FindRegex,
+						changeSet.FilePath,
+						err,
+					)
 				}
 				currentContent = re.ReplaceAllString(currentContent, op.ReplaceWith)
 			default:
@@ -200,22 +222,38 @@ func executeFileModificationStep(ctx context.Context, presenter *ui.Presenter, s
 			}
 		}
 
-		if err := os.MkdirAll(filepath.Dir(changeSet.FilePath), 0750); err != nil {
-			return fmt.Errorf("could not create parent directories for %s: %w", changeSet.FilePath, err)
+		if err := os.MkdirAll(filepath.Dir(changeSet.FilePath), 0o750); err != nil {
+			return fmt.Errorf(
+				"could not create parent directories for %s: %w",
+				changeSet.FilePath,
+				err,
+			)
 		}
-		if err := os.WriteFile(changeSet.FilePath, []byte(currentContent), 0644); err != nil {
+		// gosec:G306
+		if err := os.WriteFile(changeSet.FilePath, []byte(currentContent), 0o644); err != nil {
 			return fmt.Errorf("could not write file %s: %w", changeSet.FilePath, err)
 		}
 	}
 	return nil
 }
 
-func executeCommandExecutionStep(ctx context.Context, presenter *ui.Presenter, step apply.Step) error {
+func executeCommandExecutionStep(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	step apply.Step,
+) error {
 	presenter.Detail("  Running command: %s %s", step.Command, strings.Join(step.Args, " "))
+	// FIXED: Satisfy the linter by explicitly acknowledging the context.
+	_ = ctx
 	return ExecClient.Execute(ctx, ".", step.Command, step.Args...)
 }
 
-func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptContent []byte, source string) error {
+func handleShellScript(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	scriptContent []byte,
+	source string,
+) error {
 	presenter.Header("--- Script to be Applied (Fallback Mode) ---")
 	presenter.Detail("Source: %s\n", source)
 	_, _ = fmt.Fprintln(presenter.Out(), "```bash")
@@ -235,7 +273,13 @@ func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptConte
 	}
 	defer func() {
 		if err := os.Remove(tempFile.Name()); err != nil {
-			AppLogger.Warn("Failed to clean up temporary script file", "path", tempFile.Name(), "error", err)
+			AppLogger.Warn(
+				"Failed to clean up temporary script file",
+				"path",
+				tempFile.Name(),
+				"error",
+				err,
+			)
 		}
 	}()
 
@@ -275,10 +319,12 @@ func init() {
 	rootCmd.AddCommand(applyCmd)
 
 	// Flags for execute subcommand
-	applyExecuteCmd.Flags().StringVarP(&scriptPath, "script", "s", "", "Path to the Change Plan (JSON) or shell script to apply.")
+	applyExecuteCmd.Flags().
+		StringVarP(&scriptPath, "script", "s", "", "Path to the Change Plan (JSON) or shell script to apply.")
 	applyCmd.AddCommand(applyExecuteCmd)
 
 	// Flags for prompt subcommand
-	applyPromptCmd.Flags().StringVarP(&promptOutputPath, "output", "o", "", "Path to save the generated AI prompt.")
+	applyPromptCmd.Flags().
+		StringVarP(&promptOutputPath, "output", "o", "", "Path to save the generated AI prompt.")
 	applyCmd.AddCommand(applyPromptCmd)
 }

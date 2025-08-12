@@ -11,12 +11,8 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/project"
-	// "github.com/contextvibes/cli/internal/tools" // Only needed for os.Stat now, if CommandExists/ExecuteCommand are removed.
 	"github.com/contextvibes/cli/internal/ui" // Use Presenter
 	"github.com/spf13/cobra"
-	// Use the execClientInterface, assuming it's defined perhaps in a shared cmd/helpers.go or locally
-	// For simplicity, let's assume it's accessible or redefine it if needed. We'll use the global ExecClient for now.
-	// No direct import of internal/exec needed if using global ExecClient.
 )
 
 var deployCmd = &cobra.Command{
@@ -66,14 +62,22 @@ and executes the deployment after confirmation (unless -y/--yes is specified).
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			wrappedErr := fmt.Errorf("failed to detect project type: %w", err)
-			logger.ErrorContext(ctx, "Deploy: Failed project detection", slog.String("error", err.Error()))
+			logger.ErrorContext(
+				ctx,
+				"Deploy: Failed project detection",
+				slog.String("error", err.Error()),
+			)
 			presenter.Error("Failed to detect project type: %v", err)
 
 			return wrappedErr
 		}
 
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
-		logger.Info("Project detection result", slog.String("source_command", "deploy"), slog.String("type", string(projType)))
+		logger.Info(
+			"Project detection result",
+			slog.String("source_command", "deploy"),
+			slog.String("type", string(projType)),
+		)
 
 		switch projType {
 		case project.Terraform:
@@ -116,18 +120,32 @@ type execDeployClientInterface interface {
 }
 
 // executeTerraformDeploy now accepts execClient.
-func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execDeployClientInterface, dir string, skipConfirm bool) error {
+func executeTerraformDeploy(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	logger *slog.Logger,
+	execClient execDeployClientInterface,
+	dir string,
+	skipConfirm bool,
+) error {
 	tool := "terraform"
 	planFile := "tfplan.out"
 	planFilePath := filepath.Join(dir, planFile)
 	args := []string{"apply", "-auto-approve", planFile}
 
 	if !execClient.CommandExists(tool) { // Use execClient
-		errMsgForUser := fmt.Sprintf("Command '%s' not found. Please ensure Terraform is installed and in your PATH.", tool)
+		errMsgForUser := fmt.Sprintf(
+			"Command '%s' not found. Please ensure Terraform is installed and in your PATH.",
+			tool,
+		)
 		errMsgForError := fmt.Sprintf("command '%s' not found", tool)
 
 		presenter.Error(errMsgForUser)
-		logger.Error("Terraform deploy prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
+		logger.Error(
+			"Terraform deploy prerequisite failed",
+			slog.String("reason", errMsgForUser),
+			slog.String("tool", tool),
+		)
 
 		return errors.New(errMsgForError)
 	}
@@ -141,7 +159,10 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 
 		presenter.Error(errMsgForUser)
 		presenter.Advice("Please run `contextvibes plan` first to generate the plan file.")
-		logger.Error("Terraform deploy prerequisite failed: plan file missing", slog.String("plan_file", planFile))
+		logger.Error(
+			"Terraform deploy prerequisite failed: plan file missing",
+			slog.String("plan_file", planFile),
+		)
 
 		return errors.New(errMsgForError)
 	} else if err != nil {
@@ -167,7 +188,13 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 
 	if skipConfirm {
 		presenter.Info("Confirmation prompt bypassed via --yes flag.")
-		logger.InfoContext(ctx, "Confirmation bypassed via flag", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("yes_flag", true))
+		logger.InfoContext(
+			ctx,
+			"Confirmation bypassed via flag",
+			slog.String("source_command", "deploy"),
+			slog.String("tool", tool),
+			slog.Bool("yes_flag", true),
+		)
 		confirmed = true
 	} else {
 		var promptErr error
@@ -182,17 +209,34 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 
 	if !confirmed {
 		presenter.Info("Terraform deployment aborted by user.")
-		logger.InfoContext(ctx, "Deploy aborted by user confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", false))
+		logger.InfoContext(
+			ctx,
+			"Deploy aborted by user confirmation",
+			slog.String("source_command", "deploy"),
+			slog.String("tool", tool),
+			slog.Bool("confirmed", false),
+		)
 
 		return nil
 	}
 
-	logger.DebugContext(ctx, "Proceeding after deploy confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", true))
+	logger.DebugContext(
+		ctx,
+		"Proceeding after deploy confirmation",
+		slog.String("source_command", "deploy"),
+		slog.String("tool", tool),
+		slog.Bool("confirmed", true),
+	)
 
 	// Execution using execClient
 	presenter.Newline()
 	presenter.Info("Starting Terraform apply...")
-	logger.Info("Executing terraform apply", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Any("args", args))
+	logger.Info(
+		"Executing terraform apply",
+		slog.String("source_command", "deploy"),
+		slog.String("tool", tool),
+		slog.Any("args", args),
+	)
 
 	// Use execClient.Execute - terraform apply pipes its own output
 	err := execClient.Execute(ctx, dir, tool, args...) // Use execClient
@@ -203,7 +247,11 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 		errMsgForError := "terraform apply command failed"
 
 		presenter.Error(errMsgForUser)
-		logger.Error("Terraform apply command failed", slog.String("source_command", "deploy"), slog.String("error", err.Error()))
+		logger.Error(
+			"Terraform apply command failed",
+			slog.String("source_command", "deploy"),
+			slog.String("error", err.Error()),
+		)
 		// Return a simpler error type, as the underlying error from Execute might not be needed by caller
 		return errors.New(errMsgForError)
 	}
@@ -216,16 +264,30 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 }
 
 // executePulumiDeploy now accepts execClient.
-func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient execDeployClientInterface, dir string, skipConfirm bool) error {
+func executePulumiDeploy(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	logger *slog.Logger,
+	execClient execDeployClientInterface,
+	dir string,
+	skipConfirm bool,
+) error {
 	tool := "pulumi"
 	args := []string{"up"}
 
 	if !execClient.CommandExists(tool) { // Use execClient
-		errMsgForUser := fmt.Sprintf("Command '%s' not found. Please ensure Pulumi is installed and in your PATH.", tool)
+		errMsgForUser := fmt.Sprintf(
+			"Command '%s' not found. Please ensure Pulumi is installed and in your PATH.",
+			tool,
+		)
 		errMsgForError := fmt.Sprintf("command '%s' not found", tool)
 
 		presenter.Error(errMsgForUser)
-		logger.Error("Pulumi deploy prerequisite failed", slog.String("reason", errMsgForUser), slog.String("tool", tool))
+		logger.Error(
+			"Pulumi deploy prerequisite failed",
+			slog.String("reason", errMsgForUser),
+			slog.String("tool", tool),
+		)
 
 		return errors.New(errMsgForError)
 	}
@@ -234,14 +296,23 @@ func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *s
 	presenter.Newline()
 	presenter.Info("Proposed Deploy Action:")
 	presenter.Detail("Run '%s %s'.", tool, strings.Join(args, " "))
-	presenter.Detail("(Note: '%s up' will show its own preview and prompt for confirmation before making changes).", tool)
+	presenter.Detail(
+		"(Note: '%s up' will show its own preview and prompt for confirmation before making changes).",
+		tool,
+	)
 	presenter.Newline()
 
 	confirmed := false
 
 	if skipConfirm {
 		presenter.Info("Confirmation prompt (for contextvibes) bypassed via --yes flag.")
-		logger.InfoContext(ctx, "Wrapper confirmation bypassed via flag", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("yes_flag", true))
+		logger.InfoContext(
+			ctx,
+			"Wrapper confirmation bypassed via flag",
+			slog.String("source_command", "deploy"),
+			slog.String("tool", tool),
+			slog.Bool("yes_flag", true),
+		)
 		confirmed = true
 	} else {
 		var promptErr error
@@ -256,17 +327,34 @@ func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *s
 
 	if !confirmed {
 		presenter.Info("'pulumi up' command aborted by user (before execution).")
-		logger.InfoContext(ctx, "Deploy aborted by user confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", false))
+		logger.InfoContext(
+			ctx,
+			"Deploy aborted by user confirmation",
+			slog.String("source_command", "deploy"),
+			slog.String("tool", tool),
+			slog.Bool("confirmed", false),
+		)
 
 		return nil
 	}
 
-	logger.DebugContext(ctx, "Proceeding after deploy confirmation", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Bool("confirmed", true))
+	logger.DebugContext(
+		ctx,
+		"Proceeding after deploy confirmation",
+		slog.String("source_command", "deploy"),
+		slog.String("tool", tool),
+		slog.Bool("confirmed", true),
+	)
 
 	// Execution using execClient
 	presenter.Newline()
 	presenter.Info("Starting Pulumi execution ('%s %s')...", tool, strings.Join(args, " "))
-	logger.Info("Executing pulumi up", slog.String("source_command", "deploy"), slog.String("tool", tool), slog.Any("args", args))
+	logger.Info(
+		"Executing pulumi up",
+		slog.String("source_command", "deploy"),
+		slog.String("tool", tool),
+		slog.Any("args", args),
+	)
 
 	// Use execClient.Execute - pulumi up pipes its own output
 	err := execClient.Execute(ctx, dir, tool, args...) // Use execClient
@@ -277,7 +365,11 @@ func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *s
 		errMsgForError := "pulumi up command failed or aborted"
 
 		presenter.Error(errMsgForUser)
-		logger.Error("Pulumi up command failed or aborted", slog.String("source_command", "deploy"), slog.String("error", err.Error()))
+		logger.Error(
+			"Pulumi up command failed or aborted",
+			slog.String("source_command", "deploy"),
+			slog.String("error", err.Error()),
+		)
 
 		return errors.New(errMsgForError)
 	}

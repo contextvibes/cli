@@ -35,7 +35,12 @@ context files like 'coverage.out' and 'context_*.md'.`,
 			}
 		}
 
-		filesToRemove := []string{"coverage.out", "context_commit.md", "context_pr.md", "context_export_project.md"}
+		filesToRemove := []string{
+			"coverage.out",
+			"context_commit.md",
+			"context_pr.md",
+			"context_export_project.md",
+		}
 		for _, file := range filesToRemove {
 			presenter.Step("Removing file: %s...", file)
 			if err := os.Remove(file); err != nil {

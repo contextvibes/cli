@@ -32,7 +32,12 @@ func (e *OSCommandExecutor) Logger() *slog.Logger {
 	return e.logger
 }
 
-func (e *OSCommandExecutor) Execute(ctx context.Context, dir string, commandName string, args ...string) error {
+func (e *OSCommandExecutor) Execute(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) error {
 	e.logger.DebugContext(ctx, "Executing command",
 		slog.String("component", "OSCommandExecutor"),
 		slog.String("command", commandName),
@@ -56,7 +61,13 @@ func (e *OSCommandExecutor) Execute(ctx context.Context, dir string, commandName
 				slog.Int("exit_code", exitErr.ExitCode()),
 				slog.String("error", err.Error()))
 			// Stderr already piped. Return error that includes exit code info.
-			return fmt.Errorf("command '%s %s' failed with exit code %d: %w", commandName, strings.Join(args, " "), exitErr.ExitCode(), err)
+			return fmt.Errorf(
+				"command '%s %s' failed with exit code %d: %w",
+				commandName,
+				strings.Join(args, " "),
+				exitErr.ExitCode(),
+				err,
+			)
 		}
 
 		e.logger.ErrorContext(ctx, "Failed to execute command",
@@ -65,7 +76,12 @@ func (e *OSCommandExecutor) Execute(ctx context.Context, dir string, commandName
 			slog.Any("args", args),
 			slog.String("error", err.Error()))
 
-		return fmt.Errorf("failed to start or execute command '%s %s': %w", commandName, strings.Join(args, " "), err)
+		return fmt.Errorf(
+			"failed to start or execute command '%s %s': %w",
+			commandName,
+			strings.Join(args, " "),
+			err,
+		)
 	}
 
 	e.logger.InfoContext(ctx, "Command executed successfully",
@@ -76,7 +92,12 @@ func (e *OSCommandExecutor) Execute(ctx context.Context, dir string, commandName
 	return nil
 }
 
-func (e *OSCommandExecutor) CaptureOutput(ctx context.Context, dir string, commandName string, args ...string) (string, string, error) {
+func (e *OSCommandExecutor) CaptureOutput(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) (string, string, error) {
 	e.logger.DebugContext(ctx, "Capturing command output",
 		slog.String("component", "OSCommandExecutor"),
 		slog.String("command", commandName),
@@ -97,7 +118,12 @@ func (e *OSCommandExecutor) CaptureOutput(ctx context.Context, dir string, comma
 	if err != nil {
 		var exitErr *exec.ExitError
 		// Construct a more informative error message
-		errMsg := fmt.Sprintf("command '%s %s' in dir '%s' failed", commandName, strings.Join(args, " "), dir)
+		errMsg := fmt.Sprintf(
+			"command '%s %s' in dir '%s' failed",
+			commandName,
+			strings.Join(args, " "),
+			dir,
+		)
 		if errors.As(err, &exitErr) {
 			errMsg = fmt.Sprintf("%s with exit code %d", errMsg, exitErr.ExitCode())
 		} else {

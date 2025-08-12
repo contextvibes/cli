@@ -18,12 +18,22 @@ func NewClient(executor CommandExecutor) *ExecutorClient {
 }
 
 // Execute runs a command, typically piping stdio. See CommandExecutor.Execute.
-func (c *ExecutorClient) Execute(ctx context.Context, dir string, commandName string, args ...string) error {
+func (c *ExecutorClient) Execute(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) error {
 	return c.executor.Execute(ctx, dir, commandName, args...)
 }
 
 // CaptureOutput runs a command and captures its stdout and stderr. See CommandExecutor.CaptureOutput.
-func (c *ExecutorClient) CaptureOutput(ctx context.Context, dir string, commandName string, args ...string) (string, string, error) {
+func (c *ExecutorClient) CaptureOutput(
+	ctx context.Context,
+	dir string,
+	commandName string,
+	args ...string,
+) (string, string, error) {
 	return c.executor.CaptureOutput(ctx, dir, commandName, args...)
 }
 

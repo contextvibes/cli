@@ -54,7 +54,9 @@ func TestVersionCmd(t *testing.T) {
 
 			out := new(bytes.Buffer)
 			testRootCmd.SetOut(out) // Capture standard output
-			testRootCmd.SetErr(out) // Optionally capture stderr if needed, though version writes to stdout
+			testRootCmd.SetErr(
+				out,
+			) // Optionally capture stderr if needed, though version writes to stdout
 
 			testRootCmd.SetArgs([]string{"version"})
 

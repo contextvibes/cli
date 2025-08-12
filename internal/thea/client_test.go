@@ -4,16 +4,11 @@ package thea // Ensures this file is part of the 'thea' package
 import (
 	"context"
 	"encoding/json"
-
-	// "fmt" // Only if used.
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
-
-	// "strings" // Only if used for more complex path/URL assertions.
 	"testing"
-	// "time" // Only if used for time-related tests (e.g., caching).
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,7 +78,10 @@ func TestFetchManifest_ServerReturns404(t *testing.T) {
 	logger := newTestLogger()
 	// NewClient is local to the 'thea' package
 	client, err := NewClient(context.Background(), &cfg, logger) // No package qualifier
-	require.NoError(t, err)                                      // NewClient itself should not error with this config
+	require.NoError(
+		t,
+		err,
+	) // NewClient itself should not error with this config
 	require.NotNil(t, client)
 
 	_, err = client.fetchManifest(context.Background())

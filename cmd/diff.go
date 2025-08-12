@@ -74,7 +74,11 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		stagedOut = strings.TrimSpace(stagedOut)
 		if stagedOut != "" {
 			hasChanges = true
-			logger.DebugContext(ctx, "Adding staged changes to buffer", slog.String("source_command", "diff"))
+			logger.DebugContext(
+				ctx,
+				"Adding staged changes to buffer",
+				slog.String("source_command", "diff"),
+			)
 			tools.AppendSectionHeader(&outputBuffer, "Staged Changes (Index / `git diff --cached`)")
 			tools.AppendFencedCodeBlock(&outputBuffer, stagedOut, "diff")
 		}
@@ -89,8 +93,15 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		unstagedOut = strings.TrimSpace(unstagedOut)
 		if unstagedOut != "" {
 			hasChanges = true
-			logger.DebugContext(ctx, "Adding unstaged changes to buffer", slog.String("source_command", "diff"))
-			tools.AppendSectionHeader(&outputBuffer, "Unstaged Changes (Working Directory / `git diff HEAD`)")
+			logger.DebugContext(
+				ctx,
+				"Adding unstaged changes to buffer",
+				slog.String("source_command", "diff"),
+			)
+			tools.AppendSectionHeader(
+				&outputBuffer,
+				"Unstaged Changes (Working Directory / `git diff HEAD`)",
+			)
 			tools.AppendFencedCodeBlock(&outputBuffer, unstagedOut, "diff")
 		}
 
@@ -104,8 +115,15 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		untrackedOut = strings.TrimSpace(untrackedOut)
 		if untrackedOut != "" {
 			hasChanges = true
-			logger.DebugContext(ctx, "Adding untracked files to buffer", slog.String("source_command", "diff"))
-			tools.AppendSectionHeader(&outputBuffer, "Untracked Files (`git ls-files --others --exclude-standard`)")
+			logger.DebugContext(
+				ctx,
+				"Adding untracked files to buffer",
+				slog.String("source_command", "diff"),
+			)
+			tools.AppendSectionHeader(
+				&outputBuffer,
+				"Untracked Files (`git ls-files --others --exclude-standard`)",
+			)
 			tools.AppendFencedCodeBlock(&outputBuffer, untrackedOut, "")
 		}
 
@@ -114,7 +132,11 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		if !hasChanges {
 			presenter.Info("No pending changes found.")
 			presenter.Advice("The context file '%s' remains unchanged.", fixedDiffOutputFile)
-			logger.InfoContext(ctx, "No pending git changes detected.", slog.String("source_command", "diff"))
+			logger.InfoContext(
+				ctx,
+				"No pending git changes detected.",
+				slog.String("source_command", "diff"),
+			)
 		} else {
 			presenter.Step("Writing diff summary, overwriting %s...", fixedDiffOutputFile) // Use Step
 

@@ -57,8 +57,12 @@ Use the --debug flag to compile with debugging symbols included.`,
 		entries, err := os.ReadDir(cmdDir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				presenter.Error("Directory './cmd/' not found. Cannot determine main package to build.")
-				presenter.Advice("This command expects a conventional Go project layout with a './cmd/<appname>/' directory.")
+				presenter.Error(
+					"Directory './cmd/' not found. Cannot determine main package to build.",
+				)
+				presenter.Advice(
+					"This command expects a conventional Go project layout with a './cmd/<appname>/' directory.",
+				)
 				return errors.New("cmd directory not found")
 			}
 			presenter.Error("Failed to read './cmd/' directory: %v", err)
@@ -78,7 +82,9 @@ Use the --debug flag to compile with debugging symbols included.`,
 		}
 		if len(mainPackageDirs) > 1 {
 			presenter.Error("Multiple subdirectories found in './cmd/': %v", mainPackageDirs)
-			presenter.Advice("Unsure which application to build. Please ensure only one main package exists in './cmd/'.")
+			presenter.Advice(
+				"Unsure which application to build. Please ensure only one main package exists in './cmd/'.",
+			)
 			return errors.New("ambiguous main package in cmd")
 		}
 		mainPackageName := mainPackageDirs[0]
@@ -88,7 +94,7 @@ Use the --debug flag to compile with debugging symbols included.`,
 		outputPath := buildOutputFlag
 		if outputPath == "" {
 			binDir := filepath.Join(cwd, "bin")
-			if err := os.MkdirAll(binDir, 0750); err != nil {
+			if err := os.MkdirAll(binDir, 0o750); err != nil {
 				presenter.Error("Failed to create './bin/' directory: %v", err)
 				return err
 			}
@@ -114,7 +120,10 @@ Use the --debug flag to compile with debugging symbols included.`,
 		}
 
 		presenter.Newline()
-		presenter.Success("Build successful. Binary available at: %s", presenter.Highlight(outputPath))
+		presenter.Success(
+			"Build successful. Binary available at: %s",
+			presenter.Highlight(outputPath),
+		)
 		logger.InfoContext(ctx, "Go build completed successfully", "output_path", outputPath)
 
 		return nil
@@ -123,6 +132,8 @@ Use the --debug flag to compile with debugging symbols included.`,
 
 func init() {
 	rootCmd.AddCommand(buildCmd)
-	buildCmd.Flags().StringVarP(&buildOutputFlag, "output", "o", "", "Output path for the compiled binary.")
-	buildCmd.Flags().BoolVar(&buildDebugFlag, "debug", false, "Compile with debug symbols (disables optimization flags).")
+	buildCmd.Flags().
+		StringVarP(&buildOutputFlag, "output", "o", "", "Output path for the compiled binary.")
+	buildCmd.Flags().
+		BoolVar(&buildDebugFlag, "debug", false, "Compile with debug symbols (disables optimization flags).")
 }
