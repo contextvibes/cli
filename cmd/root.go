@@ -17,7 +17,8 @@ var (
 	LoadedAppConfig *config.Config
 	ExecClient      *exec.ExecutorClient
 	assumeYes       bool
-	AppVersion      string
+	// AppVersion is the application version, set at build time.
+	AppVersion string
 )
 
 var rootCmd = &cobra.Command{
@@ -81,7 +82,7 @@ var (
 
 func init() {
 	if AppVersion == "" {
-		AppVersion = "v0.2.0-dev" // Updated version
+		AppVersion = "dev" // Default for local development
 	}
 
 	rootCmd.PersistentFlags().

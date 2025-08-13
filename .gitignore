@@ -20,3 +20,7 @@ thea/
 context_*.md
 .env
 !contextvibes.nix
+
+# Build artifacts
+/bin/
+Taskfile.yml

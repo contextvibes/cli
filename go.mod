@@ -3,6 +3,7 @@ module github.com/contextvibes/cli
 go 1.24.2
 
 require (
+	github.com/charmbracelet/huh v0.7.0
 	github.com/denormal/go-gitignore v0.0.0-20180930084346-ae8ad1d07817
 	github.com/fatih/color v1.18.0
 	github.com/spf13/cobra v1.9.1
@@ -38,7 +39,6 @@ require (
 )
 
 require (
-	github.com/charmbracelet/huh v0.7.0
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
