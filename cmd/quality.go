@@ -31,7 +31,7 @@ many of the reported issues automatically, run 'contextvibes format'.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 
 		presenter.Summary("Running Code Quality Checks")

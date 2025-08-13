@@ -37,7 +37,7 @@ command to generate an execution plan, showing expected infrastructure changes.
 			return errors.New("internal error: logger not initialized")
 		}
 
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
 
 		presenter.Summary("Generating execution plan.")

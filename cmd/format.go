@@ -25,7 +25,7 @@ command for remediating code quality issues.
 	Example: `  contextvibes format  # Apply formatting and fixes to the project`,
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		logger := AppLogger
 		ctx := cmd.Context()
 

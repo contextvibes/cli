@@ -10,16 +10,15 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/fatih/color" // Import the color library
+	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 )
 
 // Presenter handles structured writing to standard output and standard error,
 // and reading standardized user input, mimicking the Pulumi CLI style.
 type Presenter struct {
-	// Interface fields for flexibility and testing
 	outW io.Writer
 	errW io.Writer
-	inR  io.Reader
 
 	// Color instances (initialized in New)
 	successColor *color.Color
@@ -35,33 +34,19 @@ type Presenter struct {
 }
 
 // NewPresenter creates a new Console instance with Pulumi-like color support.
-// Color support is automatically detected and disabled if the terminal doesn't support it
-// or if the NO_COLOR environment variable is set.
-// If outW, errW, or inR are nil, they default to os.Stdout, os.Stderr, and os.Stdin respectively.
-func NewPresenter(outW, errW io.Writer, inR io.Reader) *Presenter {
-	// *** CORRECTED VARIABLE DECLARATIONS AND ASSIGNMENTS ***
-	// Declare local variables with the correct INTERFACE types
+func NewPresenter(outW, errW io.Writer) *Presenter {
 	var out io.Writer = os.Stdout
-	var err io.Writer = os.Stderr
-	var in io.Reader = os.Stdin
-
-	// Assign parameters ONLY if they are not nil, overwriting defaults
 	if outW != nil {
 		out = outW
 	}
+	var err io.Writer = os.Stderr
 	if errW != nil {
 		err = errW
 	}
-	if inR != nil {
-		in = inR
-	}
-	// *********************************************************
 
-	// Initialize and return the struct, assigning interface values to interface fields
 	return &Presenter{
-		outW: out, // Assign io.Writer to io.Writer field
-		errW: err, // Assign io.Writer to io.Writer field
-		inR:  in,  // Assign io.Reader to io.Reader field
+		outW: out,
+		errW: err,
 
 		// Initialize all color fields
 		successColor: color.New(color.FgGreen, color.Bold),
@@ -77,7 +62,19 @@ func NewPresenter(outW, errW io.Writer, inR io.Reader) *Presenter {
 	}
 }
 
-// --- Output Stream Getters ---
+// getInteractiveReader intelligently selects the correct input for user prompts.
+// If stdin is a pipe, it opens /dev/tty for interactive input. Otherwise, it uses stdin.
+// The returned cleanup function MUST be called by the caller to close /dev/tty if it was opened.
+func (p *Presenter) getInteractiveReader() (reader io.Reader, cleanup func(), err error) {
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		tty, ttyErr := os.Open("/dev/tty")
+		if ttyErr != nil {
+			return nil, func() {}, fmt.Errorf("stdin is a pipe and could not open /dev/tty for interactive prompt: %w", ttyErr)
+		}
+		return tty, func() { _ = tty.Close() }, nil
+	}
+	return os.Stdin, func() {}, nil
+}
 
 // Out returns the configured output writer (typically os.Stdout).
 func (p *Presenter) Out() io.Writer {
@@ -90,7 +87,6 @@ func (p *Presenter) Err() io.Writer {
 }
 
 // --- Output Formatting Methods ---
-// These methods correctly use p.outW and p.errW which are io.Writer interfaces
 
 func (p *Presenter) Header(format string, a ...any) {
 	_, _ = p.headerColor.Fprintf(p.outW, format+"\n", a...)
@@ -141,16 +137,22 @@ func (p *Presenter) Separator() {
 }
 
 // --- Input Methods ---
-// These methods correctly use p.inR which is an io.Reader interface
 
 func (p *Presenter) PromptForInput(prompt string) (string, error) {
-	reader := bufio.NewReader(p.inR) // Use interface field
+	interactiveReader, cleanup, err := p.getInteractiveReader()
+	if err != nil {
+		p.Error("Could not get an interactive terminal for prompting: %v", err)
+		return "", err
+	}
+	defer cleanup()
+
+	reader := bufio.NewReader(interactiveReader)
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, ":") {
 		prompt += ":"
 	}
 	prompt += " "
-	_, _ = p.promptColor.Fprint(p.errW, prompt) // Write prompt to error stream
+	_, _ = p.promptColor.Fprint(p.errW, prompt)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
@@ -160,14 +162,21 @@ func (p *Presenter) PromptForInput(prompt string) (string, error) {
 }
 
 func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
-	reader := bufio.NewReader(p.inR) // Use interface field
+	interactiveReader, cleanup, err := p.getInteractiveReader()
+	if err != nil {
+		p.Error("Could not get an interactive terminal for prompting: %v", err)
+		return false, err
+	}
+	defer cleanup()
+
+	reader := bufio.NewReader(interactiveReader)
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, "?") {
 		prompt += "?"
 	}
 	fullPrompt := prompt + " [y/N]: "
 	for {
-		_, _ = p.promptColor.Fprint(p.errW, fullPrompt) // Write prompt to error stream
+		_, _ = p.promptColor.Fprint(p.errW, fullPrompt)
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
@@ -183,7 +192,7 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 		_, _ = p.warningColor.Fprintf(
 			p.errW,
 			"~ Invalid input. Please enter 'y' or 'n'.\n",
-		) // Write warning to error stream
+		)
 	}
 }
 

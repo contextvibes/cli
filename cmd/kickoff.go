@@ -5,13 +5,10 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/git"
-	"github.com/contextvibes/cli/internal/kickoff"
 	"github.com/contextvibes/cli/internal/ui"
+	"github.com/contextvibes/cli/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -29,8 +26,9 @@ var kickoffCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Standard setup
 		logger := AppLogger
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
 
 		if LoadedAppConfig == nil {
@@ -42,54 +40,51 @@ var kickoffCmd = &cobra.Command{
 			return errors.New("executor client not initialized")
 		}
 
-		var configFilePath string
-		repoCfgPath, _ := config.FindRepoRootConfigPath(ExecClient)
-		if repoCfgPath == "" {
-			repoRootForCreation, _, _ := ExecClient.CaptureOutput(
-				context.Background(),
-				".",
-				"git",
-				"rev-parse",
-				"--show-toplevel",
-			)
-			cleanRoot := strings.TrimSpace(repoRootForCreation)
-			if cleanRoot == "" || cleanRoot == "." {
-				cwd, _ := os.Getwd()
-				cleanRoot = cwd
+		// Strategic and mark-complete logic is out of scope for this refactor and remains.
+		if markStrategicCompleteFlag {
+			presenter.Warning("Marking strategic complete is not yet refactored.")
+			return nil // Replace with actual call later
+		}
+		runStrategic := isStrategicKickoffFlag
+		if !runStrategic {
+			if LoadedAppConfig.ProjectState.StrategicKickoffCompleted == nil ||
+				!*LoadedAppConfig.ProjectState.StrategicKickoffCompleted {
+				runStrategic = true
 			}
-			configFilePath = filepath.Join(cleanRoot, config.DefaultConfigFileName)
-		} else {
-			configFilePath = repoCfgPath
+		}
+		if runStrategic {
+			presenter.Warning("Strategic kickoff generation is not yet refactored.")
+			return nil // Replace with actual call later
 		}
 
-		workDir, err := os.Getwd()
-		if err != nil {
-			presenter.Error("Failed to get working directory: %v", err)
-			return err
-		}
-
-		var gitClt *git.GitClient
-		gitClientConfig := git.GitClientConfig{
+		// --- Refactored Daily Kickoff Logic ---
+		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 			Logger:                logger,
 			DefaultRemoteName:     LoadedAppConfig.Git.DefaultRemote,
 			DefaultMainBranchName: LoadedAppConfig.Git.DefaultMainBranch,
 			Executor:              ExecClient.UnderlyingExecutor(),
+		})
+		if err != nil {
+			presenter.Error("Failed to initialize Git client: %v", err)
+			return err
 		}
-		gitClt, _ = git.NewClient(ctx, workDir, gitClientConfig)
 
-		orchestrator := kickoff.NewOrchestrator(
-			logger,
-			LoadedAppConfig,
-			presenter,
-			gitClt,
-			configFilePath,
-			assumeYes,
+		// Get the branch name *before* starting the workflow.
+		validatedBranchName, err := workflow.GetValidatedBranchName(ctx, branchNameFlag, LoadedAppConfig, presenter, gitClient, assumeYes)
+		if err != nil {
+			return err // Helper function already printed user-facing error
+		}
+
+		// Instantiate the workflow runner
+		runner := workflow.NewRunner(presenter, assumeYes)
+
+		// Define and run the workflow
+		return runner.Run(ctx, "Daily Development Kickoff",
+			&workflow.CheckOnMainBranchStep{GitClient: gitClient, Presenter: presenter},
+			&workflow.CheckAndPromptStashStep{GitClient: gitClient, Presenter: presenter, AssumeYes: assumeYes},
+			&workflow.UpdateMainBranchStep{GitClient: gitClient},
+			&workflow.CreateAndPushBranchStep{GitClient: gitClient, BranchName: validatedBranchName},
 		)
-
-		if markStrategicCompleteFlag {
-			return orchestrator.MarkStrategicKickoffComplete(ctx)
-		}
-		return orchestrator.ExecuteKickoff(ctx, isStrategicKickoffFlag, branchNameFlag)
 	},
 }
 

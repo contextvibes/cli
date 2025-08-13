@@ -31,7 +31,7 @@ Use the --debug flag to compile with debugging symbols included.`,
   contextvibes build --debug              # Build with debug symbols for Delve`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// CORRECTED: Use the command's configured output streams. This makes the command testable.
-		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin)
+		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		logger := AppLogger
 		ctx := cmd.Context()
 

@@ -20,7 +20,7 @@ This command first pushes the current branch to the remote ('origin' by default)
 Then, if the GitHub CLI ('gh') is installed, it interactively creates a pull
 request, filling in details and opening it in a web browser.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		logger := AppLogger
 		ctx := context.Background()
 

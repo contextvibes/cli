@@ -50,7 +50,7 @@ will detect the input type, show a summary, and require confirmation before runn
   # Pipe a plan from an AI or another tool (defaults to the execute subcommand)
   cat ./plan.json | contextvibes apply`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 
 		scriptContent, source, err := readInput(scriptPath)

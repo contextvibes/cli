@@ -74,7 +74,7 @@ or for programmatic access to document metadata.`,
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 
 		presenter.Summary("Starting Document Indexing Process...")

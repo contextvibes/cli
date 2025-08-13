@@ -56,7 +56,7 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 			logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 			logger.Warn("AppLogger was nil, using basic stderr logger for get-artifact.")
 		}
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context() // Use command's context
 		artifactID := args[0]
 

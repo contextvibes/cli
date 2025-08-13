@@ -35,7 +35,7 @@ type Comment struct {
 // WriteTo conforms to the io.WriterTo interface, which is a Go standard.
 func (i *Issue) WriteTo(w io.Writer) (n int64, err error) {
 	// Use a temporary presenter to format output to the provided writer.
-	presenter := ui.NewPresenter(w, io.Discard, nil)
+	presenter := ui.NewPresenter(w, io.Discard)
 	var totalBytes int
 
 	// Helper to write and track byte count
@@ -81,7 +81,7 @@ var listIssuesCmd = &cobra.Command{
 	Long:  `Fetches and displays all open issues, including their full body and all comments, from the current GitHub repository using the 'gh' CLI.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Presenter for console messages (status, errors)
-		consolePresenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		consolePresenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 
 		// Determine the target for the main content output

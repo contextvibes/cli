@@ -19,7 +19,7 @@ var initCmd = &cobra.Command{
 If one does not exist, it creates a new file populated with the default
 configuration values, including Git settings and validation patterns.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 
 		presenter.Summary("Initializing ContextVibes configuration...")

@@ -37,7 +37,7 @@ Run 'contextvibes describe' again if you need the full project context instead.`
 		if logger == nil {
 			return errors.New("internal error: logger not initialized")
 		}
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
 
 		presenter.Summary("Generating Git diff summary for %s.", fixedDiffOutputFile)
