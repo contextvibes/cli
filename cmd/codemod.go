@@ -45,7 +45,7 @@ Requires confirmation before writing/deleting, unless --yes is specified.`,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger := AppLogger
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 
 		scriptToLoad := codemodScriptPath
 

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +12,7 @@ var versionCmd = &cobra.Command{
 	Long:  `Display the version number of the Context Vibes CLI.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Use cmd.OutOrStdout() so that output can be captured in tests
-		p := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin)
+		p := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		p.Summary("Context Vibes CLI Version: " + AppVersion)
 
 		return nil

@@ -25,7 +25,7 @@ var gitTidyFinishCmd = &cobra.Command{
 It safely switches to the main branch, pulls the latest changes, and then
 deletes the local feature branch you were on.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		logger := AppLogger
 		ctx := cmd.Context()
 

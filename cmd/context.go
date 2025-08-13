@@ -21,7 +21,7 @@ var generateCommitCmd = &cobra.Command{
 	Use:   "generate-commit",
 	Short: "Generates context for a commit message.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		return runGenerateCommitContext(cmd.Context(), presenter)
 	},
 }
@@ -30,7 +30,7 @@ var generatePrCmd = &cobra.Command{
 	Use:   "generate-pr",
 	Short: "Generates context for a Pull Request description.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		return runGeneratePrContext(cmd.Context(), presenter)
 	},
 }
@@ -44,7 +44,7 @@ var exportAllCmd = &cobra.Command{
 	Use:   "all",
 	Short: "Exports a comprehensive snapshot of the entire project.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		outputFile := "context_export_project.md"
 		presenter.Summary("Exporting full project context to %s...", outputFile)
 		header, err := contextgen.GenerateReportHeader(

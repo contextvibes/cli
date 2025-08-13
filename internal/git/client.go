@@ -446,3 +446,13 @@ func (c *GitClient) GetLogAndDiffFromMergeBase(
 
 	return log, diff, nil
 }
+
+// StashPush saves the current state of the working directory and the index, but leaves the working directory clean.
+func (c *GitClient) StashPush(ctx context.Context) error {
+	// Using -u to include untracked files, which is generally desired for this workflow.
+	err := c.runGit(ctx, "stash", "push", "-u")
+	if err != nil {
+		return fmt.Errorf("git stash push failed: %w", err)
+	}
+	return nil
+}

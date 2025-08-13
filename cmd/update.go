@@ -18,7 +18,7 @@ var updateCmd = &cobra.Command{
 and runs 'go get -u ./...' and 'go mod tidy' in each module directory to update
 all dependencies to their latest versions.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		logger := AppLogger
 		ctx := cmd.Context()
 

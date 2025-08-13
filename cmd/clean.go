@@ -18,7 +18,7 @@ build artifacts, and local caches.
 This includes the './bin/' directory, Go test and build caches, and generated
 context files like 'coverage.out' and 'context_*.md'.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 		logger := AppLogger
 

@@ -53,7 +53,7 @@ Does NOT automatically push.`,
 			_, _ = fmt.Fprintln(os.Stderr, "[ERROR] Internal error: logger not initialized")
 			return fmt.Errorf("internal error: logger not initialized")
 		}
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
 
 		if LoadedAppConfig == nil {

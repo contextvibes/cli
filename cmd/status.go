@@ -30,7 +30,7 @@ This includes staged changes, unstaged changes, and untracked files.`,
 		if logger == nil {
 			return fmt.Errorf("internal error: logger not initialized")
 		}
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
 
 		// --- Init Git Client ---

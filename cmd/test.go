@@ -45,7 +45,7 @@ For other project types, or if no specific test runner is found, it will indicat
 		if logger == nil {
 			return errors.New("internal error: logger not initialized")
 		}
-		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr(), os.Stdin)
+		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := context.Background() // Get context
 
 		presenter.Summary("Running project tests.")

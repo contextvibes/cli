@@ -55,7 +55,7 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		if logger == nil {
 			return errors.New("internal error: logger not initialized")
 		}
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background() // Define context for helper functions
 
 		presenter.Summary("Generating project context description.")

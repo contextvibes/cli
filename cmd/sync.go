@@ -39,7 +39,7 @@ Workflow:
 		if logger == nil {
 			return errors.New("internal error: logger not initialized")
 		}
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
 
 		presenter.Summary("Synchronizing local branch with remote.")

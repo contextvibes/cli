@@ -20,7 +20,7 @@ runs any configured prerequisite checks from '.contextvibes.yaml',
 and then presents an interactive menu to choose an example to execute with 'go run'.`,
 	Example: `  contextvibes run`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		presenter := ui.NewPresenter(os.Stdout, os.Stderr, os.Stdin)
+		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := cmd.Context()
 
 		presenter.Header("--- Example Runner ---")
