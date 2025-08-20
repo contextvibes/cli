@@ -15,6 +15,7 @@ import (
 
 func isFileBinary(filePath string) (bool, error) {
 	// gosec:G304
+	//gosec:G304
 	file, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -38,6 +39,7 @@ func GenerateReportHeader(promptFile, defaultTitle string) (string, error) {
 	for _, path := range searchPaths {
 		if _, err := os.Stat(path); err == nil {
 			// gosec:G304
+			//gosec:G304
 			content, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return "", fmt.Errorf("failed to read prompt file %s: %w", path, readErr)
@@ -56,6 +58,7 @@ func ExportBook(
 	paths ...string,
 ) (err error) {
 	// gosec:G304
+	//gosec:G304
 	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open output file: %w", err)
