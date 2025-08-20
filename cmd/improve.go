@@ -27,8 +27,12 @@ var improveCmd = &cobra.Command{
 		ctx := cmd.Context()
 
 		if !ExecClient.CommandExists("gh") {
-			presenter.Error("GitHub CLI ('gh') not found. This command is required to create issues.")
-			presenter.Advice("Please install it from https://cli.github.com/ and authenticate with 'gh auth login'.")
+			presenter.Error(
+				"GitHub CLI ('gh') not found. This command is required to create issues.",
+			)
+			presenter.Advice(
+				"Please install it from https://cli.github.com/ and authenticate with 'gh auth login'.",
+			)
 			return errors.New("gh cli not found")
 		}
 
@@ -83,7 +87,7 @@ var improveCmd = &cobra.Command{
 		}
 
 		// Confirmation
-		var confirmed bool = false
+		confirmed := false
 		if assumeYes {
 			confirmed = true
 		} else {
@@ -92,7 +96,7 @@ var improveCmd = &cobra.Command{
 			presenter.Detail("Title: %s", issueTitle)
 			presenter.Detail("Labels: %s", strings.Join(labels, ", "))
 			presenter.Step("Body:")
-			fmt.Fprintln(presenter.Out(), issueBody)
+			_, _ = fmt.Fprintln(presenter.Out(), issueBody)
 			presenter.Newline()
 
 			var err error
@@ -130,7 +134,8 @@ var improveCmd = &cobra.Command{
 
 func init() {
 	projectCmd.AddCommand(improveCmd)
-	improveCmd.Flags().StringVarP(&issueType, "type", "t", "", "Type of the issue (feature, bug, chore, documentation, epic)")
+	improveCmd.Flags().
+		StringVarP(&issueType, "type", "t", "", "Type of the issue (feature, bug, chore, documentation, epic)")
 	improveCmd.Flags().StringVarP(&issueTitle, "title", "T", "", "Title of the issue")
 	improveCmd.Flags().StringVarP(&issueBody, "body", "b", "", "Body of the issue")
 }

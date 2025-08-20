@@ -230,7 +230,7 @@ func executeFileModificationStep(
 			)
 		}
 		// gosec:G306
-		if err := os.WriteFile(changeSet.FilePath, []byte(currentContent), 0o644); err != nil {
+		if err := os.WriteFile(changeSet.FilePath, []byte(currentContent), 0o600); err != nil {
 			return fmt.Errorf("could not write file %s: %w", changeSet.FilePath, err)
 		}
 	}

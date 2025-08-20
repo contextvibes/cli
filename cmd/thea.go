@@ -149,7 +149,7 @@ The fetched content is saved to a local file. Default THEA repository URLs are u
 			return fmt.Errorf("checking output file %s: %w", outputPath, statErr)
 		}
 
-		err = os.WriteFile(outputPath, []byte(content), 0o644)
+		err = os.WriteFile(outputPath, []byte(content), 0o600)
 		if err != nil {
 			presenter.Error("Failed to write artifact to '%s': %v", outputPath, err)
 

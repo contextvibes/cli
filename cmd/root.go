@@ -53,7 +53,7 @@ var rootCmd = &cobra.Command{
 		logFileHandle, errLogFile := os.OpenFile(
 			targetAILogFile,
 			os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-			0o660,
+			0o600,
 		)
 		aiOut := io.Discard
 		if errLogFile == nil {

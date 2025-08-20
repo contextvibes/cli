@@ -69,7 +69,10 @@ func (p *Presenter) getInteractiveReader() (reader io.Reader, cleanup func(), er
 	if !isatty.IsTerminal(os.Stdin.Fd()) {
 		tty, ttyErr := os.Open("/dev/tty")
 		if ttyErr != nil {
-			return nil, func() {}, fmt.Errorf("stdin is a pipe and could not open /dev/tty for interactive prompt: %w", ttyErr)
+			return nil, func() {}, fmt.Errorf(
+				"stdin is a pipe and could not open /dev/tty for interactive prompt: %w",
+				ttyErr,
+			)
 		}
 		return tty, func() { _ = tty.Close() }, nil
 	}
