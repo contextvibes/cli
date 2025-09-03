@@ -146,7 +146,7 @@ or for programmatic access to document metadata.`,
 			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
 		}
 
-		err = os.WriteFile(indexPathOut, jsonData, 0o644)
+		err = os.WriteFile(indexPathOut, jsonData, 0o600)
 		if err != nil {
 			logger.ErrorContext(
 				ctx,

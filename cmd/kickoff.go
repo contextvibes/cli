@@ -70,7 +70,14 @@ var kickoffCmd = &cobra.Command{
 		}
 
 		// Get the branch name *before* starting the workflow.
-		validatedBranchName, err := workflow.GetValidatedBranchName(ctx, branchNameFlag, LoadedAppConfig, presenter, gitClient, assumeYes)
+		validatedBranchName, err := workflow.GetValidatedBranchName(
+			ctx,
+			branchNameFlag,
+			LoadedAppConfig,
+			presenter,
+			gitClient,
+			assumeYes,
+		)
 		if err != nil {
 			return err // Helper function already printed user-facing error
 		}
@@ -79,11 +86,20 @@ var kickoffCmd = &cobra.Command{
 		runner := workflow.NewRunner(presenter, assumeYes)
 
 		// Define and run the workflow
-		return runner.Run(ctx, "Daily Development Kickoff",
+		return runner.Run(
+			ctx,
+			"Daily Development Kickoff",
 			&workflow.CheckOnMainBranchStep{GitClient: gitClient, Presenter: presenter},
-			&workflow.CheckAndPromptStashStep{GitClient: gitClient, Presenter: presenter, AssumeYes: assumeYes},
+			&workflow.CheckAndPromptStashStep{
+				GitClient: gitClient,
+				Presenter: presenter,
+				AssumeYes: assumeYes,
+			},
 			&workflow.UpdateMainBranchStep{GitClient: gitClient},
-			&workflow.CreateAndPushBranchStep{GitClient: gitClient, BranchName: validatedBranchName},
+			&workflow.CreateAndPushBranchStep{
+				GitClient:  gitClient,
+				BranchName: validatedBranchName,
+			},
 		)
 	},
 }

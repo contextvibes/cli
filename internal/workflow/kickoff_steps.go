@@ -17,8 +17,15 @@ type CheckOnMainBranchStep struct {
 	Presenter PresenterInterface
 }
 
-func (s *CheckOnMainBranchStep) Description() string { return "Verify current branch is the main branch" }
-func (s *CheckOnMainBranchStep) Execute(ctx context.Context) error { return nil } // PreCheck does all the work.
+func (s *CheckOnMainBranchStep) Description() string {
+	return "Verify current branch is the main branch"
+}
+
+func (s *CheckOnMainBranchStep) Execute(
+	ctx context.Context,
+) error {
+	return nil
+} // PreCheck does all the work.
 func (s *CheckOnMainBranchStep) PreCheck(ctx context.Context) error {
 	mainBranch := s.GitClient.MainBranchName()
 	currentBranch, err := s.GitClient.GetCurrentBranchName(ctx)
@@ -27,7 +34,11 @@ func (s *CheckOnMainBranchStep) PreCheck(ctx context.Context) error {
 		return err
 	}
 	if currentBranch != mainBranch {
-		err := fmt.Errorf("must be run from the main branch ('%s'), but you are on '%s'", mainBranch, currentBranch)
+		err := fmt.Errorf(
+			"must be run from the main branch ('%s'), but you are on '%s'",
+			mainBranch,
+			currentBranch,
+		)
 		s.Presenter.Error(err.Error())
 		return err
 	}
@@ -44,7 +55,12 @@ type CheckAndPromptStashStep struct {
 func (s *CheckAndPromptStashStep) Description() string {
 	return "Check for a clean working directory (and offer to stash)"
 }
-func (s *CheckAndPromptStashStep) Execute(ctx context.Context) error { return nil } // PreCheck does all the work.
+
+func (s *CheckAndPromptStashStep) Execute(
+	ctx context.Context,
+) error {
+	return nil
+} // PreCheck does all the work.
 func (s *CheckAndPromptStashStep) PreCheck(ctx context.Context) error {
 	isClean, err := s.GitClient.IsWorkingDirClean(ctx)
 	if err != nil {
@@ -56,13 +72,19 @@ func (s *CheckAndPromptStashStep) PreCheck(ctx context.Context) error {
 	}
 
 	if s.AssumeYes {
-		err := errors.New("working directory is not clean and cannot prompt in non-interactive mode")
+		err := errors.New(
+			"working directory is not clean and cannot prompt in non-interactive mode",
+		)
 		s.Presenter.Error(err.Error())
-		s.Presenter.Advice("Please commit or stash your changes before running with the --yes flag.")
+		s.Presenter.Advice(
+			"Please commit or stash your changes before running with the --yes flag.",
+		)
 		return err
 	}
 
-	confirmed, err := s.Presenter.PromptForConfirmation("Your working directory has uncommitted changes. Stash them to proceed?")
+	confirmed, err := s.Presenter.PromptForConfirmation(
+		"Your working directory has uncommitted changes. Stash them to proceed?",
+	)
 	if err != nil {
 		return err
 	}
@@ -87,7 +109,9 @@ type UpdateMainBranchStep struct {
 	GitClient *git.GitClient
 }
 
-func (s *UpdateMainBranchStep) Description() string { return "Update main branch from remote (pull --rebase)" }
+func (s *UpdateMainBranchStep) Description() string {
+	return "Update main branch from remote (pull --rebase)"
+}
 func (s *UpdateMainBranchStep) PreCheck(ctx context.Context) error { return nil }
 func (s *UpdateMainBranchStep) Execute(ctx context.Context) error {
 	return s.GitClient.PullRebase(ctx, s.GitClient.MainBranchName())
@@ -115,7 +139,14 @@ func (s *CreateAndPushBranchStep) Execute(ctx context.Context) error {
 
 // GetValidatedBranchName is a helper function that can be used by the command
 // before initializing the workflow. It's not a step itself.
-func GetValidatedBranchName(ctx context.Context, branchNameFlag string, cfg *config.Config, presenter PresenterInterface, gitClient *git.GitClient, assumeYes bool) (string, error) {
+func GetValidatedBranchName(
+	ctx context.Context,
+	branchNameFlag string,
+	cfg *config.Config,
+	presenter PresenterInterface,
+	gitClient *git.GitClient,
+	assumeYes bool,
+) (string, error) {
 	branchName := strings.TrimSpace(branchNameFlag)
 	validationRule := cfg.Validation.BranchName
 	validationEnabled := validationRule.Enable == nil || *validationRule.Enable
@@ -123,10 +154,14 @@ func GetValidatedBranchName(ctx context.Context, branchNameFlag string, cfg *con
 	for {
 		if branchName == "" {
 			if assumeYes {
-				return "", errors.New("branch name must be provided via --branch flag in non-interactive mode")
+				return "", errors.New(
+					"branch name must be provided via --branch flag in non-interactive mode",
+				)
 			}
 			var promptErr error
-			branchName, promptErr = presenter.PromptForInput("Enter new branch name (e.g., feature/TASK-123-new-thing)")
+			branchName, promptErr = presenter.PromptForInput(
+				"Enter new branch name (e.g., feature/TASK-123-new-thing)",
+			)
 			if promptErr != nil {
 				return "", promptErr
 			}
