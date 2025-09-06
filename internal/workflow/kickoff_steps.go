@@ -50,6 +50,7 @@ type CheckAndPromptStashStep struct {
 	GitClient *git.GitClient
 	Presenter PresenterInterface
 	AssumeYes bool
+	DidStash  bool // ADDED: This field will track if a stash was performed.
 }
 
 func (s *CheckAndPromptStashStep) Description() string {
@@ -101,6 +102,7 @@ func (s *CheckAndPromptStashStep) PreCheck(ctx context.Context) error {
 		return err
 	}
 	s.Presenter.Success("✓ Changes stashed.")
+	s.DidStash = true // ADDED: Record that a stash was successfully performed.
 	return nil
 }
 

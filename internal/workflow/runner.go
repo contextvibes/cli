@@ -62,5 +62,14 @@ func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 
 	r.presenter.Newline()
 	r.presenter.Success("Workflow completed successfully.")
+
+	// ADDED: After success, check if a stash was made and provide advice.
+	for _, step := range steps {
+		if stashStep, ok := step.(*CheckAndPromptStashStep); ok && stashStep.DidStash {
+			r.presenter.Advice("Your uncommitted changes were stashed. Run `git stash pop` to restore them.")
+			break // Found it, no need to check further.
+		}
+	}
+
 	return nil
 }
