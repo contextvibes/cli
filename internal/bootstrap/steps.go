@@ -17,8 +17,9 @@ import (
 type CreateRemoteRepoStep struct {
 	GHClient        *gh.Client
 	Presenter       workflow.PresenterInterface
+	Owner           string // ADDED Owner field
 	RepoName        string
-	RepoDescription string // RENAMED from Description
+	RepoDescription string
 	IsPrivate       bool
 	// Outputs of this step to be used by subsequent steps
 	CreatedRepoURL string
@@ -26,19 +27,20 @@ type CreateRemoteRepoStep struct {
 }
 
 func (s *CreateRemoteRepoStep) Description() string {
-	return fmt.Sprintf("Create remote GitHub repository: %s", s.RepoName)
+	return fmt.Sprintf("Create remote GitHub repository: %s/%s", s.Owner, s.RepoName)
 }
 
 func (s *CreateRemoteRepoStep) PreCheck(ctx context.Context) error { return nil }
 
 func (s *CreateRemoteRepoStep) Execute(ctx context.Context) error {
-	repo, err := s.GHClient.CreateRepo(ctx, s.RepoName, s.RepoDescription, s.IsPrivate)
+	// CORRECTED: Pass the owner to the CreateRepo method
+	repo, err := s.GHClient.CreateRepo(ctx, s.Owner, s.RepoName, s.RepoDescription, s.IsPrivate)
 	if err != nil {
 		s.Presenter.Error("Failed to create GitHub repository: %v", err)
 		return err
 	}
 	s.CreatedRepoURL = repo.GetHTMLURL()
-	s.CloneURL = repo.GetCloneURL() // CORRECTED: Use HTTPS clone URL
+	s.CloneURL = repo.GetCloneURL()
 	s.Presenter.Success("✓ Remote repository created at %s", s.CreatedRepoURL)
 	return nil
 }
@@ -79,9 +81,6 @@ func (s *ScaffoldProjectStep) Description() string {
 }
 func (s *ScaffoldProjectStep) PreCheck(ctx context.Context) error { return nil }
 func (s *ScaffoldProjectStep) Execute(ctx context.Context) error {
-	// In a real implementation, this would involve creating directories
-	// and executing templates for go.mod, main.go, .gitignore, etc.
-	// For this plan, we will create a placeholder README.
 	readmePath := filepath.Join(s.LocalPath, "README.md")
 	content := fmt.Sprintf("# %s\n\nGo Module: `%s`\n", s.AppName, s.GoModulePath)
 

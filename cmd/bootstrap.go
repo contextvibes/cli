@@ -3,7 +3,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/contextvibes/cli/internal/bootstrap"
@@ -29,14 +28,21 @@ details, then perform the following actions:
 
 		presenter.Header("--- Project Bootstrap Wizard ---")
 
-		// --- Pre-flight Check: GitHub Token ---
-		ghClient, err := gh.NewClient(ctx, AppLogger)
+		// --- Pre-flight Check: GitHub Token and get authenticated user---
+		// We initialize a temporary client just to get the user's login
+		tempGHClient, err := gh.NewClient(ctx, AppLogger, "", "") // Owner/repo not needed yet
 		if err != nil {
 			presenter.Error("GitHub client initialization failed: %v", err)
 			presenter.Advice(
 				"Please create a GitHub Personal Access Token (PAT) with 'repo' scope and set it as the '%s' environment variable.",
 				gh.GHTokenEnvVar,
 			)
+			return err
+		}
+
+		authedUser, err := tempGHClient.GetAuthenticatedUserLogin(ctx)
+		if err != nil {
+			presenter.Error("Failed to get authenticated user from GitHub token: %v", err)
 			return err
 		}
 
@@ -64,20 +70,12 @@ details, then perform the following actions:
 		}
 		isPrivate = (visibility == "private")
 
-		// Intelligently guess the Go module path
-		user, _, userErr := ghClient.Users.Get(ctx, "")
-		defaultModulePath := ""
-		if userErr == nil {
-			defaultModulePath = fmt.Sprintf("github.com/%s/%s", user.GetLogin(), repoName)
-		}
-
+		defaultModulePath := fmt.Sprintf("github.com/%s/%s", authedUser, repoName)
 		modulePathForm := huh.NewInput().
 			Title("Go Module Path?").
+			Placeholder(defaultModulePath).
 			Value(&goModulePath)
 
-		if defaultModulePath != "" {
-			modulePathForm.Placeholder(defaultModulePath)
-		}
 		if err := modulePathForm.Run(); err != nil {
 			return err
 		}
@@ -88,7 +86,7 @@ details, then perform the following actions:
 		// --- Confirmation ---
 		presenter.Newline()
 		presenter.Summary("Bootstrap Plan")
-		presenter.Detail("GitHub Repo:  %s (%s)", strings.TrimSuffix(goModulePath, "/"+repoName)+"/"+repoName, visibility)
+		presenter.Detail("GitHub Repo:  %s/%s (%s)", authedUser, repoName, visibility)
 		presenter.Detail("Local Path:   ./%s", repoName)
 		presenter.Detail("Go Module:    %s", goModulePath)
 		presenter.Newline()
@@ -102,16 +100,18 @@ details, then perform the following actions:
 			return nil
 		}
 
-		// --- Workflow Execution ---
-		// NOTE: We execute steps sequentially here because the output of one step (CloneURL)
-		// is the input for the next. The simple workflow.Runner does not yet support this.
-		// A future refactor could enhance the runner to pass a context object between steps.
-		// For now, this direct execution is correct and the `runner` variable was unused.
+		// --- Initialize final client now we have all info ---
+		ghClient, err := gh.NewClient(ctx, AppLogger, authedUser, repoName)
+		if err != nil {
+			presenter.Error("GitHub client initialization failed: %v", err)
+			return err
+		}
 
-		// Instantiate steps
+		// --- Workflow Execution ---
 		createRepoStep := &bootstrap.CreateRemoteRepoStep{
 			GHClient:        ghClient,
 			Presenter:       presenter,
+			Owner:           authedUser, // Pass the owner
 			RepoName:        repoName,
 			RepoDescription: description,
 			IsPrivate:       isPrivate,
