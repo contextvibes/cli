@@ -114,9 +114,14 @@ When using the --parent flag, it automatically adds the new issue to the parent'
 }
 
 // linkToParentAsTask uses the modern `gh issue edit --add-task` command.
-func linkToParentAsTask(presenter *ui.Presenter, ctx context.Context, newIssueURL string, parentNum int) error {
+func linkToParentAsTask(
+	presenter *ui.Presenter,
+	ctx context.Context,
+	newIssueURL string,
+	parentNum int,
+) error {
 	presenter.Step("Adding new issue %s as a sub-task to parent #%d...", newIssueURL, parentNum)
-	
+
 	parentNumStr := fmt.Sprintf("%d", parentNum)
 
 	// This is the new, simpler, and more correct command.
@@ -144,8 +149,10 @@ func linkToParentAsTask(presenter *ui.Presenter, ctx context.Context, newIssueUR
 
 func init() {
 	projectCmd.AddCommand(improveCmd)
-	improveCmd.Flags().StringVarP(&issueType, "type", "t", "", "Type of the issue (epic, user-story, chore, bug, documentation)")
+	improveCmd.Flags().
+		StringVarP(&issueType, "type", "t", "", "Type of the issue (epic, user-story, chore, bug, documentation)")
 	improveCmd.Flags().StringVarP(&issueTitle, "title", "T", "", "Title of the issue")
 	improveCmd.Flags().StringVarP(&issueBody, "body", "b", "", "Body of the issue")
-	improveCmd.Flags().IntVarP(&parentIssueNumber, "parent", "p", 0, "The issue number of the parent epic or user story")
+	improveCmd.Flags().
+		IntVarP(&parentIssueNumber, "parent", "p", 0, "The issue number of the parent epic or user story")
 }

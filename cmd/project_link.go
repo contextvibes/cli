@@ -11,9 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	parentLinkNumber int
-)
+var parentLinkNumber int
 
 var projectLinkCmd = &cobra.Command{
 	Use:   "link <issue-number>",
@@ -46,7 +44,11 @@ and then updates the issue with the new combined body.`,
 			return errors.New("gh cli not found")
 		}
 
-		presenter.Summary("Linking issue #%s to parent #%d...", childIssueNumberStr, parentLinkNumber)
+		presenter.Summary(
+			"Linking issue #%s to parent #%d...",
+			childIssueNumberStr,
+			parentLinkNumber,
+		)
 
 		// Step 1: Fetch the parent issue's current body
 		presenter.Step("  Fetching current body of parent issue #%d...", parentLinkNumber)
@@ -88,7 +90,11 @@ and then updates the issue with the new combined body.`,
 			return err
 		}
 
-		presenter.Success("Successfully linked issue #%s to parent #%d.", childIssueNumberStr, parentLinkNumber)
+		presenter.Success(
+			"Successfully linked issue #%s to parent #%d.",
+			childIssueNumberStr,
+			parentLinkNumber,
+		)
 		return nil
 	},
 }
@@ -96,6 +102,7 @@ and then updates the issue with the new combined body.`,
 func init() {
 	projectCmd.AddCommand(projectLinkCmd)
 
-	projectLinkCmd.Flags().IntVar(&parentLinkNumber, "to", 0, "The issue number of the parent epic to link to (required)")
+	projectLinkCmd.Flags().
+		IntVar(&parentLinkNumber, "to", 0, "The issue number of the parent epic to link to (required)")
 	projectLinkCmd.MarkFlagRequired("to")
 }

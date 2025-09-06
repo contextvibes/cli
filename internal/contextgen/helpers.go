@@ -15,7 +15,7 @@ import (
 
 func isFileBinary(filePath string) (bool, error) {
 	// gosec:G304
-	//gosec:G304
+	// gosec:G304
 	file, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -31,7 +31,7 @@ func isFileBinary(filePath string) (bool, error) {
 	return bytes.Contains(buffer[:n], []byte{0}), nil
 }
 
-func GenerateReportHeader(promptFile, defaultTitle string) (string, error) {
+func GenerateReportHeader(promptFile, defaultTitle, defaultTask string) (string, error) {
 	searchPaths := []string{
 		filepath.Join("docs", "prompts", promptFile),
 		filepath.Join("..", "thea", "building-blocks", "prompts", promptFile),
@@ -39,7 +39,7 @@ func GenerateReportHeader(promptFile, defaultTitle string) (string, error) {
 	for _, path := range searchPaths {
 		if _, err := os.Stat(path); err == nil {
 			// gosec:G304
-			//gosec:G304
+			// gosec:G304
 			content, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return "", fmt.Errorf("failed to read prompt file %s: %w", path, readErr)
@@ -47,7 +47,8 @@ func GenerateReportHeader(promptFile, defaultTitle string) (string, error) {
 			return string(content), nil
 		}
 	}
-	return fmt.Sprintf("# AI Prompt: %s\n\n---\n", defaultTitle), nil
+	// Fallback prompt is now more descriptive.
+	return fmt.Sprintf("# AI Prompt: %s\n\nYour task is to: %s\n\n---\n", defaultTitle, defaultTask), nil
 }
 
 func ExportBook(
@@ -58,7 +59,7 @@ func ExportBook(
 	paths ...string,
 ) (err error) {
 	// gosec:G304
-	//gosec:G304
+	// gosec:G304
 	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open output file: %w", err)

@@ -50,6 +50,7 @@ var exportAllCmd = &cobra.Command{
 		header, err := contextgen.GenerateReportHeader(
 			"export-project-context.md",
 			"Full Project Context",
+			"Export all project files into a single context document.",
 		)
 		if err != nil {
 			return err
@@ -70,6 +71,7 @@ func runGenerateCommitContext(ctx context.Context, presenter *ui.Presenter) erro
 	header, err := contextgen.GenerateReportHeader(
 		"generate-commit-message.md",
 		"Generate Conventional Commit Command",
+		"Analyze the provided git diff and generate a Conventional Commit message and command.",
 	)
 	if err != nil {
 		return err
@@ -100,6 +102,7 @@ func runGeneratePrContext(ctx context.Context, presenter *ui.Presenter) error {
 	header, err := contextgen.GenerateReportHeader(
 		"generate-pr-description.md",
 		"Generate Pull Request Description",
+		"Analyze the provided commit history and diff to generate a comprehensive Pull Request description.",
 	)
 	if err != nil {
 		return err

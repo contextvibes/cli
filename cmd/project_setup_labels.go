@@ -18,12 +18,28 @@ type label struct {
 
 // requiredLabels is the canonical list of labels our workflow requires.
 var requiredLabels = []label{
-	{Name: "epic", Color: "3E4B8B", Description: "A large body of work that can be broken down into smaller stories."},
-	{Name: "user-story", Color: "5319E7", Description: "A specific feature or requirement from a user's perspective."},
+	{
+		Name:        "epic",
+		Color:       "3E4B8B",
+		Description: "A large body of work that can be broken down into smaller stories.",
+	},
+	{
+		Name:        "user-story",
+		Color:       "5319E7",
+		Description: "A specific feature or requirement from a user's perspective.",
+	},
 	{Name: "feature", Color: "a2eeef", Description: "New feature or request."},
 	{Name: "bug", Color: "d73a4a", Description: "Something isn't working."},
-	{Name: "documentation", Color: "0075ca", Description: "Improvements or additions to documentation."},
-	{Name: "chore", Color: "cfd3d7", Description: "Miscellaneous tasks that don't add user-facing value."},
+	{
+		Name:        "documentation",
+		Color:       "0075ca",
+		Description: "Improvements or additions to documentation.",
+	},
+	{
+		Name:        "chore",
+		Color:       "cfd3d7",
+		Description: "Miscellaneous tasks that don't add user-facing value.",
+	},
 	{Name: "enhancement", Color: "a2eeef", Description: "New feature or request."},
 }
 

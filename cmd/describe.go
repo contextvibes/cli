@@ -23,8 +23,8 @@ const (
 	defaultDescribeOutputFile = "contextvibes.md"
 	includeExtensionsRegex    = `\.(go|mod|sum|tf|py|yaml|json|md|gitignore|txt|hcl|nix)$|^(Taskfile\.yaml|requirements\.txt|README\.md|\.idx/dev\.nix|\.idx/airules\.md)$`
 	maxFileSizeKB             = 500
-	excludePathsRegex         = `(^\.git/|^\.terraform/|^\.venv/|^__pycache__/|^\.DS_Store|^\.pytest_cache/|^\.vscode/|\.tfstate|\.tfplan|^secrets?/|\.auto\.tfvars|ai_context\.txt|crash.*\.log|contextvibes\.md)`
-	treeIgnorePattern         = ".git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
+	excludePathsRegex         = `(^vendor/|^\.git/|^\.terraform/|^\.venv/|^__pycache__/|^\.DS_Store|^\.pytest_cache/|^\.vscode/|\.tfstate|\.tfplan|^secrets?/|\.auto\.tfvars|ai_context\.txt|crash.*\.log|contextvibes\.md)`
+	treeIgnorePattern         = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
 )
 
 var criticalFiles = []string{
@@ -186,8 +186,8 @@ Respects .gitignore, .aiexclude rules, and file size limits when including file 
 		appendToolVersion(ctx, &outputBuffer, presenter, cwd, "git", "git", "--version")
 		appendToolVersion(ctx, &outputBuffer, presenter, cwd, "gcloud", "gcloud", "version")
 		outputBuffer.WriteString("Other potentially relevant tools:\n")
-		appendCommandAvailability(ctx, &outputBuffer, presenter, cwd, "jq")
-		appendCommandAvailability(ctx, &outputBuffer, presenter, cwd, "tree")
+		appendCommandAvailability(ctx, &outputBuffer, presenter, "jq")
+		appendCommandAvailability(ctx, &outputBuffer, presenter, "tree")
 		outputBuffer.WriteString("Relevant environment variables:\n")
 		fmt.Fprintf(
 			&outputBuffer,
@@ -356,10 +356,6 @@ func appendToolVersion(
 	cwd, displayName, commandName string,
 	args ...string,
 ) {
-	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
-	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
-	_ = ctx // Explicitly ignore ctx if only passed through
-
 	fmt.Fprintf(buf, "  %s: ", displayName)
 
 	logger := AppLogger // Assuming AppLogger is accessible as a package variable from cmd/root.go
@@ -479,19 +475,14 @@ func appendToolVersion(
 	)
 }
 
-// Updated signature to include ctx (though not used by ExecClient.CommandExists directly).
+// Updated signature to remove unused 'cwd' parameter.
 func appendCommandAvailability(
 	ctx context.Context,
 	buf *bytes.Buffer,
 	p *ui.Presenter,
-	cwd string,
 	commandName string,
 ) {
-	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
-	_ = ctx // Silences unused parameter warning if ctx is only for ExecClient
-	_ = ctx // Explicitly ignore ctx if only passed through
-	// Renamed unused parameter from _ to cwd to match the call signature, even if not used directly by CommandExists
-	_ = cwd // Explicitly ignore cwd if CommandExists doesn't need it
+	_ = ctx // Context is passed for API consistency, though not used by CommandExists.
 
 	fmt.Fprintf(buf, "  %s: ", commandName)
 
@@ -516,9 +507,7 @@ func appendFileContentToBuffer(
 	cwd, filePath string,
 	maxSizeBytes int64,
 ) error {
-	_ = ctx // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic // Explicitly ignore ctx for now if unused by current logic
-	_ = ctx // Explicitly ignore ctx for now if unused by current logic
-	_ = ctx // Explicitly ignore ctx for now
+	_ = ctx // Context is passed for future use (e.g., cancellable reads) but not used yet.
 	fullPath := filepath.Join(cwd, filePath)
 	logger := AppLogger
 	logger.Debug(
