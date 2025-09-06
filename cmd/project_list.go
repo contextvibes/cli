@@ -8,9 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	projectOwner string
-)
+var projectOwner string
 
 var projectListCmd = &cobra.Command{
 	Use:     "list",
@@ -60,5 +58,6 @@ quick overview of available project boards without leaving the terminal.`,
 func init() {
 	projectCmd.AddCommand(projectListCmd)
 
-	projectListCmd.Flags().StringVarP(&projectOwner, "owner", "o", "", "List projects for the specified owner (user or organization)")
+	projectListCmd.Flags().
+		StringVarP(&projectOwner, "owner", "o", "", "List projects for the specified owner (user or organization)")
 }

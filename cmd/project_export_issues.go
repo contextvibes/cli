@@ -13,9 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	exportOutputFile string
-)
+var exportOutputFile string
 
 // temp struct for unmarshalling JSON output from 'gh issue view'
 type issueExportData struct {
@@ -79,7 +77,12 @@ AI assistant for analysis, planning, or summarization.`,
 			viewArgs := []string{"issue", "view", numStr, "--json", "title,body,comments"}
 			issueJSON, viewStderr, viewErr := ExecClient.CaptureOutput(ctx, ".", "gh", viewArgs...)
 			if viewErr != nil {
-				presenter.Warning("Could not export issue #%s: %v. Stderr: %s", numStr, viewErr, viewStderr)
+				presenter.Warning(
+					"Could not export issue #%s: %v. Stderr: %s",
+					numStr,
+					viewErr,
+					viewStderr,
+				)
 				continue
 			}
 
@@ -105,7 +108,7 @@ AI assistant for analysis, planning, or summarization.`,
 
 		// 3. Write to file
 		presenter.Step("Writing aggregated content to %s...", exportOutputFile)
-		err = os.WriteFile(exportOutputFile, buffer.Bytes(), 0644)
+		err = os.WriteFile(exportOutputFile, buffer.Bytes(), 0o644)
 		if err != nil {
 			presenter.Error("Failed to write to output file %s: %v", exportOutputFile, err)
 			return err
@@ -120,5 +123,6 @@ AI assistant for analysis, planning, or summarization.`,
 func init() {
 	projectCmd.AddCommand(projectExportIssuesCmd)
 
-	projectExportIssuesCmd.Flags().StringVarP(&exportOutputFile, "output", "o", "project_issues_export.md", "Path for the output markdown file")
+	projectExportIssuesCmd.Flags().
+		StringVarP(&exportOutputFile, "output", "o", "project_issues_export.md", "Path for the output markdown file")
 }

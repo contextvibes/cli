@@ -17,6 +17,7 @@ const (
 	DefaultConfigFileName        = ".contextvibes.yaml"
 	DefaultCodemodFilename       = "codemod.json"
 	DefaultDescribeOutputFile    = "contextvibes.md"
+	StrategicKickoffFilename     = "docs/strategic_kickoff_protocol.md"
 	DefaultBranchNamePattern     = `^((feature|fix|docs|format)/.+)$`
 	DefaultCommitMessagePattern  = `^(BREAKING|feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9\-_/]+\))?:\s.+`
 	DefaultGitRemote             = "origin"
@@ -35,7 +36,12 @@ type ValidationRule struct {
 }
 
 type LoggingSettings struct {
+	Enable           *bool  `yaml:"enable,omitempty"`
 	DefaultAILogFile string `yaml:"defaultAILogFile,omitempty"`
+}
+
+type SystemPromptSettings struct {
+	DefaultOutputFiles map[string]string `yaml:"defaultOutputFiles,omitempty"`
 }
 
 type ProjectState struct {
@@ -55,7 +61,6 @@ type AISettings struct {
 	CollaborationPreferences AICollaborationPreferences `yaml:"collaborationPreferences,omitempty"`
 }
 
-// --- NEW: Configuration for the 'run' command ---
 type VerificationCheck struct {
 	Name        string   `yaml:"name"`
 	Description string   `yaml:"description,omitempty"`
@@ -71,24 +76,22 @@ type RunSettings struct {
 	Examples map[string]ExampleSettings `yaml:"examples,omitempty"`
 }
 
-// --- NEW: Configuration for the 'export' command ---
 type ExportSettings struct {
 	ExcludePatterns []string `yaml:"excludePatterns,omitempty"`
 }
 
-// --- End NEW ---
-
 type Config struct {
-	Git        GitSettings     `yaml:"git,omitempty"`
-	Logging    LoggingSettings `yaml:"logging,omitempty"`
-	Validation struct {
+	Git          GitSettings          `yaml:"git,omitempty"`
+	Logging      LoggingSettings      `yaml:"logging,omitempty"`
+	SystemPrompt SystemPromptSettings `yaml:"systemPrompt,omitempty"`
+	Validation   struct {
 		BranchName    ValidationRule `yaml:"branchName,omitempty"`
 		CommitMessage ValidationRule `yaml:"commitMessage,omitempty"`
 	} `yaml:"validation,omitempty"`
 	ProjectState ProjectState   `yaml:"projectState,omitempty"`
 	AI           AISettings     `yaml:"ai,omitempty"`
 	Run          RunSettings    `yaml:"run,omitempty"`
-	Export       ExportSettings `yaml:"export,omitempty"` // NEW
+	Export       ExportSettings `yaml:"export,omitempty"`
 }
 
 func GetDefaultConfig() *Config {
@@ -101,7 +104,14 @@ func GetDefaultConfig() *Config {
 			DefaultMainBranch: DefaultGitMainBranch,
 		},
 		Logging: LoggingSettings{
+			Enable:           &defaultFalse,
 			DefaultAILogFile: UltimateDefaultAILogFilename,
+		},
+		SystemPrompt: SystemPromptSettings{
+			DefaultOutputFiles: map[string]string{
+				"idx":      ".idx/airules.md",
+				"aistudio": "contextvibes_aistudio_prompt.md",
+			},
 		},
 		Validation: struct {
 			BranchName    ValidationRule `yaml:"branchName,omitempty"`
@@ -122,7 +132,6 @@ func GetDefaultConfig() *Config {
 		},
 		AI: AISettings{
 			CollaborationPreferences: AICollaborationPreferences{
-				// Corrected: Set actual default values
 				CodeProvisioningStyle: "bash_cat_eof",
 				MarkdownDocsStyle:     "raw_markdown",
 				DetailedTaskMode:      "mode_b",
@@ -130,11 +139,9 @@ func GetDefaultConfig() *Config {
 				AIProactivity:         "proactive_suggestions",
 			},
 		},
-		// NEW: Initialize Run settings
 		Run: RunSettings{
 			Examples: make(map[string]ExampleSettings),
 		},
-		// NEW: Initialize Export settings
 		Export: ExportSettings{
 			ExcludePatterns: []string{"vendor/"},
 		},
@@ -154,10 +161,8 @@ func LoadConfig(filePath string) (*Config, error) {
 		return nil, nil
 	}
 	var cfg Config
-	// Use yaml.UnmarshalStrict to catch more errors if needed, but v3.Unmarshal is usually fine.
 	err = yaml.Unmarshal(data, &cfg)
 	if err != nil {
-		// Wrap the specific YAML parsing error
 		return nil, fmt.Errorf("failed to parse YAML config file '%s': %w", filePath, err)
 	}
 	return &cfg, nil
@@ -208,8 +213,16 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	if loadedCfg.Git.DefaultMainBranch != "" {
 		finalCfg.Git.DefaultMainBranch = loadedCfg.Git.DefaultMainBranch
 	}
+	if loadedCfg.Logging.Enable != nil {
+		finalCfg.Logging.Enable = loadedCfg.Logging.Enable
+	}
 	if loadedCfg.Logging.DefaultAILogFile != "" {
 		finalCfg.Logging.DefaultAILogFile = loadedCfg.Logging.DefaultAILogFile
+	}
+
+	// Merge the system prompt config. User's map replaces the default map.
+	if loadedCfg.SystemPrompt.DefaultOutputFiles != nil {
+		finalCfg.SystemPrompt.DefaultOutputFiles = loadedCfg.SystemPrompt.DefaultOutputFiles
 	}
 
 	if loadedCfg.Validation.BranchName.Enable != nil {
@@ -259,12 +272,9 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 		finalCfg.AI.CollaborationPreferences.AIProactivity = loadedCfg.AI.CollaborationPreferences.AIProactivity
 	}
 
-	// NEW: Merge Run settings
 	if loadedCfg.Run.Examples != nil {
 		finalCfg.Run.Examples = loadedCfg.Run.Examples
 	}
-
-	// NEW: Merge Export settings
 	if loadedCfg.Export.ExcludePatterns != nil {
 		finalCfg.Export.ExcludePatterns = loadedCfg.Export.ExcludePatterns
 	}

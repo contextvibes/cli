@@ -24,10 +24,10 @@ var (
 
 // temp struct for unmarshalling 'gh issue view' JSON
 type issueViewData struct {
-	Number int      `json:"number"`
-	Title  string   `json:"title"`
-	State  string   `json:"state"`
-	Body   string   `json:"body"`
+	Number int    `json:"number"`
+	Title  string `json:"title"`
+	State  string `json:"state"`
+	Body   string `json:"body"`
 	Labels []struct {
 		Name string `json:"name"`
 	} `json:"labels"`
@@ -100,7 +100,11 @@ func runListView(presenter *ui.Presenter, ctx context.Context) error {
 	return nil
 }
 
-func runSingleHierarchyView(presenter *ui.Presenter, ctx context.Context, issueNumber string) error {
+func runSingleHierarchyView(
+	presenter *ui.Presenter,
+	ctx context.Context,
+	issueNumber string,
+) error {
 	presenter.Summary("Fetching hierarchy for Issue #%s...", issueNumber)
 	viewArgs := []string{"issue", "view", issueNumber, "--json", "number,title,state,body,labels"}
 	parentJSON, stderr, err := ExecClient.CaptureOutput(ctx, ".", "gh", viewArgs...)
@@ -150,13 +154,19 @@ func runSingleHierarchyView(presenter *ui.Presenter, ctx context.Context, issueN
 			presenter.Warning("  Could not parse details for child #%s", childNumber)
 			continue
 		}
-		
+
 		statusIcon := "✅"
 		if childData.State == "OPEN" {
 			statusIcon = "📝"
 		}
 
-		presenter.Detail("  %s #%d: %s (%s)", statusIcon, childData.Number, childData.Title, childData.State)
+		presenter.Detail(
+			"  %s #%d: %s (%s)",
+			statusIcon,
+			childData.Number,
+			childData.Title,
+			childData.State,
+		)
 	}
 
 	return nil
@@ -174,7 +184,9 @@ func runAllHierarchyView(presenter *ui.Presenter, ctx context.Context) error {
 		return err
 	}
 
-	var epics []struct{ Number int `json:"number"` }
+	var epics []struct {
+		Number int `json:"number"`
+	}
 	if err := json.Unmarshal([]byte(epicsJSON), &epics); err != nil {
 		presenter.Error("Failed to parse epic list: %v", err)
 		return err
@@ -189,7 +201,10 @@ func runAllHierarchyView(presenter *ui.Presenter, ctx context.Context) error {
 
 	for _, epic := range epics {
 		if err := runSingleHierarchyView(presenter, ctx, fmt.Sprintf("%d", epic.Number)); err != nil {
-			presenter.Warning("Could not display hierarchy for epic #%d. Continuing...", epic.Number)
+			presenter.Warning(
+				"Could not display hierarchy for epic #%d. Continuing...",
+				epic.Number,
+			)
 		}
 		presenter.Separator()
 	}
@@ -200,11 +215,16 @@ func runAllHierarchyView(presenter *ui.Presenter, ctx context.Context) error {
 func init() {
 	projectCmd.AddCommand(projectViewCmd)
 
-	projectViewCmd.Flags().StringVarP(&issueAssignee, "assignee", "a", "", "Filter by assignee (@me to filter by yourself)")
+	projectViewCmd.Flags().
+		StringVarP(&issueAssignee, "assignee", "a", "", "Filter by assignee (@me to filter by yourself)")
 	projectViewCmd.Flags().StringVarP(&issueLabel, "label", "l", "", "Filter by label")
 	// FIXED: Changed .Flags. to .Flags().
-	projectViewCmd.Flags().StringVarP(&issueState, "state", "s", "open", "Filter by state (open, closed, all)")
-	projectViewCmd.Flags().IntVarP(&issueLimit, "limit", "L", 30, "Maximum number of issues to return")
-	projectViewCmd.Flags().StringVar(&issueSearchQuery, "search", "", "Filter with a GitHub search query (e.g., 'is:open -label:bug')")
-	projectViewCmd.Flags().BoolVar(&viewAllHierarchy, "all", false, "Display the full hierarchy of all epics and their children")
+	projectViewCmd.Flags().
+		StringVarP(&issueState, "state", "s", "open", "Filter by state (open, closed, all)")
+	projectViewCmd.Flags().
+		IntVarP(&issueLimit, "limit", "L", 30, "Maximum number of issues to return")
+	projectViewCmd.Flags().
+		StringVar(&issueSearchQuery, "search", "", "Filter with a GitHub search query (e.g., 'is:open -label:bug')")
+	projectViewCmd.Flags().
+		BoolVar(&viewAllHierarchy, "all", false, "Display the full hierarchy of all epics and their children")
 }
