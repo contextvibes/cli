@@ -3,9 +3,8 @@ package index
 
 import (
 	"bufio"
-	"encoding/json"
 	_ "embed"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -63,8 +63,7 @@ var IndexCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
+		logger := globals.AppLogger
 
 		var allMetadata []DocumentMetadata
 		processedFiles := make(map[string]bool)
@@ -102,11 +101,17 @@ var IndexCmd = &cobra.Command{
 func processDirectory(rootPath, baseDirName string, processedFiles map[string]bool, logger *slog.Logger) ([]DocumentMetadata, error) {
 	var metadataList []DocumentMetadata
 	absRootPath, err := filepath.Abs(rootPath)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	err = filepath.WalkDir(absRootPath, func(currentPath string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil || d.IsDir() { return nil }
-		if !(strings.HasSuffix(d.Name(), ".md")) { return nil }
+		if walkErr != nil || d.IsDir() {
+			return nil
+		}
+		if !(strings.HasSuffix(d.Name(), ".md")) {
+			return nil
+		}
 
 		fileInfo, _ := d.Info()
 		docMeta, parseErr := parseFrontMatterAndDerive(currentPath, absRootPath, baseDirName, fileInfo)
@@ -120,7 +125,9 @@ func processDirectory(rootPath, baseDirName string, processedFiles map[string]bo
 
 func parseFrontMatterAndDerive(filePath, rootPath, baseDirName string, fileInfo fs.FileInfo) (*DocumentMetadata, error) {
 	file, err := os.Open(filePath)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -139,20 +146,26 @@ func parseFrontMatterAndDerive(filePath, rootPath, baseDirName string, fileInfo 
 			frontMatterLines = append(frontMatterLines, line)
 		}
 	}
-	if !inFrontMatter || len(frontMatterLines) == 0 { return nil, nil }
+	if !inFrontMatter || len(frontMatterLines) == 0 {
+		return nil, nil
+	}
 
 	var fmData tempFrontMatter
-	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil { return nil, err }
-	if strings.TrimSpace(fmData.Title) == "" { return nil, nil }
+	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(fmData.Title) == "" {
+		return nil, nil
+	}
 
 	relPath, _ := filepath.Rel(rootPath, filePath)
 	ext := filepath.Ext(relPath)
 	id := strings.TrimSuffix(relPath, ext)
-	
+
 	docMeta := &DocumentMetadata{
-		ID: id,
-		FileExtension: strings.TrimPrefix(ext, "."),
-		Title: fmData.Title,
+		ID:               id,
+		FileExtension:    strings.TrimPrefix(ext, "."),
+		Title:            fmData.Title,
 		LastModifiedDate: fileInfo.ModTime().UTC().Format(time.RFC3339),
 		// ... (other fields) ...
 	}

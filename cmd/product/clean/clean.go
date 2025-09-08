@@ -2,15 +2,12 @@
 package clean
 
 import (
-	
 	_ "embed"
-	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -20,14 +17,9 @@ var cleanLongDescription string
 
 // CleanCmd represents the clean command
 var CleanCmd = &cobra.Command{
-	Use:   "clean",
+	Use: "clean",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Header("--- Cleaning Local Project Files ---")
@@ -58,13 +50,13 @@ var CleanCmd = &cobra.Command{
 		}
 
 		presenter.Step("Cleaning Go build and test caches...")
-		if err := execClient.Execute(ctx, ".", "go", "clean", "-cache", "-testcache"); err != nil {
+		if err := globals.ExecClient.Execute(ctx, ".", "go", "clean", "-cache", "-testcache"); err != nil {
 			return fmt.Errorf("failed to run 'go clean': %w", err)
 		}
 
 		presenter.Newline()
 		presenter.Success("Project files cleaned successfully.")
-		logger.InfoContext(ctx, "Project cleanup completed.")
+		globals.AppLogger.InfoContext(ctx, "Project cleanup completed.")
 		return nil
 	},
 }

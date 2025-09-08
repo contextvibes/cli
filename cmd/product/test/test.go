@@ -5,12 +5,12 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -28,11 +28,6 @@ var TestCmd = &cobra.Command{
   contextvibes product test tests/my_specific_test.py # Passes path to pytest`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Running project tests.")
@@ -56,11 +51,11 @@ var TestCmd = &cobra.Command{
 		switch projType {
 		case project.Go:
 			presenter.Header("Go Project Tests")
-			testErr = executeGoTests(ctx, presenter, logger, execClient, cwd, args)
+			testErr = executeGoTests(ctx, presenter, globals.ExecClient, cwd, args)
 			testExecuted = true
 		case project.Python:
 			presenter.Header("Python Project Tests")
-			testErr = executePythonTests(ctx, presenter, logger, execClient, cwd, args)
+			testErr = executePythonTests(ctx, presenter, globals.ExecClient, cwd, args)
 			testExecuted = true
 		default:
 			presenter.Info("No specific test execution logic for project type: %s", projType)
@@ -82,7 +77,7 @@ var TestCmd = &cobra.Command{
 	},
 }
 
-func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *exec.ExecutorClient, dir string, passThroughArgs []string) error {
+func executeGoTests(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, passThroughArgs []string) error {
 	tool := "go"
 	testArgs := []string{"test", "./..."}
 	testArgs = append(testArgs, passThroughArgs...)
@@ -90,7 +85,7 @@ func executeGoTests(ctx context.Context, presenter *ui.Presenter, logger *slog.L
 	return execClient.Execute(ctx, dir, tool, testArgs...)
 }
 
-func executePythonTests(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *exec.ExecutorClient, dir string, passThroughArgs []string) error {
+func executePythonTests(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, passThroughArgs []string) error {
 	if execClient.CommandExists("pytest") {
 		presenter.Info("Executing: pytest %s", strings.Join(passThroughArgs, " "))
 		return execClient.Execute(ctx, dir, "pytest", passThroughArgs...)

@@ -1,4 +1,5 @@
 package factory
+
 import (
 	"github.com/contextvibes/cli/cmd/factory/apply"
 	"github.com/contextvibes/cli/cmd/factory/commit"
@@ -13,10 +14,12 @@ import (
 	"github.com/contextvibes/cli/cmd/factory/tidy"
 	"github.com/spf13/cobra"
 )
+
 var FactoryCmd = &cobra.Command{
 	Use:   "factory",
 	Short: "Commands for your workflow and machinery (the 'how').",
 }
+
 func init() {
 	FactoryCmd.AddCommand(init_cmd.InitCmd)
 	FactoryCmd.AddCommand(kickoff.KickoffCmd)

@@ -4,6 +4,8 @@ package issues
 import (
 	"github.com/contextvibes/cli/cmd/project/issues/create"
 	"github.com/contextvibes/cli/cmd/project/issues/list"
+	"github.com/contextvibes/cli/cmd/project/issues/tree"
+	"github.com/contextvibes/cli/cmd/project/issues/view"
 	"github.com/spf13/cobra"
 )
 
@@ -17,5 +19,6 @@ var IssuesCmd = &cobra.Command{
 func init() {
 	IssuesCmd.AddCommand(create.CreateCmd)
 	IssuesCmd.AddCommand(list.ListCmd)
-	// Other issue commands (link, export, etc.) would be added here
+	IssuesCmd.AddCommand(view.ViewCmd)
+	IssuesCmd.AddCommand(tree.TreeCmd) // Add the new command
 }

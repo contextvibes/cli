@@ -63,7 +63,7 @@ func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command)
 
 	// Create a new command instance for each test to avoid state leakage
 	cmd := *BuildCmd // Make a copy
-	
+
 	// Set up context with dependencies for the command's RunE
 	ctx := context.WithValue(context.Background(), "logger", slog.New(slog.DiscardHandler))
 	ctx = context.WithValue(ctx, "execClient", execClient)

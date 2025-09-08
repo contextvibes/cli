@@ -4,13 +4,12 @@ package diff
 import (
 	"bytes"
 	_ "embed"
-	"errors"
-	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/git"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/tools"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -28,9 +27,6 @@ var DiffCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Generating Git diff summary for %s.", fixedDiffOutputFile)
@@ -39,8 +35,11 @@ var DiffCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		
-		gitCfg := git.GitClientConfig{Logger: logger}
+
+		gitCfg := git.GitClientConfig{
+			Logger:   globals.AppLogger,
+			Executor: globals.ExecClient.UnderlyingExecutor(),
+		}
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
@@ -51,7 +50,9 @@ var DiffCmd = &cobra.Command{
 		var hasChanges bool
 
 		stagedOut, _, stagedErr := client.GetDiffCached(ctx)
-		if stagedErr != nil { return stagedErr }
+		if stagedErr != nil {
+			return stagedErr
+		}
 		if strings.TrimSpace(stagedOut) != "" {
 			hasChanges = true
 			tools.AppendSectionHeader(&outputBuffer, "Staged Changes")
@@ -59,7 +60,9 @@ var DiffCmd = &cobra.Command{
 		}
 
 		unstagedOut, _, unstagedErr := client.GetDiffUnstaged(ctx)
-		if unstagedErr != nil { return unstagedErr }
+		if unstagedErr != nil {
+			return unstagedErr
+		}
 		if strings.TrimSpace(unstagedOut) != "" {
 			hasChanges = true
 			tools.AppendSectionHeader(&outputBuffer, "Unstaged Changes")
@@ -67,7 +70,9 @@ var DiffCmd = &cobra.Command{
 		}
 
 		untrackedOut, _, untrackedErr := client.ListUntrackedFiles(ctx)
-		if untrackedErr != nil { return untrackedErr }
+		if untrackedErr != nil {
+			return untrackedErr
+		}
 		if strings.TrimSpace(untrackedOut) != "" {
 			hasChanges = true
 			tools.AppendSectionHeader(&outputBuffer, "Untracked Files")

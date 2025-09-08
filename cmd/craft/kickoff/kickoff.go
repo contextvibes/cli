@@ -4,7 +4,6 @@ package kickoff
 import (
 	_ "embed"
 
-
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"

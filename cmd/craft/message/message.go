@@ -3,13 +3,11 @@ package message
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
-
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -24,14 +22,11 @@ var MessageCmd = &cobra.Command{
 	Short:   "Generates a suggested 'factory commit' command.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Crafting a commit message...")
 
-		stagedDiff, _, err := execClient.CaptureOutput(ctx, ".", "git", "diff", "--staged")
+		stagedDiff, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "git", "diff", "--staged")
 		if err != nil {
 			return err
 		}

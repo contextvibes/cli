@@ -2,16 +2,15 @@
 package codemod
 
 import (
-	"encoding/json"
 	_ "embed"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 	"regexp"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/codemod"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -23,17 +22,12 @@ var codemodScriptPath string
 
 // CodemodCmd represents the codemod command
 var CodemodCmd = &cobra.Command{
-	Use:   "codemod [--script <file.json>]",
+	Use: "codemod [--script <file.json>]",
 	Example: `  contextvibes product codemod # Looks for codemod.json
   contextvibes product codemod --script ./my_refactor_script.json`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		assumeYes, ok := cmd.Context().Value("assumeYes").(bool)
-		if !ok { return errors.New("assumeYes not found in context") }
 
 		scriptToLoad := codemodScriptPath
 		if scriptToLoad == "" {
@@ -52,7 +46,7 @@ var CodemodCmd = &cobra.Command{
 
 		for _, fileChangeSet := range script {
 			presenter.Header("Processing target: %s", fileChangeSet.FilePath)
-			
+
 			contentBytes, err := os.ReadFile(fileChangeSet.FilePath)
 			if err != nil && !os.IsNotExist(err) {
 				return err
@@ -63,13 +57,15 @@ var CodemodCmd = &cobra.Command{
 				switch op.Type {
 				case "regex_replace":
 					re, err := regexp.Compile(op.FindRegex)
-					if err != nil { return err }
+					if err != nil {
+						return err
+					}
 					currentContent = re.ReplaceAllString(currentContent, op.ReplaceWith)
-				// Add other operations here
+					// Add other operations here
 				}
 			}
 
-			if !assumeYes {
+			if !globals.AssumeYes {
 				confirmed, err := presenter.PromptForConfirmation(fmt.Sprintf("Write changes to %s?", fileChangeSet.FilePath))
 				if err != nil || !confirmed {
 					continue
@@ -78,7 +74,7 @@ var CodemodCmd = &cobra.Command{
 			if err := os.WriteFile(fileChangeSet.FilePath, []byte(currentContent), 0644); err != nil {
 				return err
 			}
-			logger.Info("Applied codemod", "file", fileChangeSet.FilePath)
+			globals.AppLogger.Info("Applied codemod", "file", fileChangeSet.FilePath)
 		}
 		return nil
 	},

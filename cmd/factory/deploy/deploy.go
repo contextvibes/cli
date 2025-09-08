@@ -5,12 +5,12 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -26,26 +26,23 @@ var DeployCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
-		assumeYes, ok := cmd.Context().Value("assumeYes").(bool)
-		if !ok { return errors.New("assumeYes not found in context") }
 		ctx := cmd.Context()
 
 		cwd, err := os.Getwd()
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		projType, err := project.Detect(cwd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		switch projType {
 		case project.Terraform:
-			return executeTerraformDeploy(ctx, presenter, logger, execClient, cwd, assumeYes)
+			return executeTerraformDeploy(ctx, presenter, globals.ExecClient, cwd, globals.AssumeYes)
 		case project.Pulumi:
-			return executePulumiDeploy(ctx, presenter, logger, execClient, cwd, assumeYes)
+			return executePulumiDeploy(ctx, presenter, globals.ExecClient, cwd, globals.AssumeYes)
 		default:
 			presenter.Info("Deploy command is not applicable for this project type.")
 			return nil
@@ -53,7 +50,7 @@ var DeployCmd = &cobra.Command{
 	},
 }
 
-func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *exec.ExecutorClient, dir string, skipConfirm bool) error {
+func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, skipConfirm bool) error {
 	planFile := "tfplan.out"
 	planFilePath := filepath.Join(dir, planFile)
 	if _, err := os.Stat(planFilePath); os.IsNotExist(err) {
@@ -73,7 +70,7 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, logger
 	return execClient.Execute(ctx, dir, "terraform", "apply", "-auto-approve", planFile)
 }
 
-func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *exec.ExecutorClient, dir string, skipConfirm bool) error {
+func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, skipConfirm bool) error {
 	presenter.Info("Proposed Deploy Action: Run 'pulumi up'")
 	if !skipConfirm {
 		confirmed, err := presenter.PromptForConfirmation("Proceed to run 'pulumi up'?")

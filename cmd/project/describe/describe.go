@@ -6,16 +6,14 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/config"
-	"github.com/contextvibes/cli/internal/exec"
 	"github.com/contextvibes/cli/internal/git"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/tools"
 	"github.com/contextvibes/cli/internal/ui"
 	gitignore "github.com/denormal/go-gitignore"
@@ -42,25 +40,20 @@ var DescribeCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
-		loadedAppConfig, ok := cmd.Context().Value("config").(*config.Config)
-		if !ok { return errors.New("config not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Generating project context description.")
 
 		workDir, err := os.Getwd()
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		gitCfg := git.GitClientConfig{
-			Logger:                logger,
-			DefaultRemoteName:     loadedAppConfig.Git.DefaultRemote,
-			DefaultMainBranchName: loadedAppConfig.Git.DefaultMainBranch,
-			Executor:              execClient.UnderlyingExecutor(),
+			Logger:                globals.AppLogger,
+			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
+			DefaultMainBranchName: globals.LoadedAppConfig.Git.DefaultMainBranch,
+			Executor:              globals.ExecClient.UnderlyingExecutor(),
 		}
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
@@ -94,7 +87,7 @@ var DescribeCmd = &cobra.Command{
 		tools.AppendSectionHeader(&outputBuffer, "Git Status (Summary)")
 		tools.AppendFencedCodeBlock(&outputBuffer, strings.TrimSpace(gitStatus), "")
 
-		treeOutput, _, treeErr := execClient.CaptureOutput(ctx, workDir, "tree", "-L", "2", "-a", "-I", treeIgnorePattern)
+		treeOutput, _, treeErr := globals.ExecClient.CaptureOutput(ctx, workDir, "tree", "-L", "2", "-a", "-I", treeIgnorePattern)
 		if treeErr != nil {
 			treeOutput = "Could not generate tree view. 'tree' command may not be installed."
 		}
@@ -102,7 +95,7 @@ var DescribeCmd = &cobra.Command{
 		tools.AppendFencedCodeBlock(&outputBuffer, strings.TrimSpace(treeOutput), "")
 
 		tools.AppendSectionHeader(&outputBuffer, "Relevant Code Files")
-		
+
 		gitLsFilesOutput, _, err := client.ListTrackedAndCachedFiles(ctx)
 		if err != nil {
 			return err
@@ -110,18 +103,24 @@ var DescribeCmd = &cobra.Command{
 		filesToList := strings.Split(strings.TrimSpace(gitLsFilesOutput), "\n")
 
 		for _, file := range filesToList {
-			if file == "" { continue }
-			
+			if file == "" {
+				continue
+			}
+
 			if !includeRe.MatchString(file) || excludeRe.MatchString(file) {
 				continue
 			}
 			if aiExcluder != nil && aiExcluder.Match(file) != nil && aiExcluder.Match(file).Ignore() {
 				continue
 			}
-			
+
 			info, statErr := os.Stat(file)
-			if statErr != nil { continue }
-			if info.Size() > maxSizeBytes { continue }
+			if statErr != nil {
+				continue
+			}
+			if info.Size() > maxSizeBytes {
+				continue
+			}
 
 			content, readErr := tools.ReadFileContent(file)
 			if readErr == nil {

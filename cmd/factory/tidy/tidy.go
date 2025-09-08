@@ -2,15 +2,14 @@
 package tidy
 
 import (
-	"errors"
 	_ "embed"
+	"errors"
 	"fmt"
-	"log/slog"
 	_ "os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/exec"
 	"github.com/contextvibes/cli/internal/git"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -20,19 +19,14 @@ var tidyLongDescription string
 
 // TidyCmd represents the tidy command
 var TidyCmd = &cobra.Command{
-	Use:   "tidy",
+	Use: "tidy",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("--- Finishing Merged Branch Workflow ---")
 
-		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Logger: logger, Executor: execClient.UnderlyingExecutor()})
+		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Logger: globals.AppLogger, Executor: globals.ExecClient.UnderlyingExecutor()})
 		if err != nil {
 			return err
 		}
@@ -48,18 +42,24 @@ var TidyCmd = &cobra.Command{
 
 		prompt := fmt.Sprintf("This will delete your local branch '%s' and switch to '%s'. Are you sure it has been merged?", currentBranch, mainBranch)
 		confirmed, err := presenter.PromptForConfirmation(prompt)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if !confirmed {
 			presenter.Info("Aborted by user.")
 			return nil
 		}
 
-		if err := gitClient.SwitchBranch(ctx, mainBranch); err != nil { return err }
-		if err := gitClient.PullRebase(ctx, mainBranch); err != nil { return err }
+		if err := gitClient.SwitchBranch(ctx, mainBranch); err != nil {
+			return err
+		}
+		if err := gitClient.PullRebase(ctx, mainBranch); err != nil {
+			return err
+		}
 
-		if err := execClient.Execute(ctx, ".", "git", "branch", "-d", currentBranch); err != nil {
+		if err := globals.ExecClient.Execute(ctx, ".", "git", "branch", "-d", currentBranch); err != nil {
 			presenter.Warning("Could not delete branch with '-d' (likely not fully merged). Trying '-D'...")
-			if errForce := execClient.Execute(ctx, ".", "git", "branch", "-D", currentBranch); errForce != nil {
+			if errForce := globals.ExecClient.Execute(ctx, ".", "git", "branch", "-D", currentBranch); errForce != nil {
 				return errForce
 			}
 		}

@@ -24,3 +24,4 @@ context_*.md
 # Build artifacts
 /bin/
 Taskfile.yml
+refinement-plan.json

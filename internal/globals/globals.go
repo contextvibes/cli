@@ -2,9 +2,9 @@
 package globals
 
 import (
-	"log/slog"
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
+	"log/slog"
 )
 
 // These variables are initialized by the rootCmd in cmd/root.go

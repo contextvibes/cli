@@ -5,14 +5,13 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	
-	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -26,13 +25,6 @@ var RunCmd = &cobra.Command{
 	Example: `  contextvibes product run`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
-		loadedAppConfig, ok := cmd.Context().Value("config").(*config.Config)
-		if !ok { return errors.New("config not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Header("--- Example Runner ---")
@@ -51,18 +43,18 @@ var RunCmd = &cobra.Command{
 			return nil // User aborted
 		}
 
-		if err := runVerificationChecks(ctx, presenter, execClient, loadedAppConfig, choice); err != nil {
+		if err := runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice); err != nil {
 			return errors.New("prerequisite verification failed")
 		}
 
 		presenter.Newline()
 		presenter.Step("Executing example: %s...", presenter.Highlight(choice))
-		err = execClient.Execute(ctx, ".", "go", "run", "./"+choice)
+		err = globals.ExecClient.Execute(ctx, ".", "go", "run", "./"+choice)
 		if err != nil {
 			return errors.New("example execution failed")
 		}
 
-		logger.InfoContext(ctx, "Successfully launched example", "example_path", choice)
+		globals.AppLogger.InfoContext(ctx, "Successfully launched example", "example_path", choice)
 		return nil
 	},
 }
@@ -101,7 +93,9 @@ func findRunnableExamples(rootDir string) ([]string, error) {
 	examplesDir := filepath.Join(rootDir, "examples")
 	entries, err := os.ReadDir(examplesDir)
 	if err != nil {
-		if os.IsNotExist(err) { return nil, nil }
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	for _, entry := range entries {

@@ -80,6 +80,20 @@ type ExportSettings struct {
 	ExcludePatterns []string `yaml:"excludePatterns,omitempty"`
 }
 
+type ProjectSettings struct {
+	Provider string `yaml:"provider,omitempty"`
+}
+
+type BehaviorSettings struct {
+	DualOutput bool `yaml:"dualOutput,omitempty"`
+}
+
+// FeedbackSettings configures the 'feedback' command.
+type FeedbackSettings struct {
+	DefaultRepository string            `yaml:"defaultRepository,omitempty"`
+	Repositories      map[string]string `yaml:"repositories,omitempty"`
+}
+
 type Config struct {
 	Git          GitSettings          `yaml:"git,omitempty"`
 	Logging      LoggingSettings      `yaml:"logging,omitempty"`
@@ -88,10 +102,13 @@ type Config struct {
 		BranchName    ValidationRule `yaml:"branchName,omitempty"`
 		CommitMessage ValidationRule `yaml:"commitMessage,omitempty"`
 	} `yaml:"validation,omitempty"`
-	ProjectState ProjectState   `yaml:"projectState,omitempty"`
-	AI           AISettings     `yaml:"ai,omitempty"`
-	Run          RunSettings    `yaml:"run,omitempty"`
-	Export       ExportSettings `yaml:"export,omitempty"`
+	ProjectState ProjectState     `yaml:"projectState,omitempty"`
+	AI           AISettings       `yaml:"ai,omitempty"`
+	Run          RunSettings      `yaml:"run,omitempty"`
+	Export       ExportSettings   `yaml:"export,omitempty"`
+	Project      ProjectSettings  `yaml:"project,omitempty"`
+	Behavior     BehaviorSettings `yaml:"behavior,omitempty"`
+	Feedback     FeedbackSettings `yaml:"feedback,omitempty"`
 }
 
 func GetDefaultConfig() *Config {
@@ -144,6 +161,19 @@ func GetDefaultConfig() *Config {
 		},
 		Export: ExportSettings{
 			ExcludePatterns: []string{"vendor/"},
+		},
+		Project: ProjectSettings{
+			Provider: "github",
+		},
+		Behavior: BehaviorSettings{
+			DualOutput: true,
+		},
+		Feedback: FeedbackSettings{
+			DefaultRepository: "cli",
+			Repositories: map[string]string{
+				"cli":  "contextvibes/cli",
+				"thea": "contextvibes/thea",
+			},
 		},
 	}
 	return cfg
@@ -220,7 +250,6 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 		finalCfg.Logging.DefaultAILogFile = loadedCfg.Logging.DefaultAILogFile
 	}
 
-	// Merge the system prompt config. User's map replaces the default map.
 	if loadedCfg.SystemPrompt.DefaultOutputFiles != nil {
 		finalCfg.SystemPrompt.DefaultOutputFiles = loadedCfg.SystemPrompt.DefaultOutputFiles
 	}
@@ -277,6 +306,21 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	}
 	if loadedCfg.Export.ExcludePatterns != nil {
 		finalCfg.Export.ExcludePatterns = loadedCfg.Export.ExcludePatterns
+	}
+
+	if loadedCfg.Project.Provider != "" {
+		finalCfg.Project.Provider = loadedCfg.Project.Provider
+	}
+	if loadedCfg.Behavior.DualOutput != defaultConfig.Behavior.DualOutput {
+		finalCfg.Behavior.DualOutput = loadedCfg.Behavior.DualOutput
+	}
+	if loadedCfg.Feedback.DefaultRepository != "" {
+		finalCfg.Feedback.DefaultRepository = loadedCfg.Feedback.DefaultRepository
+	}
+	if loadedCfg.Feedback.Repositories != nil {
+		for k, v := range loadedCfg.Feedback.Repositories {
+			finalCfg.Feedback.Repositories[k] = v
+		}
 	}
 
 	return &finalCfg

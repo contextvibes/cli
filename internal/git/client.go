@@ -147,6 +147,18 @@ func (c *GitClient) captureGitOutput(ctx context.Context, args ...string) (strin
 	return c.executor.CaptureOutput(ctx, c.repoPath, c.config.GitExecutable, args...)
 }
 
+// GetRemoteURL retrieves the URL for a given remote name.
+func (c *GitClient) GetRemoteURL(ctx context.Context, remoteName string) (string, error) {
+	if remoteName == "" {
+		return "", errors.New("remote name cannot be empty")
+	}
+	stdout, _, err := c.captureGitOutput(ctx, "remote", "get-url", remoteName)
+	if err != nil {
+		return "", fmt.Errorf("could not get URL for remote '%s': %w", remoteName, err)
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
 // --- Public Git Operation Methods ---
 // (These methods remain largely the same but now internally call c.executor methods
 //  which are of type exec.CommandExecutor)

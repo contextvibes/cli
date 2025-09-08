@@ -2,14 +2,13 @@
 package build
 
 import (
-	"errors"
 	_ "embed"
-	"log/slog"
+	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -25,22 +24,12 @@ var (
 
 // BuildCmd represents the build command
 var BuildCmd = &cobra.Command{
-	Use:   "build [--output <path>] [--debug]",
+	Use: "build [--output <path>] [--debug]",
 	Example: `  contextvibes product build                  # Build an optimized binary to ./bin/
   contextvibes product build -o myapp             # Build and name the output 'myapp'
   contextvibes product build --debug              # Build with debug symbols for Delve`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		// Get dependencies from context
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok {
-			return errors.New("logger not found in context")
-		}
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok {
-			return errors.New("execClient not found in context")
-		}
 		ctx := cmd.Context()
 
 		presenter.Summary("Building Go application binary.")
@@ -115,7 +104,7 @@ var BuildCmd = &cobra.Command{
 
 		presenter.Newline()
 		presenter.Step("Running 'go build'...")
-		err = execClient.Execute(ctx, cwd, "go", buildArgs...)
+		err = globals.ExecClient.Execute(ctx, cwd, "go", buildArgs...)
 		if err != nil {
 			presenter.Error("'go build' command failed. See output above for details.")
 			return errors.New("go build failed")
@@ -126,7 +115,7 @@ var BuildCmd = &cobra.Command{
 			"Build successful. Binary available at: %s",
 			presenter.Highlight(outputPath),
 		)
-		logger.InfoContext(ctx, "Go build completed successfully", "output_path", outputPath)
+		globals.AppLogger.InfoContext(ctx, "Go build completed successfully", "output_path", outputPath)
 
 		return nil
 	},

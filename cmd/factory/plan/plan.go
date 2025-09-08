@@ -5,12 +5,12 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"log/slog"
 	"os"
 	"os/exec"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	internal_exec "github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -26,24 +26,23 @@ var PlanCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*internal_exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		cwd, err := os.Getwd()
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		projType, err := project.Detect(cwd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		switch projType {
 		case project.Terraform:
-			return executeTerraformPlan(ctx, presenter, logger, execClient, cwd)
+			return executeTerraformPlan(ctx, presenter, globals.ExecClient, cwd)
 		case project.Pulumi:
-			return executePulumiPreview(ctx, presenter, logger, execClient, cwd)
+			return executePulumiPreview(ctx, presenter, globals.ExecClient, cwd)
 		default:
 			presenter.Info("Plan command is not applicable for this project type.")
 			return nil
@@ -51,7 +50,7 @@ var PlanCmd = &cobra.Command{
 	},
 }
 
-func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *internal_exec.ExecutorClient, dir string) error {
+func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, execClient *internal_exec.ExecutorClient, dir string) error {
 	_, _, err := execClient.CaptureOutput(ctx, dir, "terraform", "plan", "-out=tfplan.out")
 	if err != nil {
 		var exitErr *exec.ExitError
@@ -67,7 +66,7 @@ func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, logger *
 	return nil
 }
 
-func executePulumiPreview(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *internal_exec.ExecutorClient, dir string) error {
+func executePulumiPreview(ctx context.Context, presenter *ui.Presenter, execClient *internal_exec.ExecutorClient, dir string) error {
 	if err := execClient.Execute(ctx, dir, "pulumi", "preview"); err != nil {
 		return errors.New("pulumi preview failed")
 	}

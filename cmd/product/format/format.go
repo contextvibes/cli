@@ -5,11 +5,11 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"log/slog"
 	"os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -25,11 +25,6 @@ var FormatCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Applying code formatting and auto-fixes.")
@@ -52,13 +47,13 @@ var FormatCmd = &cobra.Command{
 		switch projType {
 		case project.Go:
 			presenter.Header("Go Formatting & Lint Fixes")
-			err := runFormatCommand(ctx, presenter, logger, execClient, cwd, "golangci-lint", []string{"run", "--fix"})
+			err := runFormatCommand(ctx, presenter, globals.ExecClient, cwd, "golangci-lint", []string{"run", "--fix"})
 			if err != nil {
 				presenter.Warning("'golangci-lint --fix' completed but may have found unfixable issues.")
 			} else {
 				presenter.Success("✓ golangci-lint completed.")
 			}
-		// Add other project types here later
+			// Add other project types here later
 		}
 
 		presenter.Newline()
@@ -71,7 +66,7 @@ var FormatCmd = &cobra.Command{
 	},
 }
 
-func runFormatCommand(ctx context.Context, presenter *ui.Presenter, logger *slog.Logger, execClient *exec.ExecutorClient, cwd, command string, args []string) error {
+func runFormatCommand(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, cwd, command string, args []string) error {
 	presenter.Step("Running %s...", command)
 	if !execClient.CommandExists(command) {
 		presenter.Warning("'%s' command not found, skipping.", command)

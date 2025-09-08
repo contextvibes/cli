@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/config"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -29,19 +29,22 @@ var SystemPromptCmd = &cobra.Command{
 	Example: `  contextvibes library system-prompt --target idx`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		loadedAppConfig, ok := cmd.Context().Value("config").(*config.Config)
-		if !ok { return fmt.Errorf("config not found in context") }
-		
+		loadedAppConfig := globals.LoadedAppConfig
+
 		basePath := "docs/prompts/system"
 		coreContent, err := os.ReadFile(filepath.Join(basePath, "core.md"))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		var finalPrompt strings.Builder
 		finalPrompt.Write(coreContent)
 
 		if systemPromptTarget != "" {
 			targetContent, err := os.ReadFile(filepath.Join(basePath, systemPromptTarget+".md"))
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			finalPrompt.WriteString("\n\n")
 			finalPrompt.Write(targetContent)
 		}

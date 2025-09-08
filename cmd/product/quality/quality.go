@@ -6,12 +6,11 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-
 	"os"
-
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -29,9 +28,6 @@ var QualityCmd = &cobra.Command{
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Running Code Quality Checks")
@@ -53,7 +49,7 @@ var QualityCmd = &cobra.Command{
 
 		switch projType {
 		case project.Go:
-			failures := executeEnhancedGoQualityChecks(ctx, presenter, execClient)
+			failures := executeEnhancedGoQualityChecks(ctx, presenter, globals.ExecClient)
 			if len(failures) > 0 {
 				criticalErrors = append(criticalErrors, failures...)
 			}

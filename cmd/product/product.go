@@ -1,4 +1,5 @@
 package product
+
 import (
 	"github.com/contextvibes/cli/cmd/product/build"
 	"github.com/contextvibes/cli/cmd/product/clean"
@@ -9,10 +10,12 @@ import (
 	"github.com/contextvibes/cli/cmd/product/test"
 	"github.com/spf13/cobra"
 )
+
 var ProductCmd = &cobra.Command{
 	Use:   "product",
 	Short: "Commands for the product you are building (the 'what').",
 }
+
 func init() {
 	ProductCmd.AddCommand(build.BuildCmd)
 	ProductCmd.AddCommand(test.TestCmd)

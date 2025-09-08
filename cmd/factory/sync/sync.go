@@ -4,11 +4,11 @@ package sync
 import (
 	_ "embed"
 	"errors"
-	"log/slog"
 	"os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/git"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -23,11 +23,6 @@ var SyncCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		assumeYes, ok := cmd.Context().Value("assumeYes").(bool)
-		if !ok { return errors.New("assumeYes not found in context") }
 		ctx := cmd.Context()
 
 		presenter.Summary("Synchronizing local branch with remote.")
@@ -36,8 +31,11 @@ var SyncCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		
-		gitCfg := git.GitClientConfig{Logger: logger}
+
+		gitCfg := git.GitClientConfig{
+			Logger:   globals.AppLogger,
+			Executor: globals.ExecClient.UnderlyingExecutor(),
+		}
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
@@ -45,7 +43,9 @@ var SyncCmd = &cobra.Command{
 		}
 
 		isClean, err := client.IsWorkingDirClean(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if !isClean {
 			presenter.Error("Working directory has uncommitted changes.")
 			presenter.Advice("Please commit or stash your changes before syncing.")
@@ -59,9 +59,11 @@ var SyncCmd = &cobra.Command{
 		presenter.Detail("2. Push local changes to remote if ahead (git push).")
 		presenter.Newline()
 
-		if !assumeYes {
+		if !globals.AssumeYes {
 			confirmed, err := presenter.PromptForConfirmation("Proceed with sync?")
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			if !confirmed {
 				presenter.Info("Sync aborted by user.")
 				return nil
@@ -74,7 +76,9 @@ var SyncCmd = &cobra.Command{
 		}
 
 		isAhead, err := client.IsBranchAhead(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if isAhead {
 			if err := client.Push(ctx, currentBranch); err != nil {
 				return err

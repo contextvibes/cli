@@ -9,6 +9,7 @@ import (
 
 	"github.com/contextvibes/cli/cmd/craft"
 	"github.com/contextvibes/cli/cmd/factory"
+	"github.com/contextvibes/cli/cmd/feedback"
 	"github.com/contextvibes/cli/cmd/library"
 	"github.com/contextvibes/cli/cmd/product"
 	"github.com/contextvibes/cli/cmd/project"
@@ -23,7 +24,6 @@ var rootCmd = &cobra.Command{
 	Short: "Manages project tasks: AI context generation, Git workflow, IaC, etc.",
 	Long:  `ContextVibes: Your Project Development Assistant CLI.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// This function runs once before any command and correctly initializes the shared state.
 		bootstrapOSExecutor := exec.NewOSCommandExecutor(slog.New(slog.DiscardHandler))
 		bootstrapExecClient := exec.NewClient(bootstrapOSExecutor)
 
@@ -76,7 +76,7 @@ var (
 )
 
 func init() {
-	globals.AppVersion = "dev" // Initialize default
+	globals.AppVersion = "dev"
 
 	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
 	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
@@ -87,14 +87,20 @@ func init() {
 	rootCmd.AddCommand(factory.FactoryCmd)
 	rootCmd.AddCommand(library.LibraryCmd)
 	rootCmd.AddCommand(craft.CraftCmd)
+	rootCmd.AddCommand(feedback.FeedbackCmd) // ADDED
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {
 	switch strings.ToLower(levelStr) {
-	case "debug": return slog.LevelDebug
-	case "info": return slog.LevelInfo
-	case "warn": return slog.LevelWarn
-	case "error": return slog.LevelError
-	default: return defaultLevel
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return defaultLevel
 	}
 }

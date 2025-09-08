@@ -2,7 +2,6 @@
 package commit
 
 import (
-
 	_ "embed"
 	"errors"
 	"fmt"
@@ -25,9 +24,9 @@ var commitMessageFlag string
 
 // CommitCmd represents the commit command
 var CommitCmd = &cobra.Command{
-	Use:   "commit -m <message>",
+	Use:     "commit -m <message>",
 	Example: `  contextvibes factory commit -m "feat(auth): Implement OTP login"`,
-	Args:  cobra.NoArgs,
+	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
@@ -62,12 +61,18 @@ var CommitCmd = &cobra.Command{
 			Executor:              globals.ExecClient.UnderlyingExecutor(),
 		}
 		client, err := git.NewClient(ctx, ".", gitCfg)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
-		if err := client.AddAll(ctx); err != nil { return err }
+		if err := client.AddAll(ctx); err != nil {
+			return err
+		}
 
 		hasStaged, err := client.HasStagedChanges(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if !hasStaged {
 			presenter.Info("No changes were staged for commit.")
 			return nil

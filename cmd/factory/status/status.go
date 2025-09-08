@@ -3,15 +3,14 @@ package status
 
 import (
 	"bufio"
-
 	_ "embed"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/git"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -26,20 +25,26 @@ var StatusCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return fmt.Errorf("logger not found in context") }
 		ctx := cmd.Context()
 
 		workDir, err := os.Getwd()
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
-		gitCfg := git.GitClientConfig{Logger: logger}
+		gitCfg := git.GitClientConfig{
+			Logger:   globals.AppLogger,
+			Executor: globals.ExecClient.UnderlyingExecutor(),
+		}
 		client, err := git.NewClient(ctx, workDir, gitCfg)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		stdout, _, err := client.GetStatusShort(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		trimmedStdout := strings.TrimSpace(stdout)
 		if trimmedStdout == "" {
@@ -48,7 +53,9 @@ var StatusCmd = &cobra.Command{
 			presenter.InfoPrefixOnly()
 			fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):")
 			scanner := bufio.NewScanner(strings.NewReader(trimmedStdout))
-			for scanner.Scan() { fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text()) }
+			for scanner.Scan() {
+				fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
+			}
 			presenter.Newline()
 		}
 		return nil

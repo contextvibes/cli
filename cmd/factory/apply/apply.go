@@ -4,19 +4,18 @@ package apply
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 
 	"github.com/contextvibes/cli/internal/apply"
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -32,13 +31,6 @@ var ApplyCmd = &cobra.Command{
 	Example: `  contextvibes factory apply --script ./plan.json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		
-		logger, ok := cmd.Context().Value("logger").(*slog.Logger)
-		if !ok { return errors.New("logger not found in context") }
-		execClient, ok := cmd.Context().Value("execClient").(*exec.ExecutorClient)
-		if !ok { return errors.New("execClient not found in context") }
-		assumeYes, ok := cmd.Context().Value("assumeYes").(bool)
-		if !ok { return errors.New("assumeYes not found in context") }
 		ctx := cmd.Context()
 
 		scriptContent, _, err := readInput(scriptPath)
@@ -53,9 +45,9 @@ var ApplyCmd = &cobra.Command{
 		}
 
 		if isJSON(scriptContent) {
-			return handleJSONPlan(ctx, presenter, execClient, logger, assumeYes, scriptContent)
+			return handleJSONPlan(ctx, presenter, scriptContent)
 		}
-		return handleShellScript(ctx, presenter, execClient, logger, assumeYes, scriptContent)
+		return handleShellScript(ctx, presenter, scriptContent)
 	},
 }
 
@@ -76,19 +68,19 @@ func isJSON(data []byte) bool {
 	return bytes.HasPrefix(bytes.TrimSpace(data), []byte("{"))
 }
 
-func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, logger *slog.Logger, assumeYes bool, data []byte) error {
+func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) error {
 	var plan apply.ChangePlan
 	if err := json.Unmarshal(data, &plan); err != nil {
 		presenter.Error("Failed to parse JSON Change Plan: %v", err)
 		return err
 	}
-	
+
 	presenter.Header("--- Change Plan Summary ---")
 	for i, step := range plan.Steps {
 		presenter.Step("Step %d: [%s] %s", i+1, step.Type, step.Description)
 	}
 
-	if !assumeYes {
+	if !globals.AssumeYes {
 		confirmed, err := presenter.PromptForConfirmation("Execute the structured plan?")
 		if err != nil || !confirmed {
 			presenter.Info("Execution aborted.")
@@ -103,25 +95,32 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, execClient *ex
 				original, _ := os.ReadFile(changeSet.FilePath)
 				current := string(original)
 				for _, op := range changeSet.Operations {
-					if op.Type == "create_or_overwrite" { current = *op.Content }
-					if op.Type == "regex_replace" { re, _ := regexp.Compile(op.FindRegex); current = re.ReplaceAllString(current, op.ReplaceWith) }
+					if op.Type == "create_or_overwrite" {
+						current = *op.Content
+					}
+					if op.Type == "regex_replace" {
+						re, _ := regexp.Compile(op.FindRegex)
+						current = re.ReplaceAllString(current, op.ReplaceWith)
+					}
 				}
 				os.MkdirAll(filepath.Dir(changeSet.FilePath), 0o750)
 				os.WriteFile(changeSet.FilePath, []byte(current), 0o600)
 			}
 		case "command_execution":
-			if err := execClient.Execute(ctx, ".", step.Command, step.Args...); err != nil { return err }
+			if err := globals.ExecClient.Execute(ctx, ".", step.Command, step.Args...); err != nil {
+				return err
+			}
 		}
 	}
 	presenter.Success("Plan executed successfully.")
 	return nil
 }
 
-func handleShellScript(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, logger *slog.Logger, assumeYes bool, scriptContent []byte) error {
+func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptContent []byte) error {
 	presenter.Header("--- Script to be Applied ---")
 	fmt.Fprintln(presenter.Out(), "```bash\n"+string(scriptContent)+"\n```")
-	
-	if !assumeYes {
+
+	if !globals.AssumeYes {
 		confirmed, err := presenter.PromptForConfirmation("Execute the shell script?")
 		if err != nil || !confirmed {
 			presenter.Info("Execution aborted.")
@@ -133,7 +132,7 @@ func handleShellScript(ctx context.Context, presenter *ui.Presenter, execClient 
 	defer os.Remove(tempFile.Name())
 	tempFile.Write(scriptContent)
 	tempFile.Close()
-	return execClient.Execute(ctx, ".", "bash", tempFile.Name())
+	return globals.ExecClient.Execute(ctx, ".", "bash", tempFile.Name())
 }
 
 func init() {
