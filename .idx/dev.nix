@@ -106,6 +106,7 @@ in
       # Nix automatically manages the PATH for all packages listed above.
       onStart = {
         welcome = "echo '👋 Welcome back to the contextvibes-cli project!'";
+        set-cv-alias = "alias cv='contextvibes'";
       };
     };
 
