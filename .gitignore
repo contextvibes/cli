@@ -2,15 +2,15 @@
 .DS_Store
 
 # Generated output files & logs
-contextvibes*
+# --- MODIFIED ---
+# Ignore the compiled binary, not the source directory
+/contextvibes
+/contextvibes.exe
+# --- END MODIFICATION ---
 *.log
 
-# Executable if built in the project root
-contextvibes
-contextvibes.exe
-
-# Directory for compiled binaries (recommended output location)
-bin/
+# Directory for compiled binaries (this rule handles the rest)
+/bin/
 
 # Temporary or example files
 .contextvibes.yaml
@@ -21,7 +21,9 @@ context_*.md
 .env
 !contextvibes.nix
 
-# Build artifacts
-/bin/
+# Other build artifacts
 Taskfile.yml
 refinement-plan.json
+contextvibes_aistudio_prompt.md
+contextvibes_plan.json
+contextvibes.md
