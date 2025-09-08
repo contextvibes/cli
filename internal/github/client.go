@@ -3,48 +3,185 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/google/go-github/v74/github"
+	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 )
 
 const GHTokenEnvVar = "GITHUB_TOKEN"
 
-// Client wraps the go-github client.
+var (
+	sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git$`)
+)
+
+// Client wraps the go-github clients for both REST and GraphQL APIs.
 type Client struct {
 	*github.Client
-	logger *slog.Logger
-	owner  string
-	repo   string
+	GraphQL *githubv4.Client
+	logger  *slog.Logger
+	owner   string
+	repo    string
+}
+
+// Project represents a GitHub Project (V2) for listing.
+type Project struct {
+	Title  string
+	Number int
+	URL    string
+}
+
+// ProjectWithID represents a GitHub Project (V2) with its GraphQL Node ID.
+type ProjectWithID struct {
+	ID     string
+	Title  string
+	Number int
+	URL    string
+}
+
+// ParseGitHubRemote extracts the owner and repository name from a GitHub remote URL.
+func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
+	if matches := sshRemoteRegex.FindStringSubmatch(remoteURL); len(matches) == 3 {
+		return matches[1], matches[2], nil
+	}
+	parsed, err := url.Parse(remoteURL)
+	if err != nil {
+		return "", "", fmt.Errorf("could not parse remote URL: %w", err)
+	}
+	if parsed.Hostname() != "github.com" {
+		return "", "", fmt.Errorf("remote URL is not a github.com URL: %s", parsed.Hostname())
+	}
+	pathParts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(pathParts) < 2 {
+		return "", "", fmt.Errorf("remote URL path does not contain owner/repo: %s", parsed.Path)
+	}
+	repo = strings.TrimSuffix(pathParts[1], ".git")
+	return pathParts[0], repo, nil
 }
 
 // NewClient creates a new GitHub client, authenticating using the GITHUB_TOKEN environment variable.
-// It is scoped to a specific repository owner and name.
 func NewClient(ctx context.Context, logger *slog.Logger, owner, repo string) (*Client, error) {
 	token := os.Getenv(GHTokenEnvVar)
 	if token == "" {
-		return nil, fmt.Errorf(
-			"github token not found: the '%s' environment variable must be set",
-			GHTokenEnvVar,
-		)
+		errorMsg := `
+GitHub token not found. Please create a Personal Access Token (classic) with 'repo' and 'project' scopes.
+See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+
+Then, export it as an environment variable:
+export GITHUB_TOKEN="your_token_here"`
+		return nil, errors.New(strings.TrimSpace(errorMsg))
 	}
 
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)
-	tc := oauth2.NewClient(ctx, ts)
-	ghClient := github.NewClient(tc)
+	httpClient := oauth2.NewClient(ctx, ts)
+
+	ghClient := github.NewClient(httpClient)
+	ghGraphQLClient := githubv4.NewClient(httpClient)
 
 	return &Client{
-		Client: ghClient,
-		logger: logger,
-		owner:  owner,
-		repo:   repo,
+		Client:  ghClient,
+		GraphQL: ghGraphQLClient,
+		logger:  logger,
+		owner:   owner,
+		repo:    repo,
 	}, nil
+}
+
+// ListProjects fetches the first 100 GitHub Projects (V2) for the repository's owner.
+func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
+	var query struct {
+		Organization struct {
+			ProjectsV2 struct {
+				Nodes []struct {
+					Title  githubv4.String
+					Number githubv4.Int
+					URL    githubv4.URI
+				}
+			} `graphql:"projectsV2(first: 100)"`
+		} `graphql:"organization(login: $owner)"`
+	}
+	variables := map[string]interface{}{"owner": githubv4.String(c.owner)}
+
+	c.logger.DebugContext(ctx, "Executing GraphQL query for projects", "owner", c.owner)
+	if err := c.GraphQL.Query(ctx, &query, variables); err != nil {
+		c.logger.ErrorContext(ctx, "GraphQL query for projects failed", "error", err)
+		return nil, fmt.Errorf("failed to query for projects: %w", err)
+	}
+
+	var projects []Project
+	for _, p := range query.Organization.ProjectsV2.Nodes {
+		projects = append(projects, Project{
+			Title:  string(p.Title),
+			Number: int(p.Number),
+			URL:    p.URL.String(),
+		})
+	}
+	return projects, nil
+}
+
+// GetProjectByNumber fetches a single project by its number to get its GraphQL Node ID.
+func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWithID, error) {
+	var query struct {
+		Organization struct {
+			ProjectV2 struct {
+				ID     githubv4.ID
+				Title  githubv4.String
+				Number githubv4.Int
+				URL    githubv4.URI
+			} `graphql:"projectV2(number: $number)"`
+		} `graphql:"organization(login: $owner)"`
+	}
+	variables := map[string]interface{}{
+		"owner":  githubv4.String(c.owner),
+		"number": githubv4.Int(number),
+	}
+
+	c.logger.DebugContext(ctx, "Executing GraphQL query for single project", "owner", c.owner, "number", number)
+	if err := c.GraphQL.Query(ctx, &query, variables); err != nil {
+		return nil, fmt.Errorf("failed to query for project #%d: %w", number, err)
+	}
+
+	project := query.Organization.ProjectV2
+	if project.ID == nil {
+		return nil, fmt.Errorf("project #%d not found for owner '%s'", number, c.owner)
+	}
+
+	return &ProjectWithID{
+		ID:     project.ID.(string),
+		Title:  string(project.Title),
+		Number: int(project.Number),
+		URL:    project.URL.String(),
+	}, nil
+}
+
+// AddIssueToProject adds an issue (by its GraphQL Node ID) to a project (by its GraphQL Node ID).
+func (c *Client) AddIssueToProject(ctx context.Context, projectID string, issueID string) error {
+	var mutation struct {
+		AddProjectV2ItemById struct {
+			Item struct {
+				ID githubv4.ID
+			}
+		} `graphql:"addProjectV2ItemById(input: {projectId: $projectID, contentId: $issueID})"`
+	}
+	variables := map[string]interface{}{
+		"projectID": githubv4.ID(projectID),
+		"issueID":   githubv4.ID(issueID),
+	}
+
+	c.logger.DebugContext(ctx, "Executing GraphQL mutation to add issue to project", "projectID", projectID, "issueID", issueID)
+	if err := c.GraphQL.Mutate(ctx, &mutation, variables, nil); err != nil {
+		return fmt.Errorf("failed to add issue %s to project %s: %w", issueID, projectID, err)
+	}
+	return nil
 }
 
 // GetAuthenticatedUserLogin returns the login name of the user authenticated by the token.
@@ -61,7 +198,6 @@ func (c *Client) GetAuthenticatedUserLogin(ctx context.Context) (string, error) 
 }
 
 // CreateRepo creates a new repository on GitHub for a specific owner (user or org).
-// An empty owner string "" defaults to the authenticated user.
 func (c *Client) CreateRepo(
 	ctx context.Context,
 	owner, name, description string,
@@ -77,7 +213,7 @@ func (c *Client) CreateRepo(
 		Name:        github.String(name),
 		Description: github.String(description),
 		Private:     github.Bool(isPrivate),
-		AutoInit:    github.Bool(true), // Auto-initialize with a README
+		AutoInit:    github.Bool(true),
 	}
 
 	createdRepo, resp, err := c.Repositories.Create(ctx, owner, repo)
@@ -104,7 +240,6 @@ func (c *Client) UpdateBranchProtection(ctx context.Context, branch string, requ
 	_, _, err := c.Repositories.UpdateBranchProtection(ctx, c.owner, c.repo, branch, &request)
 	if err != nil {
 		c.logger.ErrorContext(ctx, "Failed to update branch protection", "error", err)
-
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return fmt.Errorf("repository '%s/%s' not found or token lacks permission", c.owner, c.repo)
 		}

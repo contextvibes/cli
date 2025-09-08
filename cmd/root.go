@@ -7,18 +7,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/contextvibes/cli/cmd/craft"
+	"github.com/contextvibes/cli/cmd/factory"
+	"github.com/contextvibes/cli/cmd/feedback"
+	"github.com/contextvibes/cli/cmd/library"
+	"github.com/contextvibes/cli/cmd/product"
+	"github.com/contextvibes/cli/cmd/project"
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/spf13/cobra"
-)
-
-var (
-	AppLogger       *slog.Logger
-	LoadedAppConfig *config.Config
-	ExecClient      *exec.ExecutorClient
-	assumeYes       bool
-	// AppVersion is the application version, set at build time.
-	AppVersion string
 )
 
 var rootCmd = &cobra.Command{
@@ -26,52 +24,40 @@ var rootCmd = &cobra.Command{
 	Short: "Manages project tasks: AI context generation, Git workflow, IaC, etc.",
 	Long:  `ContextVibes: Your Project Development Assistant CLI.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Bootstrap logger and exec client
 		bootstrapOSExecutor := exec.NewOSCommandExecutor(slog.New(slog.DiscardHandler))
 		bootstrapExecClient := exec.NewClient(bootstrapOSExecutor)
 
-		// Load and merge config
 		defaultCfg := config.GetDefaultConfig()
-		repoConfigPath, findPathErr := config.FindRepoRootConfigPath(bootstrapExecClient)
-		if findPathErr != nil || repoConfigPath == "" {
-			LoadedAppConfig = defaultCfg
-		} else {
-			loadedUserConfig, configLoadErr := config.LoadConfig(repoConfigPath)
-			if configLoadErr != nil || loadedUserConfig == nil {
-				LoadedAppConfig = defaultCfg
+		repoConfigPath, _ := config.FindRepoRootConfigPath(bootstrapExecClient)
+		if repoConfigPath != "" {
+			loadedUserConfig, _ := config.LoadConfig(repoConfigPath)
+			if loadedUserConfig != nil {
+				globals.LoadedAppConfig = config.MergeWithDefaults(loadedUserConfig, defaultCfg)
 			} else {
-				LoadedAppConfig = config.MergeWithDefaults(loadedUserConfig, defaultCfg)
+				globals.LoadedAppConfig = defaultCfg
 			}
+		} else {
+			globals.LoadedAppConfig = defaultCfg
 		}
 
-		// Initialize final logger
 		aiLevel := parseLogLevel(logLevelAIValue, slog.LevelDebug)
-		aiOut := io.Discard // Default to no output
-
-		// Enable logging only if explicitly set in config OR if the override flag is used.
-		loggingEnabled := (LoadedAppConfig.Logging.Enable != nil && *LoadedAppConfig.Logging.Enable) || aiLogFileFlagValue != ""
-
+		aiOut := io.Discard
+		loggingEnabled := (globals.LoadedAppConfig.Logging.Enable != nil && *globals.LoadedAppConfig.Logging.Enable) || aiLogFileFlagValue != ""
 		if loggingEnabled {
-			targetAILogFile := LoadedAppConfig.Logging.DefaultAILogFile
+			targetAILogFile := globals.LoadedAppConfig.Logging.DefaultAILogFile
 			if aiLogFileFlagValue != "" {
 				targetAILogFile = aiLogFileFlagValue
 			}
-			logFileHandle, errLogFile := os.OpenFile(
-				targetAILogFile,
-				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-				0o600,
-			)
-			// Silently fail to open the log file; aiOut will remain io.Discard
+			logFileHandle, errLogFile := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 			if errLogFile == nil {
 				aiOut = logFileHandle
 			}
 		}
+		globals.AppLogger = slog.New(slog.NewJSONHandler(aiOut, &slog.HandlerOptions{Level: aiLevel}))
 
-		AppLogger = slog.New(slog.NewJSONHandler(aiOut, &slog.HandlerOptions{Level: aiLevel}))
-
-		// Initialize final exec client
-		mainOSExecutor := exec.NewOSCommandExecutor(AppLogger)
-		ExecClient = exec.NewClient(mainOSExecutor)
+		mainOSExecutor := exec.NewOSCommandExecutor(globals.AppLogger)
+		globals.ExecClient = exec.NewClient(mainOSExecutor)
+		globals.AssumeYes = assumeYes
 
 		return nil
 	},
@@ -86,18 +72,22 @@ func Execute() {
 var (
 	logLevelAIValue    string
 	aiLogFileFlagValue string
+	assumeYes          bool
 )
 
 func init() {
-	if AppVersion == "" {
-		AppVersion = "dev" // Default for local development
-	}
+	globals.AppVersion = "dev"
 
-	rootCmd.PersistentFlags().
-		StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
-	rootCmd.PersistentFlags().
-		StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path (this flag enables logging)")
+	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
+	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
 	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all prompts")
+
+	rootCmd.AddCommand(project.ProjectCmd)
+	rootCmd.AddCommand(product.ProductCmd)
+	rootCmd.AddCommand(factory.FactoryCmd)
+	rootCmd.AddCommand(library.LibraryCmd)
+	rootCmd.AddCommand(craft.CraftCmd)
+	rootCmd.AddCommand(feedback.FeedbackCmd) // ADDED
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {
