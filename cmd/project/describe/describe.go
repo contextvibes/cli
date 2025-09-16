@@ -23,7 +23,10 @@ import (
 //go:embed describe.md.tpl
 var describeLongDescription string
 
-var describeOutputFile string
+var (
+	describeOutputFile string
+	describePromptFlag string
+)
 
 const (
 	maxFileSizeKB     = 500
@@ -96,10 +99,21 @@ var DescribeCmd = &cobra.Command{
 		}
 
 		var outputBuffer bytes.Buffer
-		userPrompt, err := presenter.PromptForInput("Enter a prompt for the AI: ")
-		if err != nil || userPrompt == "" {
+		var userPrompt string
+		if describePromptFlag != "" {
+			userPrompt = describePromptFlag
+		} else {
+			var promptErr error
+			userPrompt, promptErr = presenter.PromptForInput("Enter a prompt for the AI: ")
+			if promptErr != nil {
+				return promptErr
+			}
+		}
+
+		if userPrompt == "" {
 			return errors.New("prompt cannot be empty")
 		}
+
 		fmt.Fprintf(&outputBuffer, "### Prompt\n\n%s\n\n", userPrompt)
 
 		gitStatus, _, statusErr := client.GetStatusShort(ctx)
@@ -200,4 +214,7 @@ func init() {
 	DescribeCmd.Long = desc.Long
 	DescribeCmd.Flags().
 		StringVarP(&describeOutputFile, "output", "o", "contextvibes.md", "Path to write the context markdown file")
+	// THE FIX: This line defines the flag so Cobra knows about it.
+	DescribeCmd.Flags().
+		StringVarP(&describePromptFlag, "prompt", "p", "", "Provide the prompt text directly")
 }
