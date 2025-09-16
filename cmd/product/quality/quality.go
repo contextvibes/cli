@@ -81,7 +81,11 @@ type qualityCheck struct {
 	FailAdvice string
 }
 
-func executeEnhancedGoQualityChecks(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient) []string {
+func executeEnhancedGoQualityChecks(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+) []string {
 	var failures []string
 
 	goQualityChecks := []qualityCheck{

@@ -40,7 +40,13 @@ var DeployCmd = &cobra.Command{
 
 		switch projType {
 		case project.Terraform:
-			return executeTerraformDeploy(ctx, presenter, globals.ExecClient, cwd, globals.AssumeYes)
+			return executeTerraformDeploy(
+				ctx,
+				presenter,
+				globals.ExecClient,
+				cwd,
+				globals.AssumeYes,
+			)
 		case project.Pulumi:
 			return executePulumiDeploy(ctx, presenter, globals.ExecClient, cwd, globals.AssumeYes)
 		default:
@@ -50,7 +56,13 @@ var DeployCmd = &cobra.Command{
 	},
 }
 
-func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, skipConfirm bool) error {
+func executeTerraformDeploy(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+	dir string,
+	skipConfirm bool,
+) error {
 	planFile := "tfplan.out"
 	planFilePath := filepath.Join(dir, planFile)
 	if _, err := os.Stat(planFilePath); os.IsNotExist(err) {
@@ -70,7 +82,13 @@ func executeTerraformDeploy(ctx context.Context, presenter *ui.Presenter, execCl
 	return execClient.Execute(ctx, dir, "terraform", "apply", "-auto-approve", planFile)
 }
 
-func executePulumiDeploy(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, skipConfirm bool) error {
+func executePulumiDeploy(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+	dir string,
+	skipConfirm bool,
+) error {
 	presenter.Info("Proposed Deploy Action: Run 'pulumi up'")
 	if !skipConfirm {
 		confirmed, err := presenter.PromptForConfirmation("Proceed to run 'pulumi up'?")

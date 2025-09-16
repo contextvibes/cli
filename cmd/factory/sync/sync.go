@@ -55,7 +55,10 @@ var SyncCmd = &cobra.Command{
 		currentBranch, _ := client.GetCurrentBranchName(ctx)
 		presenter.Newline()
 		presenter.Info("Proposed Sync Actions:")
-		presenter.Detail("1. Update local branch '%s' from remote (git pull --rebase).", currentBranch)
+		presenter.Detail(
+			"1. Update local branch '%s' from remote (git pull --rebase).",
+			currentBranch,
+		)
 		presenter.Detail("2. Push local changes to remote if ahead (git push).")
 		presenter.Newline()
 

@@ -11,10 +11,8 @@ import (
 	"github.com/contextvibes/cli/internal/workitem"
 )
 
-var (
-	// issueLinkRegex finds GitHub task list items like '- [ ] #123' or '- [x] #456'
-	issueLinkRegex = regexp.MustCompile(`-\s+\[\s*[xX]?\s*]\s+#(\d+)`)
-)
+// issueLinkRegex finds GitHub task list items like '- [ ] #123' or '- [x] #456'
+var issueLinkRegex = regexp.MustCompile(`-\s+\[\s*[xX]?\s*]\s+#(\d+)`)
 
 // HierarchyResolver builds a tree of work items based on task list relationships.
 type HierarchyResolver struct {
@@ -29,7 +27,11 @@ func New(provider workitem.Provider) *HierarchyResolver {
 }
 
 // BuildTree recursively fetches and assembles a work item and its children.
-func (r *HierarchyResolver) BuildTree(ctx context.Context, rootItemNumber int, withComments bool) (*workitem.WorkItem, error) {
+func (r *HierarchyResolver) BuildTree(
+	ctx context.Context,
+	rootItemNumber int,
+	withComments bool,
+) (*workitem.WorkItem, error) {
 	// Fetch the root item, passing the withComments flag down.
 	rootItem, err := r.provider.GetItem(ctx, rootItemNumber, withComments)
 	if err != nil {

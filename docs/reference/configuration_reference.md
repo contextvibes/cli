@@ -50,6 +50,8 @@ The configuration file is currently organized into the following top-level secti
 *   `git`: Settings related to Git repository interaction.
 *   `logging`: Settings related to logging.
 *   `validation`: Settings related to input validation rules.
+*   `describe`: Settings for the `project describe` command.
+*   `run`: Settings for the `product run` command.
 *   `projectState`: State information managed by `contextvibes` about the project.
 *   `ai`: Settings related to AI interaction preferences.
 
@@ -126,6 +128,30 @@ validation:
   commitMessage:
     enable: true
     # pattern: "^(TASK-[0-9]+|MERGE): .+" # Example custom pattern
+```
+
+#### `describe`
+
+This section configures the behavior of the `contextvibes project describe` command, allowing you to control which files are included in the generated context.
+
+| Key                 | Data Type      | Description                                                                                                                                  |
+| ------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `includePatterns`   | array of strings | A list of Go-compatible regular expressions. A file is a candidate for inclusion if its path matches **any** of these patterns.              |
+| `excludePatterns`   | array of strings | A list of Go-compatible regular expressions. A file will be excluded if its path matches **any** of these patterns, even if it was included above. |
+
+**Note:** In addition to these patterns, files listed in a `.aiexclude` file in your project root will also be excluded.
+
+**Example:**
+
+```yaml
+describe:
+  includePatterns:
+    - "\\.go$"
+    - "\\.sql$"
+    - "README.md"
+  excludePatterns:
+    - "_test\\.go$"
+    - "internal/mocks/"
 ```
 
 #### `run`
@@ -221,5 +247,4 @@ The configuration settings are applied in the following order of precedence (hig
 2.  **`.contextvibes.yaml` file:** Settings defined in this file in the project root override the built-in defaults if the file exists and the setting is specified.
 3.  **Built-in Defaults:** The default values hardcoded within the CLI application (defined in `internal/config/config.go`).
 
-This means that if a setting is specified both in the configuration file and as a command-line flag, the command-line flag will take precedence. If no config file is found, or the setting isn't specified in the config file or via a flag, the built-in default value will be used.
-```
+This means that if a setting is specified both in the configuration file and as a command-line flag, the command-line flag will take precedence. If no config file is found, or the setting isn't specified in the config file or via a flag, the built-in default value will be used.```

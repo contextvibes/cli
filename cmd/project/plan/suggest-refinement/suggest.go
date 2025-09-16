@@ -17,20 +17,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	outputFile string
-)
+var outputFile string
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -68,7 +76,7 @@ var SuggestRefinementCmd = &cobra.Command{
 			// If no output file, print to stdout
 			fmt.Fprint(presenter.Out(), prompt)
 		} else {
-			err := os.WriteFile(outputFile, []byte(prompt), 0644)
+			err := os.WriteFile(outputFile, []byte(prompt), 0o644)
 			if err != nil {
 				presenter.Error("Failed to write prompt to file %s: %v", outputFile, err)
 				return err
@@ -85,13 +93,28 @@ func generateAIPrompt(items []workitem.WorkItem) string {
 
 	fmt.Fprintln(&b, "# AI Prompt: Scrum Master Backlog Refinement")
 	fmt.Fprintln(&b, "\n## Your Role & Goal")
-	fmt.Fprintln(&b, "You are an expert Scrum Master. Your goal is to analyze the following list of unclassified GitHub issues. For each issue, you must decide if it is an **Epic**, **Story**, **Task**, **Bug**, or **Chore**. Based on your decision, you will generate a `bash` script that uses the `gh` CLI to apply the correct label to each issue.")
+	fmt.Fprintln(
+		&b,
+		"You are an expert Scrum Master. Your goal is to analyze the following list of unclassified GitHub issues. For each issue, you must decide if it is an **Epic**, **Story**, **Task**, **Bug**, or **Chore**. Based on your decision, you will generate a `bash` script that uses the `gh` CLI to apply the correct label to each issue.",
+	)
 
 	fmt.Fprintln(&b, "\n## Rules")
-	fmt.Fprintln(&b, "1.  **Analyze Content**: Base your decision on the title and body of each issue.")
-	fmt.Fprintln(&b, "2.  **Use `gh` CLI**: The output script MUST use the format `gh issue edit <number> --add-label <type>` for each issue.")
-	fmt.Fprintln(&b, "3.  **Script Only**: Your final output MUST be a single, runnable `bash` script block and nothing else.")
-	fmt.Fprintln(&b, "4.  **Be Decisive**: Do not skip any issues. Assign a type to every issue provided.")
+	fmt.Fprintln(
+		&b,
+		"1.  **Analyze Content**: Base your decision on the title and body of each issue.",
+	)
+	fmt.Fprintln(
+		&b,
+		"2.  **Use `gh` CLI**: The output script MUST use the format `gh issue edit <number> --add-label <type>` for each issue.",
+	)
+	fmt.Fprintln(
+		&b,
+		"3.  **Script Only**: Your final output MUST be a single, runnable `bash` script block and nothing else.",
+	)
+	fmt.Fprintln(
+		&b,
+		"4.  **Be Decisive**: Do not skip any issues. Assign a type to every issue provided.",
+	)
 
 	fmt.Fprintln(&b, "\n## Unclassified Issues for Review")
 	fmt.Fprintln(&b, "---")
@@ -107,5 +130,6 @@ func generateAIPrompt(items []workitem.WorkItem) string {
 }
 
 func init() {
-	SuggestRefinementCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file path for the generated AI prompt. Prints to stdout if empty.")
+	SuggestRefinementCmd.Flags().
+		StringVarP(&outputFile, "output", "o", "", "Output file path for the generated AI prompt. Prints to stdout if empty.")
 }

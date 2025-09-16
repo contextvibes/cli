@@ -47,9 +47,18 @@ var FormatCmd = &cobra.Command{
 		switch projType {
 		case project.Go:
 			presenter.Header("Go Formatting & Lint Fixes")
-			err := runFormatCommand(ctx, presenter, globals.ExecClient, cwd, "golangci-lint", []string{"run", "--fix"})
+			err := runFormatCommand(
+				ctx,
+				presenter,
+				globals.ExecClient,
+				cwd,
+				"golangci-lint",
+				[]string{"run", "--fix"},
+			)
 			if err != nil {
-				presenter.Warning("'golangci-lint --fix' completed but may have found unfixable issues.")
+				presenter.Warning(
+					"'golangci-lint --fix' completed but may have found unfixable issues.",
+				)
 			} else {
 				presenter.Success("✓ golangci-lint completed.")
 			}
@@ -66,7 +75,13 @@ var FormatCmd = &cobra.Command{
 	},
 }
 
-func runFormatCommand(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, cwd, command string, args []string) error {
+func runFormatCommand(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+	cwd, command string,
+	args []string,
+) error {
 	presenter.Step("Running %s...", command)
 	if !execClient.CommandExists(command) {
 		presenter.Warning("'%s' command not found, skipping.", command)

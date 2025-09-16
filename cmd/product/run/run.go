@@ -59,7 +59,13 @@ var RunCmd = &cobra.Command{
 	},
 }
 
-func runVerificationChecks(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, loadedAppConfig *config.Config, examplePath string) error {
+func runVerificationChecks(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+	loadedAppConfig *config.Config,
+	examplePath string,
+) error {
 	if loadedAppConfig.Run.Examples == nil {
 		return nil
 	}

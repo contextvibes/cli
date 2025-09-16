@@ -50,13 +50,20 @@ var PlanCmd = &cobra.Command{
 	},
 }
 
-func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, execClient *internal_exec.ExecutorClient, dir string) error {
+func executeTerraformPlan(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *internal_exec.ExecutorClient,
+	dir string,
+) error {
 	_, _, err := execClient.CaptureOutput(ctx, dir, "terraform", "plan", "-out=tfplan.out")
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) && exitErr.ExitCode() == 2 {
 			presenter.Info("Terraform plan indicates changes are needed.")
-			presenter.Advice("Plan saved to tfplan.out. Run `contextvibes factory deploy` to apply.")
+			presenter.Advice(
+				"Plan saved to tfplan.out. Run `contextvibes factory deploy` to apply.",
+			)
 			return nil
 		}
 		presenter.Error("'terraform plan' command failed.")
@@ -66,7 +73,12 @@ func executeTerraformPlan(ctx context.Context, presenter *ui.Presenter, execClie
 	return nil
 }
 
-func executePulumiPreview(ctx context.Context, presenter *ui.Presenter, execClient *internal_exec.ExecutorClient, dir string) error {
+func executePulumiPreview(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *internal_exec.ExecutorClient,
+	dir string,
+) error {
 	if err := execClient.Execute(ctx, dir, "pulumi", "preview"); err != nil {
 		return errors.New("pulumi preview failed")
 	}

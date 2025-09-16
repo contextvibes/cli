@@ -24,7 +24,11 @@ import (
 var addLongDescription string
 
 // newGHClient is a factory function that returns a configured GitHub client.
-func newGHClient(ctx context.Context, logger *slog.Logger, cfg *config.Config) (*github.Client, error) {
+func newGHClient(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (*github.Client, error) {
 	gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 		Executor: globals.ExecClient.UnderlyingExecutor(),
 		Logger:   logger,
@@ -38,13 +42,21 @@ func newGHClient(ctx context.Context, logger *slog.Logger, cfg *config.Config) (
 	}
 	owner, repo, err := github.ParseGitHubRemote(remoteURL)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse owner/repo from remote URL '%s': %w", remoteURL, err)
+		return nil, fmt.Errorf(
+			"could not parse owner/repo from remote URL '%s': %w",
+			remoteURL,
+			err,
+		)
 	}
 	return github.NewClient(ctx, logger, owner, repo)
 }
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	return wigh.New(ctx, logger, cfg)
 }
 
@@ -67,7 +79,9 @@ var AddCmd = &cobra.Command{
 		projects, err := ghClient.ListProjects(ctx)
 		if err != nil {
 			presenter.Error("Failed to fetch project boards: %v", err)
-			presenter.Advice("Please ensure your GITHUB_TOKEN has the 'read:project' and 'write:project' scopes.")
+			presenter.Advice(
+				"Please ensure your GITHUB_TOKEN has the 'read:project' and 'write:project' scopes.",
+			)
 			return err
 		}
 		if len(projects) == 0 {
@@ -78,7 +92,10 @@ var AddCmd = &cobra.Command{
 		for i, p := range projects {
 			projectOptions[i] = fmt.Sprintf("#%d: %s", p.Number, p.Title)
 		}
-		selectedProjectStr, err := presenter.PromptForSelect("Which project board do you want to add issues to?", projectOptions)
+		selectedProjectStr, err := presenter.PromptForSelect(
+			"Which project board do you want to add issues to?",
+			projectOptions,
+		)
 		if err != nil {
 			return err // User likely cancelled
 		}
@@ -113,7 +130,10 @@ var AddCmd = &cobra.Command{
 		for i, issue := range issues {
 			issueOptions[i] = fmt.Sprintf("#%d: %s", issue.Number, issue.Title)
 		}
-		selectedIssueStrs, err := presenter.PromptForMultiSelect("Which issues would you like to add?", issueOptions)
+		selectedIssueStrs, err := presenter.PromptForMultiSelect(
+			"Which issues would you like to add?",
+			issueOptions,
+		)
 		if err != nil {
 			return err // User likely cancelled
 		}
@@ -124,7 +144,11 @@ var AddCmd = &cobra.Command{
 		presenter.Newline()
 
 		// 3. Add Issues
-		presenter.Summary("Step 3: Adding %d Issue(s) to '%s'", len(selectedIssueStrs), project.Title)
+		presenter.Summary(
+			"Step 3: Adding %d Issue(s) to '%s'",
+			len(selectedIssueStrs),
+			project.Title,
+		)
 		for _, issueStr := range selectedIssueStrs {
 			issueNumberStr := strings.Split(issueStr, ":")[0][1:]
 			issueNumber, _ := strconv.Atoi(issueNumberStr)

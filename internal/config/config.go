@@ -80,6 +80,11 @@ type ExportSettings struct {
 	ExcludePatterns []string `yaml:"excludePatterns,omitempty"`
 }
 
+type DescribeSettings struct {
+	IncludePatterns []string `yaml:"includePatterns,omitempty"`
+	ExcludePatterns []string `yaml:"excludePatterns,omitempty"`
+}
+
 type ProjectSettings struct {
 	Provider string `yaml:"provider,omitempty"`
 }
@@ -106,6 +111,7 @@ type Config struct {
 	AI           AISettings       `yaml:"ai,omitempty"`
 	Run          RunSettings      `yaml:"run,omitempty"`
 	Export       ExportSettings   `yaml:"export,omitempty"`
+	Describe     DescribeSettings `yaml:"describe,omitempty"`
 	Project      ProjectSettings  `yaml:"project,omitempty"`
 	Behavior     BehaviorSettings `yaml:"behavior,omitempty"`
 	Feedback     FeedbackSettings `yaml:"feedback,omitempty"`
@@ -161,6 +167,17 @@ func GetDefaultConfig() *Config {
 		},
 		Export: ExportSettings{
 			ExcludePatterns: []string{"vendor/"},
+		},
+		Describe: DescribeSettings{
+			IncludePatterns: []string{
+				`\.(go|mod|sum|tf|py|yaml|yml|json|md|gitignore|txt|hcl|nix|js|html|css|sql|sqlx|sh|rb|java|c|cpp|h|hpp|rs|toml|xml|proto)$`,
+				`^(Dockerfile|Makefile|Taskfile\.yml|requirements\.txt|README\.md|\.idx/dev\.nix|\.idx/airules\.md)$`,
+			},
+			ExcludePatterns: []string{
+				`(^vendor/|^\.git/|^\.terraform/|^\.venv/|^__pycache__/|^\.DS_Store|^\.pytest_cache/|^\.vscode/|node_modules/|dist/|build/)`,
+				`(\.tfstate|\.tfplan|^secrets?/|\.auto\.tfvars|ai_context\.txt|crash.*\.log|contextvibes\.md)$`,
+				`\.(exe|bin|dll|so|jar|class|o|a|zip|tar\.gz|rar|7z|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)$`,
+			},
 		},
 		Project: ProjectSettings{
 			Provider: "github",
@@ -306,6 +323,13 @@ func MergeWithDefaults(loadedCfg *Config, defaultConfig *Config) *Config {
 	}
 	if loadedCfg.Export.ExcludePatterns != nil {
 		finalCfg.Export.ExcludePatterns = loadedCfg.Export.ExcludePatterns
+	}
+
+	if loadedCfg.Describe.IncludePatterns != nil {
+		finalCfg.Describe.IncludePatterns = loadedCfg.Describe.IncludePatterns
+	}
+	if loadedCfg.Describe.ExcludePatterns != nil {
+		finalCfg.Describe.ExcludePatterns = loadedCfg.Describe.ExcludePatterns
 	}
 
 	if loadedCfg.Project.Provider != "" {

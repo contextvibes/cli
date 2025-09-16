@@ -28,15 +28,25 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -57,7 +67,9 @@ var CreateCmd = &cobra.Command{
 		if issueTitle == "" { // Interactive Mode
 			form := huh.NewForm(
 				huh.NewGroup(
-					huh.NewSelect[string]().Title("What kind of issue is this?").Options(huh.NewOption("Task", "Task"), huh.NewOption("Story", "Story"), huh.NewOption("Bug", "Bug"), huh.NewOption("Chore", "Chore")).Value(&issueType),
+					huh.NewSelect[string]().Title("What kind of issue is this?").
+						Options(huh.NewOption("Task", "Task"), huh.NewOption("Story", "Story"), huh.NewOption("Bug", "Bug"), huh.NewOption("Chore", "Chore")).
+						Value(&issueType),
 					huh.NewInput().Title("Title?").Value(&issueTitle),
 					huh.NewText().Title("Body?").Value(&issueBody),
 				),
@@ -97,7 +109,8 @@ func init() {
 	CreateCmd.Short = desc.Short
 	CreateCmd.Long = desc.Long
 
-	CreateCmd.Flags().StringVarP(&issueType, "type", "t", "Task", "Type of the issue (Task, Story, Bug, Chore)")
+	CreateCmd.Flags().
+		StringVarP(&issueType, "type", "t", "Task", "Type of the issue (Task, Story, Bug, Chore)")
 	CreateCmd.Flags().StringVarP(&issueTitle, "title", "T", "", "Title of the issue")
 	CreateCmd.Flags().StringVarP(&issueBody, "body", "b", "", "Body of the issue")
 }

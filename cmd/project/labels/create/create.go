@@ -28,15 +28,25 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -85,8 +95,10 @@ func init() {
 	CreateCmd.Long = desc.Long
 
 	CreateCmd.Flags().StringVarP(&labelName, "name", "n", "", "The name of the label (required)")
-	CreateCmd.Flags().StringVarP(&labelDescription, "description", "d", "", "A description for the label")
-	CreateCmd.Flags().StringVarP(&labelColor, "color", "c", "", "A 6-character hex color code for the label (without the #)")
+	CreateCmd.Flags().
+		StringVarP(&labelDescription, "description", "d", "", "A description for the label")
+	CreateCmd.Flags().
+		StringVarP(&labelColor, "color", "c", "", "A 6-character hex color code for the label (without the #)")
 
 	if err := CreateCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

@@ -20,7 +20,11 @@ import (
 var listLongDescription string
 
 // newGHClient is a factory function that returns a configured GitHub client.
-func newGHClient(ctx context.Context, logger *slog.Logger, cfg *config.Config) (*github.Client, error) {
+func newGHClient(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (*github.Client, error) {
 	gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 		Executor: globals.ExecClient.UnderlyingExecutor(),
 		Logger:   logger,
@@ -35,7 +39,11 @@ func newGHClient(ctx context.Context, logger *slog.Logger, cfg *config.Config) (
 	// Use the shared parser from the internal/github package
 	owner, repo, err := github.ParseGitHubRemote(remoteURL)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse owner/repo from remote URL '%s': %w", remoteURL, err)
+		return nil, fmt.Errorf(
+			"could not parse owner/repo from remote URL '%s': %w",
+			remoteURL,
+			err,
+		)
 	}
 	return github.NewClient(ctx, logger, owner, repo)
 }

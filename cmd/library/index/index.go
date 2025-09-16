@@ -77,7 +77,12 @@ var IndexCmd = &cobra.Command{
 		}
 
 		if indexPathTemplate != "" {
-			templateMetadata, err := processDirectory(indexPathTemplate, "Template", processedFiles, logger)
+			templateMetadata, err := processDirectory(
+				indexPathTemplate,
+				"Template",
+				processedFiles,
+				logger,
+			)
 			if err != nil {
 				presenter.Error("Error processing Template directory: %v", err)
 			}
@@ -98,32 +103,47 @@ var IndexCmd = &cobra.Command{
 	},
 }
 
-func processDirectory(rootPath, baseDirName string, processedFiles map[string]bool, logger *slog.Logger) ([]DocumentMetadata, error) {
+func processDirectory(
+	rootPath, baseDirName string,
+	processedFiles map[string]bool,
+	logger *slog.Logger,
+) ([]DocumentMetadata, error) {
 	var metadataList []DocumentMetadata
 	absRootPath, err := filepath.Abs(rootPath)
 	if err != nil {
 		return nil, err
 	}
 
-	err = filepath.WalkDir(absRootPath, func(currentPath string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil || d.IsDir() {
-			return nil
-		}
-		if !(strings.HasSuffix(d.Name(), ".md")) {
-			return nil
-		}
+	err = filepath.WalkDir(
+		absRootPath,
+		func(currentPath string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil || d.IsDir() {
+				return nil
+			}
+			if !(strings.HasSuffix(d.Name(), ".md")) {
+				return nil
+			}
 
-		fileInfo, _ := d.Info()
-		docMeta, parseErr := parseFrontMatterAndDerive(currentPath, absRootPath, baseDirName, fileInfo)
-		if parseErr == nil && docMeta != nil {
-			metadataList = append(metadataList, *docMeta)
-		}
-		return nil
-	})
+			fileInfo, _ := d.Info()
+			docMeta, parseErr := parseFrontMatterAndDerive(
+				currentPath,
+				absRootPath,
+				baseDirName,
+				fileInfo,
+			)
+			if parseErr == nil && docMeta != nil {
+				metadataList = append(metadataList, *docMeta)
+			}
+			return nil
+		},
+	)
 	return metadataList, err
 }
 
-func parseFrontMatterAndDerive(filePath, rootPath, baseDirName string, fileInfo fs.FileInfo) (*DocumentMetadata, error) {
+func parseFrontMatterAndDerive(
+	filePath, rootPath, baseDirName string,
+	fileInfo fs.FileInfo,
+) (*DocumentMetadata, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -179,7 +199,10 @@ func init() {
 	}
 	IndexCmd.Short = desc.Short
 	IndexCmd.Long = desc.Long
-	IndexCmd.Flags().StringVar(&indexPathTHEA, "thea-path", "", "Path to the THEA directory to index.")
-	IndexCmd.Flags().StringVar(&indexPathTemplate, "template-path", "", "Path to the template directory to index.")
-	IndexCmd.Flags().StringVarP(&indexPathOut, "output", "o", "project_manifest.json", "Output path for the JSON manifest.")
+	IndexCmd.Flags().
+		StringVar(&indexPathTHEA, "thea-path", "", "Path to the THEA directory to index.")
+	IndexCmd.Flags().
+		StringVar(&indexPathTemplate, "template-path", "", "Path to the template directory to index.")
+	IndexCmd.Flags().
+		StringVarP(&indexPathOut, "output", "o", "project_manifest.json", "Output path for the JSON manifest.")
 }

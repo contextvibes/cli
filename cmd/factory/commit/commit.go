@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-
 	"regexp"
 	"strings"
 
@@ -81,9 +80,9 @@ var CommitCmd = &cobra.Command{
 		currentBranch, _ := client.GetCurrentBranchName(ctx)
 		statusOutput, _, _ := client.GetStatusShort(ctx)
 		presenter.InfoPrefixOnly()
-		fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
-		fmt.Fprintf(presenter.Out(), "  Commit Message: %s\n", commitMessageFlag)
-		fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
+		_, _ = fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
+		_, _ = fmt.Fprintf(presenter.Out(), "  Commit Message: %s\n", commitMessageFlag)
+		_, _ = fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
 
 		if !globals.AssumeYes {
 			confirmed, err := presenter.PromptForConfirmation("Proceed?")
@@ -103,5 +102,6 @@ func init() {
 	}
 	CommitCmd.Short = desc.Short
 	CommitCmd.Long = desc.Long
-	CommitCmd.Flags().StringVarP(&commitMessageFlag, "message", "m", "", "Commit message (required)")
+	CommitCmd.Flags().
+		StringVarP(&commitMessageFlag, "message", "m", "", "Commit message (required)")
 }

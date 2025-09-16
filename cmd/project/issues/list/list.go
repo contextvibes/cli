@@ -29,15 +29,25 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -110,7 +120,9 @@ func init() {
 
 	ListCmd.Flags().StringVarP(&issueAssignee, "assignee", "a", "", "Filter by assignee")
 	ListCmd.Flags().StringVarP(&issueLabel, "label", "l", "", "Filter by label")
-	ListCmd.Flags().StringVarP(&issueState, "state", "s", "open", "Filter by state (open, closed, all)")
+	ListCmd.Flags().
+		StringVarP(&issueState, "state", "s", "open", "Filter by state (open, closed, all)")
 	ListCmd.Flags().IntVarP(&issueLimit, "limit", "L", 30, "Maximum number of issues to return")
-	ListCmd.Flags().BoolVar(&fullView, "full", false, "Display the full details for each issue found")
+	ListCmd.Flags().
+		BoolVar(&fullView, "full", false, "Display the full details for each issue found")
 }

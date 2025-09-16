@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/charmbracelet/huh"
+	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
@@ -20,15 +21,25 @@ import (
 var refineLongDescription string
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -94,11 +105,18 @@ var RefineCmd = &cobra.Command{
 				// Add the new label to the existing labels
 				updatedItem := item
 				updatedItem.Labels = append(updatedItem.Labels, issueType)
-				updatedItem.Type = workitem.Type(issueType) // Also update the type field for consistency
+				updatedItem.Type = workitem.Type(
+					issueType,
+				) // Also update the type field for consistency
 
 				_, err := provider.UpdateItem(ctx, item.Number, updatedItem)
 				if err != nil {
-					presenter.Error("Failed to apply label '%s' to issue #%d: %v", issueType, item.Number, err)
+					presenter.Error(
+						"Failed to apply label '%s' to issue #%d: %v",
+						issueType,
+						item.Number,
+						err,
+					)
 					// We continue to the next issue even if one fails
 				} else {
 					presenter.Success("✓ Applied label '%s' to issue #%d.", issueType, item.Number)
@@ -115,5 +133,9 @@ var RefineCmd = &cobra.Command{
 }
 
 func init() {
-	// We will add the help text parsing back when the command is fully implemented.
+	desc, err := cmddocs.ParseAndExecute(refineLongDescription, nil)
+	if err != nil {
+		panic(err)
+	}
+	RefineCmd.Long = desc.Long
 }

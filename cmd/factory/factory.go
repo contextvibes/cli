@@ -6,7 +6,7 @@ import (
 	"github.com/contextvibes/cli/cmd/factory/deploy"
 	"github.com/contextvibes/cli/cmd/factory/diff"
 	"github.com/contextvibes/cli/cmd/factory/finish"
-	"github.com/contextvibes/cli/cmd/factory/init"
+	init_cmd "github.com/contextvibes/cli/cmd/factory/init"
 	"github.com/contextvibes/cli/cmd/factory/kickoff"
 	"github.com/contextvibes/cli/cmd/factory/plan"
 	"github.com/contextvibes/cli/cmd/factory/status"

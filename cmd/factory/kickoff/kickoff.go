@@ -35,7 +35,14 @@ var KickoffCmd = &cobra.Command{
 			return err
 		}
 
-		validatedBranchName, err := workflow.GetValidatedBranchName(ctx, branchNameFlag, globals.LoadedAppConfig, presenter, gitClient, globals.AssumeYes)
+		validatedBranchName, err := workflow.GetValidatedBranchName(
+			ctx,
+			branchNameFlag,
+			globals.LoadedAppConfig,
+			presenter,
+			gitClient,
+			globals.AssumeYes,
+		)
 		if err != nil {
 			return err
 		}
@@ -45,9 +52,16 @@ var KickoffCmd = &cobra.Command{
 			ctx,
 			"Daily Development Kickoff",
 			&workflow.CheckOnMainBranchStep{GitClient: gitClient, Presenter: presenter},
-			&workflow.CheckAndPromptStashStep{GitClient: gitClient, Presenter: presenter, AssumeYes: globals.AssumeYes},
+			&workflow.CheckAndPromptStashStep{
+				GitClient: gitClient,
+				Presenter: presenter,
+				AssumeYes: globals.AssumeYes,
+			},
 			&workflow.UpdateMainBranchStep{GitClient: gitClient},
-			&workflow.CreateAndPushBranchStep{GitClient: gitClient, BranchName: validatedBranchName},
+			&workflow.CreateAndPushBranchStep{
+				GitClient:  gitClient,
+				BranchName: validatedBranchName,
+			},
 		)
 	},
 }
@@ -59,5 +73,6 @@ func init() {
 	}
 	KickoffCmd.Short = desc.Short
 	KickoffCmd.Long = desc.Long
-	KickoffCmd.Flags().StringVarP(&branchNameFlag, "branch", "b", "", "Name for the new feature branch")
+	KickoffCmd.Flags().
+		StringVarP(&branchNameFlag, "branch", "b", "", "Name for the new feature branch")
 }

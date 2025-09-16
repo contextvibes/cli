@@ -22,20 +22,28 @@ import (
 //go:embed view.md.tpl
 var viewLongDescription string
 
-var (
-	withComments bool
-)
+var withComments bool
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -74,7 +82,13 @@ var ViewCmd = &cobra.Command{
 		if withComments {
 			fmt.Fprintf(presenter.Out(), "\n--- Comments (%d) ---\n\n", len(item.Comments))
 			for _, comment := range item.Comments {
-				presenter.Header(fmt.Sprintf("Comment by %s on %s", comment.Author, comment.CreatedAt.Format("2006-01-02")))
+				presenter.Header(
+					fmt.Sprintf(
+						"Comment by %s on %s",
+						comment.Author,
+						comment.CreatedAt.Format("2006-01-02"),
+					),
+				)
 				fmt.Fprintln(presenter.Out(), comment.Body)
 				presenter.Separator()
 			}
@@ -91,5 +105,6 @@ func init() {
 	}
 	ViewCmd.Long = desc.Long
 
-	ViewCmd.Flags().BoolVarP(&withComments, "comments", "c", false, "Include issue comments in the output.")
+	ViewCmd.Flags().
+		BoolVarP(&withComments, "comments", "c", false, "Include issue comments in the output.")
 }

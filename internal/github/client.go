@@ -16,11 +16,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// gosec:G101
 const GHTokenEnvVar = "GITHUB_TOKEN"
 
-var (
-	sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git$`)
-)
+var sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git$`)
 
 // Client wraps the go-github clients for both REST and GraphQL APIs.
 type Client struct {
@@ -145,7 +144,14 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 		"number": githubv4.Int(number),
 	}
 
-	c.logger.DebugContext(ctx, "Executing GraphQL query for single project", "owner", c.owner, "number", number)
+	c.logger.DebugContext(
+		ctx,
+		"Executing GraphQL query for single project",
+		"owner",
+		c.owner,
+		"number",
+		number,
+	)
 	if err := c.GraphQL.Query(ctx, &query, variables); err != nil {
 		return nil, fmt.Errorf("failed to query for project #%d: %w", number, err)
 	}
@@ -155,8 +161,13 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 		return nil, fmt.Errorf("project #%d not found for owner '%s'", number, c.owner)
 	}
 
+	id, ok := project.ID.(string)
+	if !ok {
+		return nil, fmt.Errorf("project ID for #%d is not a string", number)
+	}
+
 	return &ProjectWithID{
-		ID:     project.ID.(string),
+		ID:     id,
 		Title:  string(project.Title),
 		Number: int(project.Number),
 		URL:    project.URL.String(),
@@ -177,7 +188,14 @@ func (c *Client) AddIssueToProject(ctx context.Context, projectID string, issueI
 		"issueID":   githubv4.ID(issueID),
 	}
 
-	c.logger.DebugContext(ctx, "Executing GraphQL mutation to add issue to project", "projectID", projectID, "issueID", issueID)
+	c.logger.DebugContext(
+		ctx,
+		"Executing GraphQL mutation to add issue to project",
+		"projectID",
+		projectID,
+		"issueID",
+		issueID,
+	)
 	if err := c.GraphQL.Mutate(ctx, &mutation, variables, nil); err != nil {
 		return fmt.Errorf("failed to add issue %s to project %s: %w", issueID, projectID, err)
 	}
@@ -207,20 +225,34 @@ func (c *Client) CreateRepo(
 	if logOwner == "" {
 		logOwner = "authenticated user"
 	}
-	c.logger.InfoContext(ctx, "Attempting to create GitHub repository", "owner", logOwner, "repo_name", name, "private", isPrivate)
+	c.logger.InfoContext(
+		ctx,
+		"Attempting to create GitHub repository",
+		"owner",
+		logOwner,
+		"repo_name",
+		name,
+		"private",
+		isPrivate,
+	)
 
 	repo := &github.Repository{
-		Name:        github.String(name),
-		Description: github.String(description),
-		Private:     github.Bool(isPrivate),
-		AutoInit:    github.Bool(true),
+		Name:        github.Ptr(name),
+		Description: github.Ptr(description),
+		Private:     github.Ptr(isPrivate),
+		AutoInit:    github.Ptr(true),
 	}
 
 	createdRepo, resp, err := c.Repositories.Create(ctx, owner, repo)
 	if err != nil {
-		if errResp, ok := err.(*github.ErrorResponse); ok {
+		errResp := &github.ErrorResponse{}
+		if errors.As(err, &errResp) {
 			if len(errResp.Errors) > 0 && errResp.Errors[0].Field == "name" {
-				return nil, fmt.Errorf("repository '%s' already exists for owner '%s'", name, logOwner)
+				return nil, fmt.Errorf(
+					"repository '%s' already exists for owner '%s'",
+					name,
+					logOwner,
+				)
 			}
 		}
 		c.logger.ErrorContext(ctx, "Failed to create GitHub repository", "error", err)
@@ -228,20 +260,42 @@ func (c *Client) CreateRepo(
 	}
 
 	c.logger.DebugContext(ctx, "GitHub API response", "status", resp.Status)
-	c.logger.InfoContext(ctx, "Successfully created GitHub repository", "url", createdRepo.GetHTMLURL())
+	c.logger.InfoContext(
+		ctx,
+		"Successfully created GitHub repository",
+		"url",
+		createdRepo.GetHTMLURL(),
+	)
 
 	return createdRepo, nil
 }
 
 // UpdateBranchProtection applies a set of protection rules to the client's configured branch.
-func (c *Client) UpdateBranchProtection(ctx context.Context, branch string, request github.ProtectionRequest) error {
-	c.logger.InfoContext(ctx, "Applying branch protection rules", "owner", c.owner, "repo", c.repo, "branch", branch)
+func (c *Client) UpdateBranchProtection(
+	ctx context.Context,
+	branch string,
+	request github.ProtectionRequest,
+) error {
+	c.logger.InfoContext(
+		ctx,
+		"Applying branch protection rules",
+		"owner",
+		c.owner,
+		"repo",
+		c.repo,
+		"branch",
+		branch,
+	)
 
 	_, _, err := c.Repositories.UpdateBranchProtection(ctx, c.owner, c.repo, branch, &request)
 	if err != nil {
 		c.logger.ErrorContext(ctx, "Failed to update branch protection", "error", err)
 		if strings.Contains(err.Error(), "404 Not Found") {
-			return fmt.Errorf("repository '%s/%s' not found or token lacks permission", c.owner, c.repo)
+			return fmt.Errorf(
+				"repository '%s/%s' not found or token lacks permission",
+				c.owner,
+				c.repo,
+			)
 		}
 		return fmt.Errorf("github API error while updating branch protection: %w", err)
 	}
