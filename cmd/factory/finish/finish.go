@@ -25,7 +25,14 @@ var FinishCmd = &cobra.Command{
 
 		presenter.Summary("Finishing work on the current branch.")
 
-		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Logger: globals.AppLogger, Executor: globals.ExecClient.UnderlyingExecutor()})
+		gitClient, err := git.NewClient(
+			ctx,
+			".",
+			git.GitClientConfig{
+				Logger:   globals.AppLogger,
+				Executor: globals.ExecClient.UnderlyingExecutor(),
+			},
+		)
 		if err != nil {
 			return err
 		}

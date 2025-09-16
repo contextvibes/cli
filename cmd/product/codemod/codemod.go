@@ -66,12 +66,14 @@ var CodemodCmd = &cobra.Command{
 			}
 
 			if !globals.AssumeYes {
-				confirmed, err := presenter.PromptForConfirmation(fmt.Sprintf("Write changes to %s?", fileChangeSet.FilePath))
+				confirmed, err := presenter.PromptForConfirmation(
+					fmt.Sprintf("Write changes to %s?", fileChangeSet.FilePath),
+				)
 				if err != nil || !confirmed {
 					continue
 				}
 			}
-			if err := os.WriteFile(fileChangeSet.FilePath, []byte(currentContent), 0644); err != nil {
+			if err := os.WriteFile(fileChangeSet.FilePath, []byte(currentContent), 0o600); err != nil {
 				return err
 			}
 			globals.AppLogger.Info("Applied codemod", "file", fileChangeSet.FilePath)
@@ -87,5 +89,6 @@ func init() {
 	}
 	CodemodCmd.Short = desc.Short
 	CodemodCmd.Long = desc.Long
-	CodemodCmd.Flags().StringVarP(&codemodScriptPath, "script", "s", "", "Path to the JSON codemod script file")
+	CodemodCmd.Flags().
+		StringVarP(&codemodScriptPath, "script", "s", "", "Path to the JSON codemod script file")
 }

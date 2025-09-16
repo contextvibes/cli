@@ -8,13 +8,12 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/google/go-github/v74/github"
-
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
 	"github.com/contextvibes/cli/internal/git"
 	gh "github.com/contextvibes/cli/internal/github"
 	"github.com/contextvibes/cli/internal/workitem"
+	"github.com/google/go-github/v74/github"
 )
 
 // Provider implements the workitem.Provider interface for GitHub Issues.
@@ -38,7 +37,11 @@ func NewWithClient(client *gh.Client, logger *slog.Logger, owner, repo string) w
 // New creates a new Provider by discovering the repository from the local git remote.
 func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
 	tempExecutor := exec.NewOSCommandExecutor(logger)
-	gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{Executor: tempExecutor, Logger: logger})
+	gitClient, err := git.NewClient(
+		ctx,
+		".",
+		git.GitClientConfig{Executor: tempExecutor, Logger: logger},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize git client for repo discovery: %w", err)
 	}
@@ -48,9 +51,20 @@ func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem
 	}
 	owner, repo, err := gh.ParseGitHubRemote(remoteURL)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse owner/repo from remote URL '%s': %w", remoteURL, err)
+		return nil, fmt.Errorf(
+			"could not parse owner/repo from remote URL '%s': %w",
+			remoteURL,
+			err,
+		)
 	}
-	logger.DebugContext(ctx, "Discovered GitHub repository from remote", "owner", owner, "repo", repo)
+	logger.DebugContext(
+		ctx,
+		"Discovered GitHub repository from remote",
+		"owner",
+		owner,
+		"repo",
+		repo,
+	)
 	ghClient, err := gh.NewClient(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github api client: %w", err)
@@ -58,7 +72,10 @@ func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem
 	return NewWithClient(ghClient, logger, owner, repo), nil
 }
 
-func (p *Provider) ListItems(ctx context.Context, options workitem.ListOptions) ([]workitem.WorkItem, error) {
+func (p *Provider) ListItems(
+	ctx context.Context,
+	options workitem.ListOptions,
+) ([]workitem.WorkItem, error) {
 	ghOpts := &github.IssueListByRepoOptions{
 		State:    "open",
 		Labels:   options.Labels,
@@ -71,7 +88,16 @@ func (p *Provider) ListItems(ctx context.Context, options workitem.ListOptions) 
 	if options.State == workitem.StateClosed {
 		ghOpts.State = "closed"
 	}
-	p.logger.DebugContext(ctx, "Listing GitHub issues", "owner", p.owner, "repo", p.repo, "options", ghOpts)
+	p.logger.DebugContext(
+		ctx,
+		"Listing GitHub issues",
+		"owner",
+		p.owner,
+		"repo",
+		p.repo,
+		"options",
+		ghOpts,
+	)
 	issues, _, err := p.ghClient.Issues.ListByRepo(ctx, p.owner, p.repo, ghOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list github issues: %w", err)
@@ -86,8 +112,21 @@ func (p *Provider) ListItems(ctx context.Context, options workitem.ListOptions) 
 	return workItems, nil
 }
 
-func (p *Provider) GetItem(ctx context.Context, number int, withComments bool) (*workitem.WorkItem, error) {
-	p.logger.DebugContext(ctx, "Getting GitHub issue", "owner", p.owner, "repo", p.repo, "number", number)
+func (p *Provider) GetItem(
+	ctx context.Context,
+	number int,
+	withComments bool,
+) (*workitem.WorkItem, error) {
+	p.logger.DebugContext(
+		ctx,
+		"Getting GitHub issue",
+		"owner",
+		p.owner,
+		"repo",
+		p.repo,
+		"number",
+		number,
+	)
 	issue, _, err := p.ghClient.Issues.Get(ctx, p.owner, p.repo, number)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get github issue #%d: %w", number, err)
@@ -97,7 +136,14 @@ func (p *Provider) GetItem(ctx context.Context, number int, withComments bool) (
 		p.logger.DebugContext(ctx, "Fetching comments for issue", "number", number)
 		comments, _, err := p.ghClient.Issues.ListComments(ctx, p.owner, p.repo, number, nil)
 		if err != nil {
-			p.logger.WarnContext(ctx, "Failed to fetch comments for issue", "number", number, "error", err)
+			p.logger.WarnContext(
+				ctx,
+				"Failed to fetch comments for issue",
+				"number",
+				number,
+				"error",
+				err,
+			)
 		} else {
 			item.Comments = make([]workitem.Comment, 0, len(comments))
 			for _, comment := range comments {
@@ -108,9 +154,21 @@ func (p *Provider) GetItem(ctx context.Context, number int, withComments bool) (
 	return &item, nil
 }
 
-func (p *Provider) CreateItem(ctx context.Context, item workitem.WorkItem) (*workitem.WorkItem, error) {
+func (p *Provider) CreateItem(
+	ctx context.Context,
+	item workitem.WorkItem,
+) (*workitem.WorkItem, error) {
 	issueReq := fromWorkItem(item)
-	p.logger.DebugContext(ctx, "Creating GitHub issue", "owner", p.owner, "repo", p.repo, "title", issueReq.GetTitle())
+	p.logger.DebugContext(
+		ctx,
+		"Creating GitHub issue",
+		"owner",
+		p.owner,
+		"repo",
+		p.repo,
+		"title",
+		issueReq.GetTitle(),
+	)
 	createdIssue, _, err := p.ghClient.Issues.Create(ctx, p.owner, p.repo, issueReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github issue: %w", err)
@@ -119,9 +177,22 @@ func (p *Provider) CreateItem(ctx context.Context, item workitem.WorkItem) (*wor
 	return &newItem, nil
 }
 
-func (p *Provider) UpdateItem(ctx context.Context, number int, item workitem.WorkItem) (*workitem.WorkItem, error) {
+func (p *Provider) UpdateItem(
+	ctx context.Context,
+	number int,
+	item workitem.WorkItem,
+) (*workitem.WorkItem, error) {
 	issueReq := fromWorkItem(item)
-	p.logger.DebugContext(ctx, "Updating GitHub issue", "owner", p.owner, "repo", p.repo, "number", number)
+	p.logger.DebugContext(
+		ctx,
+		"Updating GitHub issue",
+		"owner",
+		p.owner,
+		"repo",
+		p.repo,
+		"number",
+		number,
+	)
 	updatedIssue, _, err := p.ghClient.Issues.Edit(ctx, p.owner, p.repo, number, issueReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update github issue #%d: %w", number, err)
@@ -148,11 +219,20 @@ func (p *Provider) SearchItems(ctx context.Context, query string) ([]workitem.Wo
 }
 
 func (p *Provider) CreateLabel(ctx context.Context, label workitem.Label) (*workitem.Label, error) {
-	p.logger.DebugContext(ctx, "Creating GitHub label", "owner", p.owner, "repo", p.repo, "name", label.Name)
+	p.logger.DebugContext(
+		ctx,
+		"Creating GitHub label",
+		"owner",
+		p.owner,
+		"repo",
+		p.repo,
+		"name",
+		label.Name,
+	)
 	ghLabel := &github.Label{
-		Name:        github.String(label.Name),
-		Description: github.String(label.Description),
-		Color:       github.String(label.Color),
+		Name:        github.Ptr(label.Name),
+		Description: github.Ptr(label.Description),
+		Color:       github.Ptr(label.Color),
 	}
 	createdLabel, _, err := p.ghClient.Issues.CreateLabel(ctx, p.owner, p.repo, ghLabel)
 	if err != nil {
@@ -227,8 +307,8 @@ func fromWorkItem(item workitem.WorkItem) *github.IssueRequest {
 	}
 
 	req := &github.IssueRequest{
-		Title:     github.String(item.Title),
-		Body:      github.String(item.Body),
+		Title:     github.Ptr(item.Title),
+		Body:      github.Ptr(item.Body),
 		Labels:    &labels,
 		Assignees: &assignees,
 	}

@@ -24,7 +24,11 @@ import (
 var feedbackLongDescription string
 
 // newProviderForRepo creates a workitem.Provider for a specific owner/repo string.
-func newProviderForRepo(ctx context.Context, logger *slog.Logger, owner, repo string) (workitem.Provider, error) {
+func newProviderForRepo(
+	ctx context.Context,
+	logger *slog.Logger,
+	owner, repo string,
+) (workitem.Provider, error) {
 	ghClient, err := github.NewClient(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github api client for %s/%s: %w", owner, repo, err)
@@ -63,7 +67,11 @@ var FeedbackCmd = &cobra.Command{
 		}
 		repoParts := strings.Split(targetRepo, "/")
 		if len(repoParts) != 2 {
-			return fmt.Errorf("invalid repository format for alias '%s': expected 'owner/repo', got '%s'", repoAlias, targetRepo)
+			return fmt.Errorf(
+				"invalid repository format for alias '%s': expected 'owner/repo', got '%s'",
+				repoAlias,
+				targetRepo,
+			)
 		}
 		owner, repo := repoParts[0], repoParts[1]
 
@@ -94,8 +102,13 @@ var FeedbackCmd = &cobra.Command{
 			user = "unknown"
 		}
 
-		contextBlock := fmt.Sprintf("\n\n---\n**Context**\n- **CLI Version:** `%s`\n- **OS/Arch:** `%s/%s`\n- **Filed by:** @%s",
-			globals.AppVersion, runtime.GOOS, runtime.GOARCH, user)
+		contextBlock := fmt.Sprintf(
+			"\n\n---\n**Context**\n- **CLI Version:** `%s`\n- **OS/Arch:** `%s/%s`\n- **Filed by:** @%s",
+			globals.AppVersion,
+			runtime.GOOS,
+			runtime.GOARCH,
+			user,
+		)
 		finalBody := body + contextBlock
 
 		newItem := workitem.WorkItem{
@@ -108,7 +121,10 @@ var FeedbackCmd = &cobra.Command{
 		createdItem, err := provider.CreateItem(ctx, newItem)
 		if err != nil {
 			presenter.Error("Failed to create issue: %v", err)
-			presenter.Advice("Please ensure your GITHUB_TOKEN has the 'repo' scope for the '%s' repository.", targetRepo)
+			presenter.Advice(
+				"Please ensure your GITHUB_TOKEN has the 'repo' scope for the '%s' repository.",
+				targetRepo,
+			)
 			return err
 		}
 

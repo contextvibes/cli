@@ -27,7 +27,13 @@ var InitCmd = &cobra.Command{
 
 		presenter.Summary("Initializing ContextVibes configuration...")
 
-		stdout, stderr, err := globals.ExecClient.CaptureOutput(ctx, ".", "git", "rev-parse", "--show-toplevel")
+		stdout, stderr, err := globals.ExecClient.CaptureOutput(
+			ctx,
+			".",
+			"git",
+			"rev-parse",
+			"--show-toplevel",
+		)
 		if err != nil {
 			presenter.Error("Failed to determine project root. Are you inside a Git repository?")
 			presenter.Detail("Stderr: %s", stderr)

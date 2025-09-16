@@ -84,7 +84,7 @@ func (s *ScaffoldProjectStep) Execute(ctx context.Context) error {
 	readmePath := filepath.Join(s.LocalPath, "README.md")
 	content := fmt.Sprintf("# %s\n\nGo Module: `%s`\n", s.AppName, s.GoModulePath)
 
-	err := os.WriteFile(readmePath, []byte(content), 0644)
+	err := os.WriteFile(readmePath, []byte(content), 0o644)
 	if err != nil {
 		s.Presenter.Error("Failed to write placeholder README.md: %v", err)
 		return err

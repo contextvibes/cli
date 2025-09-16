@@ -23,20 +23,28 @@ import (
 //go:embed tree.md.tpl
 var treeLongDescription string
 
-var (
-	fullView bool
-)
+var fullView bool
 
 // newProvider is a factory function that returns the configured work item provider.
-func newProvider(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
+func newProvider(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg *config.Config,
+) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
 		return github.New(ctx, logger, cfg)
 	case "":
-		logger.DebugContext(ctx, "Work item provider not specified in config, defaulting to 'github'")
+		logger.DebugContext(
+			ctx,
+			"Work item provider not specified in config, defaulting to 'github'",
+		)
 		return github.New(ctx, logger, cfg)
 	default:
-		return nil, fmt.Errorf("unsupported work item provider '%s' specified in .contextvibes.yaml", cfg.Project.Provider)
+		return nil, fmt.Errorf(
+			"unsupported work item provider '%s' specified in .contextvibes.yaml",
+			cfg.Project.Provider,
+		)
 	}
 }
 
@@ -128,7 +136,13 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 		fmt.Fprintf(p.Out(), "%s--- Comments (%d) ---\n", indent, len(item.Comments))
 		for _, comment := range item.Comments {
 			p.Out().Write([]byte(indent))
-			p.Header(fmt.Sprintf("Comment by %s on %s", comment.Author, comment.CreatedAt.Format("2006-01-02")))
+			p.Header(
+				fmt.Sprintf(
+					"Comment by %s on %s",
+					comment.Author,
+					comment.CreatedAt.Format("2006-01-02"),
+				),
+			)
 			// Indent the body of the comment
 			for _, line := range strings.Split(comment.Body, "\n") {
 				fmt.Fprintf(p.Out(), "%s  %s\n", indent, line)
@@ -150,5 +164,6 @@ func init() {
 		panic(err)
 	}
 	TreeCmd.Long = desc.Long
-	TreeCmd.Flags().BoolVar(&fullView, "full", false, "Display the full details, including body and comments, for each issue in the tree.")
+	TreeCmd.Flags().
+		BoolVar(&fullView, "full", false, "Display the full details, including body and comments, for each issue in the tree.")
 }

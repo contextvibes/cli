@@ -3,7 +3,6 @@ package prdescription
 
 import (
 	_ "embed"
-
 	"fmt"
 
 	"github.com/contextvibes/cli/internal/cmddocs"

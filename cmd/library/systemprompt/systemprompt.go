@@ -41,6 +41,7 @@ var SystemPromptCmd = &cobra.Command{
 		finalPrompt.Write(coreContent)
 
 		if systemPromptTarget != "" {
+			// gosec:G304
 			targetContent, err := os.ReadFile(filepath.Join(basePath, systemPromptTarget+".md"))
 			if err != nil {
 				return err
@@ -59,9 +60,9 @@ var SystemPromptCmd = &cobra.Command{
 		}
 
 		if outputPath == "-" {
-			fmt.Fprint(presenter.Out(), finalPrompt.String())
+			_, _ = fmt.Fprint(presenter.Out(), finalPrompt.String())
 		} else {
-			if err := os.WriteFile(outputPath, []byte(finalPrompt.String()), 0644); err != nil {
+			if err := os.WriteFile(outputPath, []byte(finalPrompt.String()), 0o600); err != nil {
 				return err
 			}
 			presenter.Success("Successfully generated system prompt at %s.", outputPath)
@@ -77,6 +78,8 @@ func init() {
 	}
 	SystemPromptCmd.Short = desc.Short
 	SystemPromptCmd.Long = desc.Long
-	SystemPromptCmd.Flags().StringVar(&systemPromptTarget, "target", "aistudio", "The target environment for the system prompt (e.g., aistudio, idx)")
-	SystemPromptCmd.Flags().StringVarP(&systemPromptOutput, "output", "o", "", "Output file path. Use '-' for stdout.")
+	SystemPromptCmd.Flags().
+		StringVar(&systemPromptTarget, "target", "aistudio", "The target environment for the system prompt (e.g., aistudio, idx)")
+	SystemPromptCmd.Flags().
+		StringVarP(&systemPromptOutput, "output", "o", "", "Output file path. Use '-' for stdout.")
 }

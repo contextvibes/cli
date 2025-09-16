@@ -23,7 +23,9 @@ var KickoffCmd = &cobra.Command{
 		// The full implementation of the orchestrator would be called from here.
 
 		presenter.Summary("Initiating Strategic Kickoff Session...")
-		presenter.Info("This feature will guide you through generating a master prompt for your AI.")
+		presenter.Info(
+			"This feature will guide you through generating a master prompt for your AI.",
+		)
 		presenter.Warning("Full implementation is pending.")
 
 		return nil

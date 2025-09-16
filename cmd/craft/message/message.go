@@ -48,7 +48,12 @@ var MessageCmd = &cobra.Command{
 		simulatedSubject := "feat(craft): add placeholder for message generation"
 		simulatedBody := "This change introduces the 'craft message' command but uses a hardcoded placeholder for the AI-generated commit message. The real implementation will call an LLM."
 
-		fmt.Fprintf(presenter.Out(), "contextvibes factory commit -m \"%s\" -m \"%s\"\n", simulatedSubject, simulatedBody)
+		fmt.Fprintf(
+			presenter.Out(),
+			"contextvibes factory commit -m \"%s\" -m \"%s\"\n",
+			simulatedSubject,
+			simulatedBody,
+		)
 
 		return nil
 	},

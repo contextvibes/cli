@@ -26,11 +26,8 @@ var describeLongDescription string
 var describeOutputFile string
 
 const (
-	defaultDescribeOutputFile = "contextvibes.md"
-	includeExtensionsRegex    = `\.(go|mod|sum|tf|py|yaml|json|md|gitignore|txt|hcl|nix)$|^(Taskfile\.yaml|requirements\.txt|README\.md|\.idx/dev\.nix|\.idx/airules\.md)$`
-	maxFileSizeKB             = 500
-	excludePathsRegex         = `(^vendor/|^\.git/|^\.terraform/|^\.venv/|^__pycache__/|^\.DS_Store|^\.pytest_cache/|^\.vscode/|\.tfstate|\.tfplan|^secrets?/|\.auto\.tfvars|ai_context\.txt|crash.*\.log|contextvibes\.md)`
-	treeIgnorePattern         = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
+	maxFileSizeKB     = 500
+	treeIgnorePattern = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
 )
 
 // DescribeCmd represents the describe command
@@ -62,8 +59,33 @@ var DescribeCmd = &cobra.Command{
 		}
 		cwd := client.Path()
 
-		includeRe, _ := regexp.Compile(includeExtensionsRegex)
-		excludeRe, _ := regexp.Compile(excludePathsRegex)
+		// Compile include/exclude patterns from config
+		includeRes := make(
+			[]*regexp.Regexp,
+			0,
+			len(globals.LoadedAppConfig.Describe.IncludePatterns),
+		)
+		for _, p := range globals.LoadedAppConfig.Describe.IncludePatterns {
+			re, err := regexp.Compile(p)
+			if err != nil {
+				return fmt.Errorf("invalid include pattern in config '%s': %w", p, err)
+			}
+			includeRes = append(includeRes, re)
+		}
+
+		excludeRes := make(
+			[]*regexp.Regexp,
+			0,
+			len(globals.LoadedAppConfig.Describe.ExcludePatterns),
+		)
+		for _, p := range globals.LoadedAppConfig.Describe.ExcludePatterns {
+			re, err := regexp.Compile(p)
+			if err != nil {
+				return fmt.Errorf("invalid exclude pattern in config '%s': %w", p, err)
+			}
+			excludeRes = append(excludeRes, re)
+		}
+
 		maxSizeBytes := int64(maxFileSizeKB * 1024)
 
 		var aiExcluder gitignore.GitIgnore
@@ -87,7 +109,16 @@ var DescribeCmd = &cobra.Command{
 		tools.AppendSectionHeader(&outputBuffer, "Git Status (Summary)")
 		tools.AppendFencedCodeBlock(&outputBuffer, strings.TrimSpace(gitStatus), "")
 
-		treeOutput, _, treeErr := globals.ExecClient.CaptureOutput(ctx, workDir, "tree", "-L", "2", "-a", "-I", treeIgnorePattern)
+		treeOutput, _, treeErr := globals.ExecClient.CaptureOutput(
+			ctx,
+			workDir,
+			"tree",
+			"-L",
+			"2",
+			"-a",
+			"-I",
+			treeIgnorePattern,
+		)
 		if treeErr != nil {
 			treeOutput = "Could not generate tree view. 'tree' command may not be installed."
 		}
@@ -107,10 +138,31 @@ var DescribeCmd = &cobra.Command{
 				continue
 			}
 
-			if !includeRe.MatchString(file) || excludeRe.MatchString(file) {
+			// New configurable matching logic
+			isIncluded := false
+			for _, re := range includeRes {
+				if re.MatchString(file) {
+					isIncluded = true
+					break
+				}
+			}
+			if !isIncluded {
 				continue
 			}
-			if aiExcluder != nil && aiExcluder.Match(file) != nil && aiExcluder.Match(file).Ignore() {
+
+			isExcluded := false
+			for _, re := range excludeRes {
+				if re.MatchString(file) {
+					isExcluded = true
+					break
+				}
+			}
+			if isExcluded {
+				continue
+			}
+
+			if aiExcluder != nil && aiExcluder.Match(file) != nil &&
+				aiExcluder.Match(file).Ignore() {
 				continue
 			}
 
@@ -146,5 +198,6 @@ func init() {
 	}
 	DescribeCmd.Short = desc.Short
 	DescribeCmd.Long = desc.Long
-	DescribeCmd.Flags().StringVarP(&describeOutputFile, "output", "o", "contextvibes.md", "Path to write the context markdown file")
+	DescribeCmd.Flags().
+		StringVarP(&describeOutputFile, "output", "o", "contextvibes.md", "Path to write the context markdown file")
 }

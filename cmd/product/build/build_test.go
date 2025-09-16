@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/contextvibes/cli/internal/exec"
+	"github.com/contextvibes/cli/internal/globals"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +48,8 @@ func (m *mockBuildExecutor) CaptureOutput(
 func (m *mockBuildExecutor) CommandExists(commandName string) bool { return true }
 
 func (m *mockBuildExecutor) Logger() *slog.Logger {
-	return slog.New(slog.DiscardHandler)
+	// THE FIX: Return a valid logger that discards output.
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
@@ -61,13 +64,13 @@ func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command)
 	mockExec := &mockBuildExecutor{}
 	execClient := exec.NewClient(mockExec)
 
+	globals.ExecClient = execClient
+	// THE FIX: Initialize the global logger with a discard handler for tests.
+	globals.AppLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	// Create a new command instance for each test to avoid state leakage
 	cmd := *BuildCmd // Make a copy
-
-	// Set up context with dependencies for the command's RunE
-	ctx := context.WithValue(context.Background(), "logger", slog.New(slog.DiscardHandler))
-	ctx = context.WithValue(ctx, "execClient", execClient)
-	cmd.SetContext(ctx)
+	cmd.SetContext(context.Background())
 
 	return tempDir, execClient, &cmd
 }
@@ -89,12 +92,13 @@ func TestBuildCmd(t *testing.T) {
 
 	t.Run("success: standard optimized build", func(t *testing.T) {
 		_, execClient, cmd := setupBuildTest(t)
-		mockExec := execClient.UnderlyingExecutor().(*mockBuildExecutor)
+		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
+		require.True(t, ok)
 
-		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o644))
+		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o600))
 		cmdDir := filepath.Join("cmd", "mycoolapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
-		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
 
 		// Reset flags on the command instance for each run
 		buildOutputFlag = ""
@@ -113,17 +117,18 @@ func TestBuildCmd(t *testing.T) {
 			filepath.Join("bin", "mycoolapp"),
 			"./" + filepath.ToSlash(filepath.Join("cmd", "mycoolapp")),
 		}
-		assert.Equal(t, expectedCommand, mockExec.lastCommand)
+		assert.Equal(t, expectedCommand, underlyingMock.lastCommand)
 	})
 
 	t.Run("success: debug build", func(t *testing.T) {
 		_, execClient, cmd := setupBuildTest(t)
-		mockExec := execClient.UnderlyingExecutor().(*mockBuildExecutor)
+		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
+		require.True(t, ok)
 
-		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o644))
+		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o600))
 		cmdDir := filepath.Join("cmd", "myapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
-		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
 
 		buildOutputFlag = ""
 		buildDebugFlag = true
@@ -139,6 +144,6 @@ func TestBuildCmd(t *testing.T) {
 			filepath.Join("bin", "myapp"),
 			"./" + filepath.ToSlash(filepath.Join("cmd", "myapp")),
 		}
-		assert.Equal(t, expectedCommand, mockExec.lastCommand)
+		assert.Equal(t, expectedCommand, underlyingMock.lastCommand)
 	})
 }

@@ -77,7 +77,13 @@ var TestCmd = &cobra.Command{
 	},
 }
 
-func executeGoTests(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, passThroughArgs []string) error {
+func executeGoTests(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+	dir string,
+	passThroughArgs []string,
+) error {
 	tool := "go"
 	testArgs := []string{"test", "./..."}
 	testArgs = append(testArgs, passThroughArgs...)
@@ -85,7 +91,13 @@ func executeGoTests(ctx context.Context, presenter *ui.Presenter, execClient *ex
 	return execClient.Execute(ctx, dir, tool, testArgs...)
 }
 
-func executePythonTests(ctx context.Context, presenter *ui.Presenter, execClient *exec.ExecutorClient, dir string, passThroughArgs []string) error {
+func executePythonTests(
+	ctx context.Context,
+	presenter *ui.Presenter,
+	execClient *exec.ExecutorClient,
+	dir string,
+	passThroughArgs []string,
+) error {
 	if execClient.CommandExists("pytest") {
 		presenter.Info("Executing: pytest %s", strings.Join(passThroughArgs, " "))
 		return execClient.Execute(ctx, dir, "pytest", passThroughArgs...)

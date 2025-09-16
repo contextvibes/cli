@@ -42,18 +42,25 @@ var rootCmd = &cobra.Command{
 
 		aiLevel := parseLogLevel(logLevelAIValue, slog.LevelDebug)
 		aiOut := io.Discard
-		loggingEnabled := (globals.LoadedAppConfig.Logging.Enable != nil && *globals.LoadedAppConfig.Logging.Enable) || aiLogFileFlagValue != ""
+		loggingEnabled := (globals.LoadedAppConfig.Logging.Enable != nil && *globals.LoadedAppConfig.Logging.Enable) ||
+			aiLogFileFlagValue != ""
 		if loggingEnabled {
 			targetAILogFile := globals.LoadedAppConfig.Logging.DefaultAILogFile
 			if aiLogFileFlagValue != "" {
 				targetAILogFile = aiLogFileFlagValue
 			}
-			logFileHandle, errLogFile := os.OpenFile(targetAILogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+			logFileHandle, errLogFile := os.OpenFile(
+				targetAILogFile,
+				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+				0o600,
+			)
 			if errLogFile == nil {
 				aiOut = logFileHandle
 			}
 		}
-		globals.AppLogger = slog.New(slog.NewJSONHandler(aiOut, &slog.HandlerOptions{Level: aiLevel}))
+		globals.AppLogger = slog.New(
+			slog.NewJSONHandler(aiOut, &slog.HandlerOptions{Level: aiLevel}),
+		)
 
 		mainOSExecutor := exec.NewOSCommandExecutor(globals.AppLogger)
 		globals.ExecClient = exec.NewClient(mainOSExecutor)
@@ -78,8 +85,10 @@ var (
 func init() {
 	globals.AppVersion = "dev"
 
-	rootCmd.PersistentFlags().StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
-	rootCmd.PersistentFlags().StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
+	rootCmd.PersistentFlags().
+		StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
+	rootCmd.PersistentFlags().
+		StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
 	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all prompts")
 
 	rootCmd.AddCommand(project.ProjectCmd)

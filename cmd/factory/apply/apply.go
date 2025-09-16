@@ -103,8 +103,8 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 						current = re.ReplaceAllString(current, op.ReplaceWith)
 					}
 				}
-				os.MkdirAll(filepath.Dir(changeSet.FilePath), 0o750)
-				os.WriteFile(changeSet.FilePath, []byte(current), 0o600)
+				_ = os.MkdirAll(filepath.Dir(changeSet.FilePath), 0o750)
+				_ = os.WriteFile(changeSet.FilePath, []byte(current), 0o600)
 			}
 		case "command_execution":
 			if err := globals.ExecClient.Execute(ctx, ".", step.Command, step.Args...); err != nil {
@@ -118,7 +118,7 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 
 func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptContent []byte) error {
 	presenter.Header("--- Script to be Applied ---")
-	fmt.Fprintln(presenter.Out(), "```bash\n"+string(scriptContent)+"\n```")
+	_, _ = fmt.Fprintln(presenter.Out(), "```bash\n"+string(scriptContent)+"\n```")
 
 	if !globals.AssumeYes {
 		confirmed, err := presenter.PromptForConfirmation("Execute the shell script?")
@@ -129,9 +129,9 @@ func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptConte
 	}
 
 	tempFile, _ := os.CreateTemp("", "contextvibes-*.sh")
-	defer os.Remove(tempFile.Name())
-	tempFile.Write(scriptContent)
-	tempFile.Close()
+	defer func() { _ = os.Remove(tempFile.Name()) }()
+	_, _ = tempFile.Write(scriptContent)
+	_ = tempFile.Close()
 	return globals.ExecClient.Execute(ctx, ".", "bash", tempFile.Name())
 }
 
@@ -142,5 +142,6 @@ func init() {
 	}
 	ApplyCmd.Short = desc.Short
 	ApplyCmd.Long = desc.Long
-	ApplyCmd.Flags().StringVarP(&scriptPath, "script", "s", "", "Path to the Change Plan (JSON) or shell script to apply.")
+	ApplyCmd.Flags().
+		StringVarP(&scriptPath, "script", "s", "", "Path to the Change Plan (JSON) or shell script to apply.")
 }

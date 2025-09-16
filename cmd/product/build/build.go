@@ -115,7 +115,12 @@ var BuildCmd = &cobra.Command{
 			"Build successful. Binary available at: %s",
 			presenter.Highlight(outputPath),
 		)
-		globals.AppLogger.InfoContext(ctx, "Go build completed successfully", "output_path", outputPath)
+		globals.AppLogger.InfoContext(
+			ctx,
+			"Go build completed successfully",
+			"output_path",
+			outputPath,
+		)
 
 		return nil
 	},
