@@ -83,7 +83,10 @@ var (
 )
 
 func init() {
-	globals.AppVersion = "dev"
+	// THE FIX: Set rootCmd.Version to our global variable.
+	// This automatically enables the 'version' command and '--version' flag.
+	// We'll set the actual value of globals.AppVersion during the build.
+	rootCmd.Version = globals.AppVersion
 
 	rootCmd.PersistentFlags().
 		StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")

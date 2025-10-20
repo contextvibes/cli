@@ -11,7 +11,7 @@ pkgs.stdenv.mkDerivation {
     # URL for the release asset.
     url = "https://github.com/contextvibes/cli/releases/download/v0.2.1/contextvibes";
     # SHA256 hash of the downloaded file.
-    sha256 = "sha256:a7a69036bf2d9414f033a6c1bb54fa7faef4c3e0d92f0653c6ce8434314d9264";
+    sha256 = "sha256:524045cb90a3dc799c2c8edc3c157b9fd3ad6adfac2f31060f3f355a1e025ebd";
   };
 
   dontUnpack = true;
