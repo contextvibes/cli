@@ -38,6 +38,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -47,7 +48,7 @@ func newProvider(
 	}
 }
 
-// ViewCmd represents the project issues view command
+// ViewCmd represents the project issues view command.
 var ViewCmd = &cobra.Command{
 	Use:     "view <issue-number>",
 	Short:   "Display the details of a specific issue.",
@@ -65,6 +66,7 @@ var ViewCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -72,6 +74,7 @@ var ViewCmd = &cobra.Command{
 		item, err := provider.GetItem(ctx, issueNumber, withComments)
 		if err != nil {
 			presenter.Error("Failed to fetch work item: %v", err)
+
 			return err
 		}
 
@@ -103,6 +106,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	ViewCmd.Long = desc.Long
 
 	ViewCmd.Flags().

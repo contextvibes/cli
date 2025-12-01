@@ -33,7 +33,7 @@ const (
 	treeIgnorePattern = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
 )
 
-// DescribeCmd represents the describe command
+// DescribeCmd represents the describe command.
 var DescribeCmd = &cobra.Command{
 	Use:     "describe [-o <output_file>]",
 	Example: `  contextvibes project describe -o project_snapshot.md`,
@@ -58,6 +58,7 @@ var DescribeCmd = &cobra.Command{
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
+
 			return err
 		}
 		cwd := client.Path()
@@ -145,9 +146,9 @@ var DescribeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		filesToList := strings.Split(strings.TrimSpace(gitLsFilesOutput), "\n")
+		filesToList := strings.SplitSeq(strings.TrimSpace(gitLsFilesOutput), "\n")
 
-		for _, file := range filesToList {
+		for file := range filesToList {
 			if file == "" {
 				continue
 			}
@@ -157,6 +158,7 @@ var DescribeCmd = &cobra.Command{
 			for _, re := range includeRes {
 				if re.MatchString(file) {
 					isIncluded = true
+
 					break
 				}
 			}
@@ -168,6 +170,7 @@ var DescribeCmd = &cobra.Command{
 			for _, re := range excludeRes {
 				if re.MatchString(file) {
 					isExcluded = true
+
 					break
 				}
 			}
@@ -201,6 +204,7 @@ var DescribeCmd = &cobra.Command{
 		}
 
 		presenter.Success("Successfully generated context file: %s", describeOutputFile)
+
 		return nil
 	},
 }
@@ -210,6 +214,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	DescribeCmd.Short = desc.Short
 	DescribeCmd.Long = desc.Long
 	DescribeCmd.Flags().

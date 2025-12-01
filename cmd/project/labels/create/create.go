@@ -41,6 +41,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -50,7 +51,7 @@ func newProvider(
 	}
 }
 
-// CreateCmd represents the project labels create command
+// CreateCmd represents the project labels create command.
 var CreateCmd = &cobra.Command{
 	Use:     "create --name <label-name>",
 	Short:   "Create a new label in the repository.",
@@ -66,6 +67,7 @@ var CreateCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -79,10 +81,12 @@ var CreateCmd = &cobra.Command{
 		_, err = provider.CreateLabel(ctx, newLabel)
 		if err != nil {
 			presenter.Error("Failed to create label: %v", err)
+
 			return err
 		}
 
 		presenter.Success("Successfully created label '%s'.", newLabel.Name)
+
 		return nil
 	},
 }
@@ -92,6 +96,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	CreateCmd.Long = desc.Long
 
 	CreateCmd.Flags().StringVarP(&labelName, "name", "n", "", "The name of the label (required)")

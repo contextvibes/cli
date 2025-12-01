@@ -17,7 +17,7 @@ var kickoffLongDescription string
 
 var branchNameFlag string
 
-// KickoffCmd represents the kickoff command
+// KickoffCmd represents the kickoff command.
 var KickoffCmd = &cobra.Command{
 	Use:  "kickoff [--branch <branch-name>]",
 	Args: cobra.NoArgs,
@@ -48,6 +48,7 @@ var KickoffCmd = &cobra.Command{
 		}
 
 		runner := workflow.NewRunner(presenter, globals.AssumeYes)
+
 		return runner.Run(
 			ctx,
 			"Daily Development Kickoff",
@@ -71,6 +72,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	KickoffCmd.Short = desc.Short
 	KickoffCmd.Long = desc.Long
 	KickoffCmd.Flags().

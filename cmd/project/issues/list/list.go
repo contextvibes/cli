@@ -42,6 +42,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -51,7 +52,7 @@ func newProvider(
 	}
 }
 
-// ListCmd represents the project issues list command
+// ListCmd represents the project issues list command.
 var ListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls"},
@@ -62,6 +63,7 @@ var ListCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -83,11 +85,13 @@ var ListCmd = &cobra.Command{
 		items, err := provider.ListItems(ctx, listOpts)
 		if err != nil {
 			presenter.Error("Failed to list work items: %v", err)
+
 			return err
 		}
 
 		if len(items) == 0 {
 			presenter.Info("No work items found matching the criteria.")
+
 			return nil
 		}
 
@@ -96,6 +100,7 @@ var ListCmd = &cobra.Command{
 				detailedItem, err := provider.GetItem(ctx, item.Number, false)
 				if err != nil {
 					presenter.Warning("Could not fetch details for #%d: %v", item.Number, err)
+
 					continue
 				}
 				internal.DisplayWorkItem(presenter, detailedItem)
@@ -115,6 +120,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	ListCmd.Short = desc.Short
 	ListCmd.Long = desc.Long
 

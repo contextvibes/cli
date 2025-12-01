@@ -5,6 +5,7 @@ import (
 	"bufio"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -28,6 +29,9 @@ var (
 	indexPathTemplate string
 	indexPathOut      string
 )
+
+// ErrSkipDocument is returned when a document should be skipped during indexing.
+var ErrSkipDocument = errors.New("skip document")
 
 type DocumentMetadata struct {
 	ID                string   `json:"id"`
@@ -131,7 +135,18 @@ func processDirectory(
 				baseDirName,
 				fileInfo,
 			)
-			if parseErr == nil && docMeta != nil {
+			
+			// FIX: Handle the sentinel error for skipping
+			if errors.Is(parseErr, ErrSkipDocument) {
+				return nil
+			}
+			if parseErr != nil {
+				// Log warning but continue walking
+				logger.Warn("Failed to parse document", "path", currentPath, "error", parseErr)
+				return nil 
+			}
+			
+			if docMeta != nil {
 				metadataList = append(metadataList, *docMeta)
 			}
 			return nil
@@ -166,16 +181,20 @@ func parseFrontMatterAndDerive(
 			frontMatterLines = append(frontMatterLines, line)
 		}
 	}
+	
+	// FIX: Return explicit error instead of nil, nil
 	if !inFrontMatter || len(frontMatterLines) == 0 {
-		return nil, nil
+		return nil, ErrSkipDocument
 	}
 
 	var fmData tempFrontMatter
 	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil {
 		return nil, err
 	}
+	
+	// FIX: Return explicit error instead of nil, nil
 	if strings.TrimSpace(fmData.Title) == "" {
-		return nil, nil
+		return nil, ErrSkipDocument
 	}
 
 	relPath, _ := filepath.Rel(rootPath, filePath)

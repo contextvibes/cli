@@ -41,6 +41,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -50,7 +51,7 @@ func newProvider(
 	}
 }
 
-// CreateCmd represents the project issues create command
+// CreateCmd represents the project issues create command.
 var CreateCmd = &cobra.Command{
 	Use:     "create",
 	Aliases: []string{"new", "add"},
@@ -61,6 +62,7 @@ var CreateCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -74,7 +76,8 @@ var CreateCmd = &cobra.Command{
 					huh.NewText().Title("Body?").Value(&issueBody),
 				),
 			)
-			if err := form.Run(); err != nil {
+			err := form.Run()
+			if err != nil {
 				return err
 			}
 		}
@@ -93,10 +96,12 @@ var CreateCmd = &cobra.Command{
 		createdItem, err := provider.CreateItem(ctx, newItem)
 		if err != nil {
 			presenter.Error("Failed to create work item: %v", err)
+
 			return err
 		}
 
 		presenter.Success("Successfully created work item: %s", createdItem.URL)
+
 		return nil
 	},
 }
@@ -106,6 +111,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	CreateCmd.Short = desc.Short
 	CreateCmd.Long = desc.Long
 

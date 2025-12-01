@@ -65,10 +65,16 @@ func executeTerraformDeploy(
 ) error {
 	planFile := "tfplan.out"
 	planFilePath := filepath.Join(dir, planFile)
-	if _, err := os.Stat(planFilePath); os.IsNotExist(err) {
-		presenter.Error("Terraform plan file '%s' not found.", planFile)
-		presenter.Advice("Please run `contextvibes factory plan` first.")
-		return errors.New("plan file not found")
+	
+	// FIX: Properly handle os.Stat errors
+	if _, err := os.Stat(planFilePath); err != nil {
+		if os.IsNotExist(err) {
+			presenter.Error("Terraform plan file '%s' not found.", planFile)
+			presenter.Advice("Please run `contextvibes factory plan` first.")
+			return errors.New("plan file not found")
+		}
+		// Return other errors (e.g. permission denied)
+		return err
 	}
 
 	presenter.Info("Proposed Deploy Action: Apply Terraform plan '%s'", planFile)

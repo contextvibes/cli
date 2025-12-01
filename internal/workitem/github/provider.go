@@ -37,6 +37,7 @@ func NewWithClient(client *gh.Client, logger *slog.Logger, owner, repo string) w
 // New creates a new Provider by discovering the repository from the local git remote.
 func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
 	tempExecutor := exec.NewOSCommandExecutor(logger)
+
 	gitClient, err := git.NewClient(
 		ctx,
 		".",
@@ -45,10 +46,12 @@ func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize git client for repo discovery: %w", err)
 	}
+
 	remoteURL, err := gitClient.GetRemoteURL(ctx, cfg.Git.DefaultRemote)
 	if err != nil {
 		return nil, fmt.Errorf("could not get remote URL for '%s': %w", cfg.Git.DefaultRemote, err)
 	}
+
 	owner, repo, err := gh.ParseGitHubRemote(remoteURL)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -57,6 +60,7 @@ func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem
 			err,
 		)
 	}
+
 	logger.DebugContext(
 		ctx,
 		"Discovered GitHub repository from remote",
@@ -65,10 +69,12 @@ func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem
 		"repo",
 		repo,
 	)
+
 	ghClient, err := gh.NewClient(ctx, logger, owner, repo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github api client: %w", err)
 	}
+
 	return NewWithClient(ghClient, logger, owner, repo), nil
 }
 
@@ -88,6 +94,7 @@ func (p *Provider) ListItems(
 	if options.State == workitem.StateClosed {
 		ghOpts.State = "closed"
 	}
+
 	p.logger.DebugContext(
 		ctx,
 		"Listing GitHub issues",
@@ -98,17 +105,21 @@ func (p *Provider) ListItems(
 		"options",
 		ghOpts,
 	)
+
 	issues, _, err := p.ghClient.Issues.ListByRepo(ctx, p.owner, p.repo, ghOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list github issues: %w", err)
 	}
+
 	workItems := make([]workitem.WorkItem, 0, len(issues))
 	for _, issue := range issues {
 		if issue.IsPullRequest() {
 			continue
 		}
+
 		workItems = append(workItems, toWorkItem(issue))
 	}
+
 	return workItems, nil
 }
 
@@ -127,13 +138,16 @@ func (p *Provider) GetItem(
 		"number",
 		number,
 	)
+
 	issue, _, err := p.ghClient.Issues.Get(ctx, p.owner, p.repo, number)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get github issue #%d: %w", number, err)
 	}
+
 	item := toWorkItem(issue)
 	if withComments && issue.GetComments() > 0 {
 		p.logger.DebugContext(ctx, "Fetching comments for issue", "number", number)
+
 		comments, _, err := p.ghClient.Issues.ListComments(ctx, p.owner, p.repo, number, nil)
 		if err != nil {
 			p.logger.WarnContext(
@@ -151,6 +165,7 @@ func (p *Provider) GetItem(
 			}
 		}
 	}
+
 	return &item, nil
 }
 
@@ -169,11 +184,14 @@ func (p *Provider) CreateItem(
 		"title",
 		issueReq.GetTitle(),
 	)
+
 	createdIssue, _, err := p.ghClient.Issues.Create(ctx, p.owner, p.repo, issueReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github issue: %w", err)
 	}
+
 	newItem := toWorkItem(createdIssue)
+
 	return &newItem, nil
 }
 
@@ -183,6 +201,7 @@ func (p *Provider) UpdateItem(
 	item workitem.WorkItem,
 ) (*workitem.WorkItem, error) {
 	issueReq := fromWorkItem(item)
+
 	p.logger.DebugContext(
 		ctx,
 		"Updating GitHub issue",
@@ -193,28 +212,35 @@ func (p *Provider) UpdateItem(
 		"number",
 		number,
 	)
+
 	updatedIssue, _, err := p.ghClient.Issues.Edit(ctx, p.owner, p.repo, number, issueReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update github issue #%d: %w", number, err)
 	}
+
 	newItem := toWorkItem(updatedIssue)
+
 	return &newItem, nil
 }
 
 func (p *Provider) SearchItems(ctx context.Context, query string) ([]workitem.WorkItem, error) {
 	fullQuery := fmt.Sprintf("repo:%s/%s %s", p.owner, p.repo, query)
 	p.logger.DebugContext(ctx, "Searching GitHub issues", "query", fullQuery)
+
 	result, _, err := p.ghClient.Search.Issues(ctx, fullQuery, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search github issues: %w", err)
 	}
+
 	workItems := make([]workitem.WorkItem, 0, len(result.Issues))
 	for _, issue := range result.Issues {
 		if issue.IsPullRequest() {
 			continue
 		}
+
 		workItems = append(workItems, toWorkItem(issue))
 	}
+
 	return workItems, nil
 }
 
@@ -234,10 +260,12 @@ func (p *Provider) CreateLabel(ctx context.Context, label workitem.Label) (*work
 		Description: github.Ptr(label.Description),
 		Color:       github.Ptr(label.Color),
 	}
+
 	createdLabel, _, err := p.ghClient.Issues.CreateLabel(ctx, p.owner, p.repo, ghLabel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github label: %w", err)
 	}
+
 	return &workitem.Label{
 		Name:        createdLabel.GetName(),
 		Description: createdLabel.GetDescription(),
@@ -270,8 +298,10 @@ func toWorkItem(issue *github.Issue) workitem.WorkItem {
 	} else {
 		item.State = workitem.StateOpen
 	}
+
 	for _, label := range issue.Labels {
 		labelName := label.GetName()
+
 		item.Labels = append(item.Labels, labelName)
 		switch strings.ToLower(labelName) {
 		case "epic":
@@ -284,12 +314,15 @@ func toWorkItem(issue *github.Issue) workitem.WorkItem {
 			item.Type = workitem.TypeChore
 		}
 	}
+
 	if item.Type == "" {
 		item.Type = workitem.TypeTask
 	}
+
 	for _, assignee := range issue.Assignees {
 		item.Assignees = append(item.Assignees, assignee.GetLogin())
 	}
+
 	return item
 }
 
@@ -301,6 +334,7 @@ func fromWorkItem(item workitem.WorkItem) *github.IssueRequest {
 	if labels == nil {
 		labels = []string{}
 	}
+
 	assignees := item.Assignees
 	if assignees == nil {
 		assignees = []string{}
@@ -316,14 +350,18 @@ func fromWorkItem(item workitem.WorkItem) *github.IssueRequest {
 	// This part of the logic remains the same.
 	typeLabel := strings.ToLower(string(item.Type))
 	hasTypeLabel := false
+
 	for _, l := range item.Labels {
 		if strings.ToLower(l) == typeLabel {
 			hasTypeLabel = true
+
 			break
 		}
 	}
+
 	if !hasTypeLabel && typeLabel != "" && item.Type != workitem.TypeTask {
 		*req.Labels = append(*req.Labels, typeLabel)
 	}
+
 	return req
 }

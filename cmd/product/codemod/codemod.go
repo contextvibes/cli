@@ -20,7 +20,7 @@ var codemodLongDescription string
 
 var codemodScriptPath string
 
-// CodemodCmd represents the codemod command
+// CodemodCmd represents the codemod command.
 var CodemodCmd = &cobra.Command{
 	Use: "codemod [--script <file.json>]",
 	Example: `  contextvibes product codemod # Looks for codemod.json
@@ -78,6 +78,7 @@ var CodemodCmd = &cobra.Command{
 			}
 			globals.AppLogger.Info("Applied codemod", "file", fileChangeSet.FilePath)
 		}
+
 		return nil
 	},
 }
@@ -87,6 +88,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	CodemodCmd.Short = desc.Short
 	CodemodCmd.Long = desc.Long
 	CodemodCmd.Flags().

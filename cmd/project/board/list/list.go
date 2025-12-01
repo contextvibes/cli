@@ -32,6 +32,7 @@ func newGHClient(
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize git client for repo discovery: %w", err)
 	}
+
 	remoteURL, err := gitClient.GetRemoteURL(ctx, cfg.Git.DefaultRemote)
 	if err != nil {
 		return nil, fmt.Errorf("could not get remote URL for '%s': %w", cfg.Git.DefaultRemote, err)
@@ -45,10 +46,11 @@ func newGHClient(
 			err,
 		)
 	}
+
 	return github.NewClient(ctx, logger, owner, repo)
 }
 
-// ListCmd represents the project board list command
+// ListCmd represents the project board list command.
 var ListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "Lists available project boards.",
@@ -60,6 +62,7 @@ var ListCmd = &cobra.Command{
 		ghClient, err := newGHClient(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize GitHub client: %v", err)
+
 			return err
 		}
 
@@ -68,11 +71,13 @@ var ListCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to fetch project boards: %v", err)
 			presenter.Advice("Please ensure your GITHUB_TOKEN has the 'read:project' scope.")
+
 			return err
 		}
 
 		if len(projects) == 0 {
 			presenter.Info("No project boards found for this repository's owner.")
+
 			return nil
 		}
 
@@ -91,5 +96,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	ListCmd.Long = desc.Long
 }

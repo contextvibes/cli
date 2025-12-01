@@ -33,10 +33,11 @@ func newProviderForRepo(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create github api client for %s/%s: %w", owner, repo, err)
 	}
+
 	return wigh.NewWithClient(ghClient, logger, owner, repo), nil
 }
 
-// FeedbackCmd represents the feedback command
+// FeedbackCmd represents the feedback command.
 var FeedbackCmd = &cobra.Command{
 	Use:     "feedback [repo-alias] [title]",
 	Short:   "Submit feedback to a contextvibes repository.",
@@ -82,7 +83,8 @@ var FeedbackCmd = &cobra.Command{
 					huh.NewText().Title("Please provide more details (optional)").Value(&body),
 				),
 			)
-			if err := form.Run(); err != nil {
+			err := form.Run()
+			if err != nil {
 				return err
 			}
 		}
@@ -93,6 +95,7 @@ var FeedbackCmd = &cobra.Command{
 		provider, err := newProviderForRepo(ctx, globals.AppLogger, owner, repo)
 		if err != nil {
 			presenter.Error("Failed to initialize provider for %s: %v", targetRepo, err)
+
 			return err
 		}
 
@@ -125,10 +128,12 @@ var FeedbackCmd = &cobra.Command{
 				"Please ensure your GITHUB_TOKEN has the 'repo' scope for the '%s' repository.",
 				targetRepo,
 			)
+
 			return err
 		}
 
 		presenter.Success("✓ Thank you! Your feedback has been submitted: %s", createdItem.URL)
+
 		return nil
 	},
 }
@@ -138,5 +143,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	FeedbackCmd.Long = desc.Long
 }

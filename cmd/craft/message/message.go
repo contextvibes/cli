@@ -15,7 +15,7 @@ import (
 //go:embed message.md.tpl
 var messageLongDescription string
 
-// MessageCmd represents the craft message command
+// MessageCmd represents the craft message command.
 var MessageCmd = &cobra.Command{
 	Use:     "message",
 	Aliases: []string{"commit", "msg"},
@@ -34,6 +34,7 @@ var MessageCmd = &cobra.Command{
 		if strings.TrimSpace(stagedDiff) == "" {
 			presenter.Info("No staged changes found to generate a commit message from.")
 			presenter.Advice("Please stage your changes using 'git add' first.")
+
 			return nil
 		}
 
@@ -64,6 +65,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	MessageCmd.Short = desc.Short
 	MessageCmd.Long = desc.Long
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/contextvibes/cli/internal/git"
 )
 
-// --- Step 1: Check if on the main branch ---
+// --- Step 1: Check if on the main branch ---.
 type CheckOnMainBranchStep struct {
 	GitClient *git.GitClient
 	Presenter PresenterInterface
@@ -28,11 +28,14 @@ func (s *CheckOnMainBranchStep) Execute(
 } // PreCheck does all the work.
 func (s *CheckOnMainBranchStep) PreCheck(ctx context.Context) error {
 	mainBranch := s.GitClient.MainBranchName()
+
 	currentBranch, err := s.GitClient.GetCurrentBranchName(ctx)
 	if err != nil {
 		s.Presenter.Error("Could not determine current branch: %v", err)
+
 		return err
 	}
+
 	if currentBranch != mainBranch {
 		err := fmt.Errorf(
 			"must be run from the main branch ('%s'), but you are on '%s'",
@@ -40,12 +43,14 @@ func (s *CheckOnMainBranchStep) PreCheck(ctx context.Context) error {
 			currentBranch,
 		)
 		s.Presenter.Error(err.Error())
+
 		return err
 	}
+
 	return nil
 }
 
-// --- Step 2: Check for clean workspace and offer to stash ---
+// --- Step 2: Check for clean workspace and offer to stash ---.
 type CheckAndPromptStashStep struct {
 	GitClient *git.GitClient
 	Presenter PresenterInterface
@@ -66,8 +71,10 @@ func (s *CheckAndPromptStashStep) PreCheck(ctx context.Context) error {
 	isClean, err := s.GitClient.IsWorkingDirClean(ctx)
 	if err != nil {
 		s.Presenter.Error("Failed to check working directory status: %v", err)
+
 		return err
 	}
+
 	if isClean {
 		return nil
 	}
@@ -80,6 +87,7 @@ func (s *CheckAndPromptStashStep) PreCheck(ctx context.Context) error {
 		s.Presenter.Advice(
 			"Please commit or stash your changes before running with the --yes flag.",
 		)
+
 		return err
 	}
 
@@ -93,20 +101,25 @@ func (s *CheckAndPromptStashStep) PreCheck(ctx context.Context) error {
 	if !confirmed {
 		err := errors.New("workflow aborted by user at stash prompt")
 		s.Presenter.Info(err.Error())
+
 		return err
 	}
 
 	s.Presenter.Step("Stashing uncommitted changes...")
+
 	if err := s.GitClient.StashPush(ctx); err != nil {
 		s.Presenter.Error("Failed to stash changes: %v", err)
+
 		return err
 	}
+
 	s.Presenter.Success("✓ Changes stashed.")
 	s.DidStash = true // ADDED: Record that a stash was successfully performed.
+
 	return nil
 }
 
-// --- Step 3: Update the main branch from remote ---
+// --- Step 3: Update the main branch from remote ---.
 type UpdateMainBranchStep struct {
 	GitClient *git.GitClient
 }
@@ -119,7 +132,7 @@ func (s *UpdateMainBranchStep) Execute(ctx context.Context) error {
 	return s.GitClient.PullRebase(ctx, s.GitClient.MainBranchName())
 }
 
-// --- Step 4: Create and push the new branch ---
+// --- Step 4: Create and push the new branch ---.
 type CreateAndPushBranchStep struct {
 	GitClient  *git.GitClient
 	BranchName string
@@ -130,12 +143,16 @@ func (s *CreateAndPushBranchStep) Description() string {
 }
 func (s *CreateAndPushBranchStep) PreCheck(ctx context.Context) error { return nil }
 func (s *CreateAndPushBranchStep) Execute(ctx context.Context) error {
-	if err := s.GitClient.CreateAndSwitchBranch(ctx, s.BranchName, ""); err != nil {
+	err := s.GitClient.CreateAndSwitchBranch(ctx, s.BranchName, "")
+	if err != nil {
 		return err
 	}
-	if err := s.GitClient.PushAndSetUpstream(ctx, s.BranchName); err != nil {
+
+	err = s.GitClient.PushAndSetUpstream(ctx, s.BranchName)
+	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -160,7 +177,9 @@ func GetValidatedBranchName(
 					"branch name must be provided via --branch flag in non-interactive mode",
 				)
 			}
+
 			var promptErr error
+
 			branchName, promptErr = presenter.PromptForInput(
 				"Enter new branch name (e.g., feature/TASK-123-new-thing)",
 			)
@@ -177,9 +196,11 @@ func GetValidatedBranchName(
 		if pattern == "" {
 			pattern = config.DefaultBranchNamePattern
 		}
+
 		re, err := regexp.Compile(pattern)
 		if err != nil {
 			presenter.Error("Invalid branch name validation regex in config: %s", pattern)
+
 			return "", fmt.Errorf("invalid validation pattern: %w", err)
 		}
 
@@ -188,16 +209,20 @@ func GetValidatedBranchName(
 			if err != nil {
 				return "", err
 			}
+
 			if exists {
 				presenter.Error("A local branch named '%s' already exists.", branchName)
 				branchName = "" // Reset to prompt again
+
 				continue
 			}
+
 			return branchName, nil
 		}
 
 		presenter.Error("Invalid branch name format: '%s'", branchName)
 		presenter.Advice("Branch name must match the pattern: %s", pattern)
+
 		branchName = "" // Reset to prompt again
 	}
 }

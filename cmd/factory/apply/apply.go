@@ -25,7 +25,7 @@ var applyLongDescription string
 
 var scriptPath string
 
-// ApplyCmd represents the apply command
+// ApplyCmd represents the apply command.
 var ApplyCmd = &cobra.Command{
 	Use:     "apply [--script <file>]",
 	Example: `  contextvibes factory apply --script ./plan.json`,
@@ -36,17 +36,20 @@ var ApplyCmd = &cobra.Command{
 		scriptContent, _, err := readInput(scriptPath)
 		if err != nil {
 			presenter.Error("Failed to read input: %v", err)
+
 			return err
 		}
 
 		if len(scriptContent) == 0 {
 			presenter.Info("Input is empty. Nothing to apply.")
+
 			return nil
 		}
 
 		if isJSON(scriptContent) {
 			return handleJSONPlan(ctx, presenter, scriptContent)
 		}
+
 		return handleShellScript(ctx, presenter, scriptContent)
 	},
 }
@@ -54,13 +57,17 @@ var ApplyCmd = &cobra.Command{
 func readInput(scriptPath string) ([]byte, string, error) {
 	if scriptPath != "" {
 		content, err := os.ReadFile(scriptPath)
+
 		return content, "file", err
 	}
+
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) != 0 {
 		return nil, "", errors.New("no script provided via --script flag or standard input")
 	}
+
 	content, err := io.ReadAll(os.Stdin)
+
 	return content, "standard input", err
 }
 
@@ -70,12 +77,16 @@ func isJSON(data []byte) bool {
 
 func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) error {
 	var plan apply.ChangePlan
-	if err := json.Unmarshal(data, &plan); err != nil {
+
+	err := json.Unmarshal(data, &plan)
+	if err != nil {
 		presenter.Error("Failed to parse JSON Change Plan: %v", err)
+
 		return err
 	}
 
 	presenter.Header("--- Change Plan Summary ---")
+
 	for i, step := range plan.Steps {
 		presenter.Step("Step %d: [%s] %s", i+1, step.Type, step.Description)
 	}
@@ -84,6 +95,7 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 		confirmed, err := presenter.PromptForConfirmation("Execute the structured plan?")
 		if err != nil || !confirmed {
 			presenter.Info("Execution aborted.")
+
 			return err
 		}
 	}
@@ -94,25 +106,31 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 			for _, changeSet := range step.Changes {
 				original, _ := os.ReadFile(changeSet.FilePath)
 				current := string(original)
+
 				for _, op := range changeSet.Operations {
 					if op.Type == "create_or_overwrite" {
 						current = *op.Content
 					}
+
 					if op.Type == "regex_replace" {
 						re, _ := regexp.Compile(op.FindRegex)
 						current = re.ReplaceAllString(current, op.ReplaceWith)
 					}
 				}
+
 				_ = os.MkdirAll(filepath.Dir(changeSet.FilePath), 0o750)
 				_ = os.WriteFile(changeSet.FilePath, []byte(current), 0o600)
 			}
 		case "command_execution":
-			if err := globals.ExecClient.Execute(ctx, ".", step.Command, step.Args...); err != nil {
+			err := globals.ExecClient.Execute(ctx, ".", step.Command, step.Args...)
+			if err != nil {
 				return err
 			}
 		}
 	}
+
 	presenter.Success("Plan executed successfully.")
+
 	return nil
 }
 
@@ -124,14 +142,18 @@ func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptConte
 		confirmed, err := presenter.PromptForConfirmation("Execute the shell script?")
 		if err != nil || !confirmed {
 			presenter.Info("Execution aborted.")
+
 			return err
 		}
 	}
 
 	tempFile, _ := os.CreateTemp("", "contextvibes-*.sh")
+
 	defer func() { _ = os.Remove(tempFile.Name()) }()
+
 	_, _ = tempFile.Write(scriptContent)
 	_ = tempFile.Close()
+
 	return globals.ExecClient.Execute(ctx, ".", "bash", tempFile.Name())
 }
 
@@ -140,6 +162,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	ApplyCmd.Short = desc.Short
 	ApplyCmd.Long = desc.Long
 	ApplyCmd.Flags().

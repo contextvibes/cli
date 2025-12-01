@@ -34,6 +34,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -43,7 +44,7 @@ func newProvider(
 	}
 }
 
-// RefineCmd represents the project plan refine command
+// RefineCmd represents the project plan refine command.
 var RefineCmd = &cobra.Command{
 	Use:     "refine",
 	Short:   "Interactively classify untyped issues.",
@@ -55,6 +56,7 @@ var RefineCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -65,11 +67,13 @@ var RefineCmd = &cobra.Command{
 		items, err := provider.SearchItems(ctx, query)
 		if err != nil {
 			presenter.Error("Failed to search for unclassified issues: %v", err)
+
 			return err
 		}
 
 		if len(items) == 0 {
 			presenter.Success("No unclassified issues found. The backlog is clean!")
+
 			return nil
 		}
 
@@ -97,7 +101,8 @@ var RefineCmd = &cobra.Command{
 				),
 			)
 
-			if err := form.Run(); err != nil {
+			err := form.Run()
+			if err != nil {
 				return err // User likely hit Ctrl+C
 			}
 
@@ -128,6 +133,7 @@ var RefineCmd = &cobra.Command{
 		}
 
 		presenter.Success("Refinement session complete.")
+
 		return nil
 	},
 }
@@ -137,5 +143,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	RefineCmd.Long = desc.Long
 }

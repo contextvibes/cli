@@ -24,6 +24,7 @@ var sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git
 // Client wraps the go-github clients for both REST and GraphQL APIs.
 type Client struct {
 	*github.Client
+
 	GraphQL *githubv4.Client
 	logger  *slog.Logger
 	owner   string
@@ -50,18 +51,23 @@ func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
 	if matches := sshRemoteRegex.FindStringSubmatch(remoteURL); len(matches) == 3 {
 		return matches[1], matches[2], nil
 	}
+
 	parsed, err := url.Parse(remoteURL)
 	if err != nil {
 		return "", "", fmt.Errorf("could not parse remote URL: %w", err)
 	}
+
 	if parsed.Hostname() != "github.com" {
 		return "", "", fmt.Errorf("remote URL is not a github.com URL: %s", parsed.Hostname())
 	}
+
 	pathParts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if len(pathParts) < 2 {
 		return "", "", fmt.Errorf("remote URL path does not contain owner/repo: %s", parsed.Path)
 	}
+
 	repo = strings.TrimSuffix(pathParts[1], ".git")
+
 	return pathParts[0], repo, nil
 }
 
@@ -75,6 +81,7 @@ See: https://docs.github.com/en/authentication/keeping-your-account-and-data-sec
 
 Then, export it as an environment variable:
 export GITHUB_TOKEN="your_token_here"`
+
 		return nil, errors.New(strings.TrimSpace(errorMsg))
 	}
 
@@ -108,11 +115,15 @@ func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 			} `graphql:"projectsV2(first: 100)"`
 		} `graphql:"organization(login: $owner)"`
 	}
-	variables := map[string]interface{}{"owner": githubv4.String(c.owner)}
+
+	variables := map[string]any{"owner": githubv4.String(c.owner)}
 
 	c.logger.DebugContext(ctx, "Executing GraphQL query for projects", "owner", c.owner)
-	if err := c.GraphQL.Query(ctx, &query, variables); err != nil {
+
+	err := c.GraphQL.Query(ctx, &query, variables)
+	if err != nil {
 		c.logger.ErrorContext(ctx, "GraphQL query for projects failed", "error", err)
+
 		return nil, fmt.Errorf("failed to query for projects: %w", err)
 	}
 
@@ -124,6 +135,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 			URL:    p.URL.String(),
 		})
 	}
+
 	return projects, nil
 }
 
@@ -139,7 +151,8 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 			} `graphql:"projectV2(number: $number)"`
 		} `graphql:"organization(login: $owner)"`
 	}
-	variables := map[string]interface{}{
+
+	variables := map[string]any{
 		"owner":  githubv4.String(c.owner),
 		"number": githubv4.Int(number),
 	}
@@ -152,7 +165,9 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 		"number",
 		number,
 	)
-	if err := c.GraphQL.Query(ctx, &query, variables); err != nil {
+
+	err := c.GraphQL.Query(ctx, &query, variables)
+	if err != nil {
 		return nil, fmt.Errorf("failed to query for project #%d: %w", number, err)
 	}
 
@@ -183,7 +198,8 @@ func (c *Client) AddIssueToProject(ctx context.Context, projectID string, issueI
 			}
 		} `graphql:"addProjectV2ItemById(input: {projectId: $projectID, contentId: $issueID})"`
 	}
-	variables := map[string]interface{}{
+
+	variables := map[string]any{
 		"projectID": githubv4.ID(projectID),
 		"issueID":   githubv4.ID(issueID),
 	}
@@ -196,9 +212,12 @@ func (c *Client) AddIssueToProject(ctx context.Context, projectID string, issueI
 		"issueID",
 		issueID,
 	)
-	if err := c.GraphQL.Mutate(ctx, &mutation, variables, nil); err != nil {
+
+	err := c.GraphQL.Mutate(ctx, &mutation, variables, nil)
+	if err != nil {
 		return fmt.Errorf("failed to add issue %s to project %s: %w", issueID, projectID, err)
 	}
+
 	return nil
 }
 
@@ -208,10 +227,12 @@ func (c *Client) GetAuthenticatedUserLogin(ctx context.Context) (string, error) 
 	if err != nil {
 		return "", fmt.Errorf("could not get authenticated user from token: %w", err)
 	}
+
 	login := user.GetLogin()
 	if login == "" {
-		return "", fmt.Errorf("could not determine user login from token")
+		return "", errors.New("could not determine user login from token")
 	}
+
 	return login, nil
 }
 
@@ -225,6 +246,7 @@ func (c *Client) CreateRepo(
 	if logOwner == "" {
 		logOwner = "authenticated user"
 	}
+
 	c.logger.InfoContext(
 		ctx,
 		"Attempting to create GitHub repository",
@@ -255,7 +277,9 @@ func (c *Client) CreateRepo(
 				)
 			}
 		}
+
 		c.logger.ErrorContext(ctx, "Failed to create GitHub repository", "error", err)
+
 		return nil, fmt.Errorf("github API error: %w", err)
 	}
 
@@ -290,6 +314,7 @@ func (c *Client) UpdateBranchProtection(
 	_, _, err := c.Repositories.UpdateBranchProtection(ctx, c.owner, c.repo, branch, &request)
 	if err != nil {
 		c.logger.ErrorContext(ctx, "Failed to update branch protection", "error", err)
+
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return fmt.Errorf(
 				"repository '%s/%s' not found or token lacks permission",
@@ -297,9 +322,11 @@ func (c *Client) UpdateBranchProtection(
 				c.repo,
 			)
 		}
+
 		return fmt.Errorf("github API error while updating branch protection: %w", err)
 	}
 
 	c.logger.InfoContext(ctx, "Successfully applied branch protection rules")
+
 	return nil
 }

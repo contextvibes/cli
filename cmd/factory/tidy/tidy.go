@@ -17,7 +17,7 @@ import (
 //go:embed tidy.md.tpl
 var tidyLongDescription string
 
-// TidyCmd represents the tidy command
+// TidyCmd represents the tidy command.
 var TidyCmd = &cobra.Command{
 	Use: "tidy",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -58,6 +58,7 @@ var TidyCmd = &cobra.Command{
 		}
 		if !confirmed {
 			presenter.Info("Aborted by user.")
+
 			return nil
 		}
 
@@ -72,7 +73,8 @@ var TidyCmd = &cobra.Command{
 			presenter.Warning(
 				"Could not delete branch with '-d' (likely not fully merged). Trying '-D'...",
 			)
-			if errForce := globals.ExecClient.Execute(ctx, ".", "git", "branch", "-D", currentBranch); errForce != nil {
+			errForce := globals.ExecClient.Execute(ctx, ".", "git", "branch", "-D", currentBranch)
+			if errForce != nil {
 				return errForce
 			}
 		}
@@ -81,6 +83,7 @@ var TidyCmd = &cobra.Command{
 			currentBranch,
 			mainBranch,
 		)
+
 		return nil
 	},
 }
@@ -90,6 +93,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	TidyCmd.Short = desc.Short
 	TidyCmd.Long = desc.Long
 }

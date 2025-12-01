@@ -14,5 +14,6 @@ var (
 	LoadedAppConfig *config.Config
 	ExecClient      *exec.ExecutorClient
 	AssumeYes       bool
-	AppVersion      string
+	// AppVersion is the current version of the CLI.
+	AppVersion      = "0.4.0"
 )

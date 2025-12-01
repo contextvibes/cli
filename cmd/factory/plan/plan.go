@@ -19,7 +19,7 @@ import (
 //go:embed plan.md.tpl
 var planLongDescription string
 
-// PlanCmd represents the plan command
+// PlanCmd represents the plan command.
 var PlanCmd = &cobra.Command{
 	Use:     "plan",
 	Example: `  contextvibes factory plan`,
@@ -45,6 +45,7 @@ var PlanCmd = &cobra.Command{
 			return executePulumiPreview(ctx, presenter, globals.ExecClient, cwd)
 		default:
 			presenter.Info("Plan command is not applicable for this project type.")
+
 			return nil
 		}
 	},
@@ -64,12 +65,17 @@ func executeTerraformPlan(
 			presenter.Advice(
 				"Plan saved to tfplan.out. Run `contextvibes factory deploy` to apply.",
 			)
+
 			return nil
 		}
+
 		presenter.Error("'terraform plan' command failed.")
+
 		return errors.New("terraform plan failed")
 	}
+
 	presenter.Info("Terraform plan successful (no changes detected).")
+
 	return nil
 }
 
@@ -79,10 +85,13 @@ func executePulumiPreview(
 	execClient *internal_exec.ExecutorClient,
 	dir string,
 ) error {
-	if err := execClient.Execute(ctx, dir, "pulumi", "preview"); err != nil {
+	err := execClient.Execute(ctx, dir, "pulumi", "preview")
+	if err != nil {
 		return errors.New("pulumi preview failed")
 	}
+
 	presenter.Success("Pulumi preview completed successfully.")
+
 	return nil
 }
 
@@ -91,6 +100,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	PlanCmd.Short = desc.Short
 	PlanCmd.Long = desc.Long
 }

@@ -21,7 +21,7 @@ var commitLongDescription string
 
 var commitMessageFlag string
 
-// CommitCmd represents the commit command
+// CommitCmd represents the commit command.
 var CommitCmd = &cobra.Command{
 	Use:     "commit -m <message>",
 	Example: `  contextvibes factory commit -m "feat(auth): Implement OTP login"`,
@@ -49,6 +49,7 @@ var CommitCmd = &cobra.Command{
 			if !re.MatchString(commitMessageFlag) {
 				presenter.Error("Invalid commit message format.")
 				presenter.Advice("Message must match pattern: %s", pattern)
+
 				return errors.New("invalid commit message format")
 			}
 		}
@@ -74,6 +75,7 @@ var CommitCmd = &cobra.Command{
 		}
 		if !hasStaged {
 			presenter.Info("No changes were staged for commit.")
+
 			return nil
 		}
 
@@ -100,6 +102,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	CommitCmd.Short = desc.Short
 	CommitCmd.Long = desc.Long
 	CommitCmd.Flags().

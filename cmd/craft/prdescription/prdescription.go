@@ -13,7 +13,7 @@ import (
 //go:embed prdescription.md.tpl
 var prDescriptionLongDescription string
 
-// PRDescriptionCmd represents the craft pr-description command
+// PRDescriptionCmd represents the craft pr-description command.
 var PRDescriptionCmd = &cobra.Command{
 	Use:     "pr-description",
 	Aliases: []string{"pr"},
@@ -38,6 +38,7 @@ This change introduces the new 'craft' pillar to the CLI, providing a dedicated 
 - Refactored the strategic kickoff into 'craft kickoff'.`
 
 		fmt.Fprintln(presenter.Out(), simulatedPRBody)
+
 		return nil
 	},
 }
@@ -47,6 +48,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	PRDescriptionCmd.Short = desc.Short
 	PRDescriptionCmd.Long = desc.Long
 }
