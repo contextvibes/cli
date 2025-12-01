@@ -1,4 +1,4 @@
-// cmd/project/labels/create/create.go
+// Package create provides the command to create labels.
 package create
 
 import (
@@ -21,6 +21,7 @@ import (
 //go:embed create.md.tpl
 var createLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	labelName        string
 	labelDescription string
@@ -28,6 +29,8 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -52,11 +55,13 @@ func newProvider(
 }
 
 // CreateCmd represents the project labels create command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CreateCmd = &cobra.Command{
 	Use:     "create --name <label-name>",
 	Short:   "Create a new label in the repository.",
 	Example: `  contextvibes project labels create --name "docs" --description "Documentation updates" --color "0075ca"`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -82,7 +87,7 @@ var CreateCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to create label: %v", err)
 
-			return err
+			return fmt.Errorf("failed to create label: %w", err)
 		}
 
 		presenter.Success("Successfully created label '%s'.", newLabel.Name)
@@ -91,6 +96,7 @@ var CreateCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(createLongDescription, nil)
 	if err != nil {

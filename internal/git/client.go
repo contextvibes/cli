@@ -1,4 +1,4 @@
-// internal/git/client.go
+// Package git provides a high-level client for interacting with Git repositories.
 package git
 
 import (
@@ -15,6 +15,8 @@ import (
 )
 
 // GitClient provides methods for interacting with a Git repository.
+//
+//nolint:revive // GitClient is the established name.
 type GitClient struct {
 	repoPath string
 	gitDir   string
@@ -26,6 +28,8 @@ type GitClient struct {
 // NewClient creates and initializes a new GitClient.
 // The GitClientConfig's Executor field should be pre-populated,
 // or validateAndSetDefaults will create a default OSCommandExecutor.
+//
+//nolint:funlen // Initialization logic requires length.
 func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*GitClient, error) {
 	// validateAndSetDefaults will ensure Logger and Executor are non-nil.
 	validatedConfig, err := config.validateAndSetDefaults()
@@ -127,23 +131,30 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 	return client, nil
 }
 
+// Path returns the repository path.
 func (c *GitClient) Path() string { return c.repoPath }
 
+// GitDir returns the .git directory path.
 func (c *GitClient) GitDir() string { return c.gitDir }
 
+// MainBranchName returns the configured main branch name.
 func (c *GitClient) MainBranchName() string { return c.config.DefaultMainBranchName }
 
+// RemoteName returns the configured remote name.
 func (c *GitClient) RemoteName() string { return c.config.DefaultRemoteName }
 
+// Logger returns the logger.
 func (c *GitClient) Logger() *slog.Logger { return c.logger }
 
 func (c *GitClient) runGit(ctx context.Context, args ...string) error {
 	// Logger().Debug(...) is already part of executor.Execute
+	//nolint:wrapcheck // Wrapping is handled by caller or executor.
 	return c.executor.Execute(ctx, c.repoPath, c.config.GitExecutable, args...)
 }
 
 func (c *GitClient) captureGitOutput(ctx context.Context, args ...string) (string, string, error) {
 	// Logger().Debug(...) is already part of executor.CaptureOutput
+	//nolint:wrapcheck // Wrapping is handled by caller or executor.
 	return c.executor.CaptureOutput(ctx, c.repoPath, c.config.GitExecutable, args...)
 }
 
@@ -165,6 +176,7 @@ func (c *GitClient) GetRemoteURL(ctx context.Context, remoteName string) (string
 // (These methods remain largely the same but now internally call c.executor methods
 //  which are of type exec.CommandExecutor)
 
+// GetCurrentBranchName returns the name of the current branch.
 func (c *GitClient) GetCurrentBranchName(ctx context.Context) (string, error) {
 	stdout, stderr, err := c.captureGitOutput(ctx, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
@@ -192,6 +204,7 @@ func (c *GitClient) GetCurrentBranchName(ctx context.Context) (string, error) {
 	return branch, nil
 }
 
+// AddAll stages all changes.
 func (c *GitClient) AddAll(ctx context.Context) error {
 	err := c.runGit(ctx, "add", ".")
 	if err != nil {
@@ -201,6 +214,7 @@ func (c *GitClient) AddAll(ctx context.Context) error {
 	return nil
 }
 
+// Commit commits staged changes with a message.
 func (c *GitClient) Commit(ctx context.Context, message string) error {
 	if strings.TrimSpace(message) == "" {
 		return errors.New("commit message cannot be empty")
@@ -214,6 +228,7 @@ func (c *GitClient) Commit(ctx context.Context, message string) error {
 	return nil
 }
 
+// HasStagedChanges checks if there are staged changes.
 func (c *GitClient) HasStagedChanges(ctx context.Context) (bool, error) {
 	_, _, err := c.captureGitOutput(ctx, "diff", "--quiet", "--cached")
 	if err == nil {
@@ -228,10 +243,12 @@ func (c *GitClient) HasStagedChanges(ctx context.Context) (bool, error) {
 	return false, fmt.Errorf("failed to determine staged status: %w", err)
 }
 
+// GetStatusShort returns the short status of the repository.
 func (c *GitClient) GetStatusShort(ctx context.Context) (string, string, error) {
 	return c.captureGitOutput(ctx, "status", "--short")
 }
 
+// GetDiffCached returns the cached diff.
 func (c *GitClient) GetDiffCached(ctx context.Context) (string, string, error) {
 	stdout, stderr, err := c.captureGitOutput(ctx, "diff", "--cached")
 	if err != nil {
@@ -246,6 +263,7 @@ func (c *GitClient) GetDiffCached(ctx context.Context) (string, string, error) {
 	return stdout, stderr, nil // No error, no diff
 }
 
+// GetDiffUnstaged returns the unstaged diff.
 func (c *GitClient) GetDiffUnstaged(ctx context.Context) (string, string, error) {
 	stdout, stderr, err := c.captureGitOutput(ctx, "diff", "HEAD")
 	if err != nil {
@@ -260,10 +278,12 @@ func (c *GitClient) GetDiffUnstaged(ctx context.Context) (string, string, error)
 	return stdout, stderr, nil // No error, no diff
 }
 
+// ListUntrackedFiles returns a list of untracked files.
 func (c *GitClient) ListUntrackedFiles(ctx context.Context) (string, string, error) {
 	return c.captureGitOutput(ctx, "ls-files", "--others", "--exclude-standard")
 }
 
+// IsWorkingDirClean checks if the working directory is clean.
 func (c *GitClient) IsWorkingDirClean(ctx context.Context) (bool, error) {
 	_, _, errDiff := c.captureGitOutput(ctx, "diff", "--quiet")
 	if errDiff != nil {
@@ -296,6 +316,7 @@ func (c *GitClient) IsWorkingDirClean(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// PullRebase pulls changes from the remote and rebases.
 func (c *GitClient) PullRebase(ctx context.Context, branch string) error {
 	remote := c.RemoteName()
 
@@ -307,6 +328,7 @@ func (c *GitClient) PullRebase(ctx context.Context, branch string) error {
 	return nil
 }
 
+// IsBranchAhead checks if the local branch is ahead of the remote.
 func (c *GitClient) IsBranchAhead(ctx context.Context) (bool, error) {
 	stdout, _, err := c.captureGitOutput(ctx, "status", "-sb")
 	if err != nil {
@@ -316,6 +338,7 @@ func (c *GitClient) IsBranchAhead(ctx context.Context) (bool, error) {
 	return strings.Contains(stdout, "[ahead "), nil
 }
 
+// Push pushes changes to the remote.
 func (c *GitClient) Push(ctx context.Context, branch string) error {
 	remote := c.RemoteName()
 
@@ -349,6 +372,7 @@ func (c *GitClient) Push(ctx context.Context, branch string) error {
 	return nil
 }
 
+// LocalBranchExists checks if a local branch exists.
 func (c *GitClient) LocalBranchExists(ctx context.Context, branchName string) (bool, error) {
 	ref := "refs/heads/" + branchName
 
@@ -365,6 +389,7 @@ func (c *GitClient) LocalBranchExists(ctx context.Context, branchName string) (b
 	return false, fmt.Errorf("failed to check existence of local branch '%s': %w", branchName, err)
 }
 
+// SwitchBranch switches to a branch.
 func (c *GitClient) SwitchBranch(ctx context.Context, branchName string) error {
 	err := c.runGit(ctx, "switch", branchName)
 	if err != nil {
@@ -374,6 +399,7 @@ func (c *GitClient) SwitchBranch(ctx context.Context, branchName string) error {
 	return nil
 }
 
+// CreateAndSwitchBranch creates a new branch and switches to it.
 func (c *GitClient) CreateAndSwitchBranch(
 	ctx context.Context,
 	newBranchName string,
@@ -392,6 +418,7 @@ func (c *GitClient) CreateAndSwitchBranch(
 	return nil
 }
 
+// PushAndSetUpstream pushes the branch and sets the upstream.
 func (c *GitClient) PushAndSetUpstream(ctx context.Context, branchName string) error {
 	remote := c.RemoteName()
 
@@ -403,12 +430,15 @@ func (c *GitClient) PushAndSetUpstream(ctx context.Context, branchName string) e
 	return nil
 }
 
+// ListTrackedAndCachedFiles returns a list of tracked and cached files.
 func (c *GitClient) ListTrackedAndCachedFiles(ctx context.Context) (string, string, error) {
 	return c.captureGitOutput(ctx, "ls-files", "-co", "--exclude-standard")
 }
 
 // TruncateString helper can be removed if not used, or kept if useful elsewhere.
 // For now, keeping it as it was in the provided file.
+//
+//nolint:mnd // 4 and 3 are specific truncation constants.
 func TruncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
@@ -426,6 +456,8 @@ func TruncateString(s string, maxLen int) string {
 }
 
 // GetLogAndDiffFromMergeBase finds the common ancestor with a branch and returns the log and diff since that point.
+//
+//nolint:nonamedreturns // Named returns are used for clarity in return signature.
 func (c *GitClient) GetLogAndDiffFromMergeBase(
 	ctx context.Context,
 	baseBranchRef string,
@@ -443,6 +475,7 @@ func (c *GitClient) GetLogAndDiffFromMergeBase(
 		return "", "", fmt.Errorf("git merge-base against '%s' failed: %w", baseBranchRef, err)
 	}
 
+	//nolint:unconvert // Conversion is necessary for TrimSpace.
 	mergeBase := strings.TrimSpace(string(mergeBaseBytes))
 
 	log, _, err = c.captureGitOutput(

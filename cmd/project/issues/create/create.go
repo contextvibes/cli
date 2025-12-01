@@ -1,4 +1,4 @@
-// cmd/project/issues/create/create.go
+// Package create provides the command to create new issues.
 package create
 
 import (
@@ -21,6 +21,7 @@ import (
 //go:embed create.md.tpl
 var createLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	issueType  string
 	issueTitle string
@@ -28,6 +29,8 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -52,10 +55,12 @@ func newProvider(
 }
 
 // CreateCmd represents the project issues create command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CreateCmd = &cobra.Command{
 	Use:     "create",
 	Aliases: []string{"new", "add"},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -69,6 +74,7 @@ var CreateCmd = &cobra.Command{
 		if issueTitle == "" { // Interactive Mode
 			form := huh.NewForm(
 				huh.NewGroup(
+					//nolint:lll // Long line for options.
 					huh.NewSelect[string]().Title("What kind of issue is this?").
 						Options(huh.NewOption("Task", "Task"), huh.NewOption("Story", "Story"), huh.NewOption("Bug", "Bug"), huh.NewOption("Chore", "Chore")).
 						Value(&issueType),
@@ -78,7 +84,7 @@ var CreateCmd = &cobra.Command{
 			)
 			err := form.Run()
 			if err != nil {
-				return err
+				return fmt.Errorf("input form failed: %w", err)
 			}
 		}
 
@@ -86,6 +92,7 @@ var CreateCmd = &cobra.Command{
 			return errors.New("title cannot be empty")
 		}
 
+		//nolint:exhaustruct // Partial initialization is valid for creation.
 		newItem := workitem.WorkItem{
 			Title: issueTitle,
 			Body:  issueBody,
@@ -97,7 +104,7 @@ var CreateCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to create work item: %v", err)
 
-			return err
+			return fmt.Errorf("failed to create item: %w", err)
 		}
 
 		presenter.Success("Successfully created work item: %s", createdItem.URL)
@@ -106,6 +113,7 @@ var CreateCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(createLongDescription, nil)
 	if err != nil {

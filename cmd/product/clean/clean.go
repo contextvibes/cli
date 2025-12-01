@@ -1,4 +1,4 @@
-// cmd/product/clean/clean.go
+// Package clean provides the command to clean project artifacts.
 package clean
 
 import (
@@ -16,8 +16,11 @@ import (
 var cleanLongDescription string
 
 // CleanCmd represents the clean command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CleanCmd = &cobra.Command{
-	Use: "clean",
+	Use:   "clean",
+	Short: "Removes temporary files and build artifacts.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
@@ -65,6 +68,7 @@ var CleanCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(cleanLongDescription, nil)
 	if err != nil {

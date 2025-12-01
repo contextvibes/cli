@@ -114,7 +114,7 @@ func init() {
 	rootCmd.AddCommand(library.LibraryCmd)
 	rootCmd.AddCommand(craft.CraftCmd)
 	rootCmd.AddCommand(feedback.FeedbackCmd)
-	rootCmd.AddCommand(version.VersionCmd) // ADDED
+	rootCmd.AddCommand(version.VersionCmd)
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {

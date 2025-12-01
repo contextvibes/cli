@@ -1,4 +1,4 @@
-// cmd/project/board/add/add.go
+// Package add provides the command to add issues to a project board.
 package add
 
 import (
@@ -29,6 +29,7 @@ func newGHClient(
 	logger *slog.Logger,
 	cfg *config.Config,
 ) (*github.Client, error) {
+	//nolint:exhaustruct // Partial config is sufficient for discovery.
 	gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 		Executor: globals.ExecClient.UnderlyingExecutor(),
 		Logger:   logger,
@@ -51,10 +52,17 @@ func newGHClient(
 		)
 	}
 
-	return github.NewClient(ctx, logger, owner, repo)
+	client, err := github.NewClient(ctx, logger, owner, repo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	return client, nil
 }
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -64,10 +72,12 @@ func newProvider(
 }
 
 // AddCmd represents the project board add command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var AddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Interactively add issues to a project board.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -87,7 +97,7 @@ var AddCmd = &cobra.Command{
 				"Please ensure your GITHUB_TOKEN has the 'read:project' and 'write:project' scopes.",
 			)
 
-			return err
+			return fmt.Errorf("failed to list projects: %w", err)
 		}
 		if len(projects) == 0 {
 			presenter.Info("No project boards found.")
@@ -103,7 +113,7 @@ var AddCmd = &cobra.Command{
 			projectOptions,
 		)
 		if err != nil {
-			return err // User likely cancelled
+			return fmt.Errorf("project selection failed: %w", err)
 		}
 		projectNumberStr := strings.Split(selectedProjectStr, ":")[0][1:]
 		projectNumber, _ := strconv.Atoi(projectNumberStr)
@@ -111,7 +121,7 @@ var AddCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to get details for project #%d: %v", projectNumber, err)
 
-			return err
+			return fmt.Errorf("failed to get project details: %w", err)
 		}
 		presenter.Success("✓ Selected board '%s'", project.Title)
 		presenter.Newline()
@@ -124,12 +134,13 @@ var AddCmd = &cobra.Command{
 
 			return err
 		}
+		//nolint:exhaustruct,mnd // Partial options are valid, 100 is a reasonable limit.
 		listOpts := workitem.ListOptions{State: workitem.StateOpen, Limit: 100}
 		issues, err := provider.ListItems(ctx, listOpts)
 		if err != nil {
 			presenter.Error("Failed to list open issues: %v", err)
 
-			return err
+			return fmt.Errorf("failed to list items: %w", err)
 		}
 		if len(issues) == 0 {
 			presenter.Info("No open issues found to add.")
@@ -145,7 +156,7 @@ var AddCmd = &cobra.Command{
 			issueOptions,
 		)
 		if err != nil {
-			return err // User likely cancelled
+			return fmt.Errorf("issue selection failed: %w", err)
 		}
 		if len(selectedIssueStrs) == 0 {
 			presenter.Info("No issues selected. Aborting.")
@@ -192,6 +203,7 @@ var AddCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(addLongDescription, nil)
 	if err != nil {

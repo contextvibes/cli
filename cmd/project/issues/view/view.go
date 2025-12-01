@@ -1,4 +1,4 @@
-// cmd/project/issues/view/view.go
+// Package view provides the command to view issue details.
 package view
 
 import (
@@ -22,9 +22,12 @@ import (
 //go:embed view.md.tpl
 var viewLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var withComments bool
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -49,6 +52,8 @@ func newProvider(
 }
 
 // ViewCmd represents the project issues view command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var ViewCmd = &cobra.Command{
 	Use:     "view <issue-number>",
 	Short:   "Display the details of a specific issue.",
@@ -75,7 +80,7 @@ var ViewCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to fetch work item: %v", err)
 
-			return err
+			return fmt.Errorf("failed to get item: %w", err)
 		}
 
 		// Use the shared display helper for the main body
@@ -83,6 +88,7 @@ var ViewCmd = &cobra.Command{
 
 		// The view command is still responsible for displaying comments
 		if withComments {
+			//nolint:errcheck // Printing to stdout is best effort.
 			fmt.Fprintf(presenter.Out(), "\n--- Comments (%d) ---\n\n", len(item.Comments))
 			for _, comment := range item.Comments {
 				presenter.Header(
@@ -92,6 +98,7 @@ var ViewCmd = &cobra.Command{
 						comment.CreatedAt.Format("2006-01-02"),
 					),
 				)
+				//nolint:errcheck // Printing to stdout is best effort.
 				fmt.Fprintln(presenter.Out(), comment.Body)
 				presenter.Separator()
 			}
@@ -101,6 +108,7 @@ var ViewCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(viewLongDescription, nil)
 	if err != nil {

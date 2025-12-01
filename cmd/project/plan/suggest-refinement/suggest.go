@@ -1,4 +1,4 @@
-// cmd/project/plan/suggest-refinement/suggest.go
+// Package suggest provides the command to suggest issue refinements.
 package suggest
 
 import (
@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
@@ -17,9 +18,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//go:embed suggest.md.tpl
+var suggestLongDescription string
+
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var outputFile string
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -44,11 +51,13 @@ func newProvider(
 }
 
 // SuggestRefinementCmd represents the project plan suggest-refinement command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var SuggestRefinementCmd = &cobra.Command{
 	Use:     "suggest-refinement",
 	Short:   "Generate a prompt for an AI to classify untyped issues.",
 	Example: `  contextvibes project plan suggest-refinement -o for-ai.md`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -65,7 +74,7 @@ var SuggestRefinementCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to search for unclassified issues: %v", err)
 
-			return err
+			return fmt.Errorf("failed to search items: %w", err)
 		}
 
 		if len(items) == 0 {
@@ -78,13 +87,15 @@ var SuggestRefinementCmd = &cobra.Command{
 
 		if outputFile == "" {
 			// If no output file, print to stdout
+			//nolint:errcheck // Printing to stdout is best effort here.
 			fmt.Fprint(presenter.Out(), prompt)
 		} else {
+			//nolint:gosec // Writing to user-specified file is intended.
 			err := os.WriteFile(outputFile, []byte(prompt), 0o644)
 			if err != nil {
 				presenter.Error("Failed to write prompt to file %s: %v", outputFile, err)
 
-				return err
+				return fmt.Errorf("failed to write output file: %w", err)
 			}
 			presenter.Success("AI prompt successfully generated at: %s", outputFile)
 		}
@@ -93,6 +104,7 @@ var SuggestRefinementCmd = &cobra.Command{
 	},
 }
 
+//nolint:lll // Prompt strings are long.
 func generateAIPrompt(items []workitem.WorkItem) string {
 	var b bytes.Buffer
 
@@ -134,7 +146,22 @@ func generateAIPrompt(items []workitem.WorkItem) string {
 	return b.String()
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
+	// Create a default description if the template file is missing or empty during dev
+	desc := cmddocs.CommandDesc{
+		Short: "Generate a prompt for an AI to classify untyped issues.",
+		Long:  "Scans for unclassified issues and generates a prompt for an AI to classify them.",
+	}
+
+	parsed, err := cmddocs.ParseAndExecute(suggestLongDescription, nil)
+	if err == nil {
+		desc = parsed
+	}
+
+	SuggestRefinementCmd.Short = desc.Short
+	SuggestRefinementCmd.Long = desc.Long
+
 	SuggestRefinementCmd.Flags().
 		StringVarP(&outputFile, "output", "o", "", "Output file path for the generated AI prompt. Prints to stdout if empty.")
 }

@@ -14,11 +14,13 @@ import (
 var prDescriptionLongDescription string
 
 // PRDescriptionCmd represents the craft pr-description command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var PRDescriptionCmd = &cobra.Command{
 	Use:     "pr-description",
 	Aliases: []string{"pr"},
 	Short:   "Generates a suggested pull request description.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 
 		// This command would use the git client to get a diff against main,
@@ -37,12 +39,14 @@ This change introduces the new 'craft' pillar to the CLI, providing a dedicated 
 - Added 'craft pr-description' as a placeholder for generating PR bodies.
 - Refactored the strategic kickoff into 'craft kickoff'.`
 
+		//nolint:errcheck // Printing to stdout is best effort.
 		fmt.Fprintln(presenter.Out(), simulatedPRBody)
 
 		return nil
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(prDescriptionLongDescription, nil)
 	if err != nil {

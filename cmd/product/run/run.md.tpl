@@ -1,5 +1,4 @@
-# Interactively runs one of the project's example applications after verification.
+# Execute example applications.
 
-Discovers runnable example applications within the './examples' directory,
-runs any configured prerequisite checks from '.contextvibes.yaml',
-and then presents an interactive menu to choose an example to execute with 'go run'.
+Discovers runnable Go applications in the `examples/` directory.
+It verifies configured prerequisites (defined in `.contextvibes.yaml`) before running the selected example.

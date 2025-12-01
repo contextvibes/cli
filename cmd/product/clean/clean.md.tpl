@@ -1,7 +1,6 @@
-# Removes temporary files, build artifacts, and caches.
+# Removes temporary files and build artifacts.
 
-Cleans the project directory by removing common temporary files,
-build artifacts, and local caches.
-
-This includes the './bin/' directory, Go test and build caches, and generated
-context files like 'coverage.out' and 'context_*.md'.
+Cleans up the project workspace by removing:
+- The `./bin` directory.
+- Generated context files (`contextvibes.md`, etc.).
+- Go build and test caches.

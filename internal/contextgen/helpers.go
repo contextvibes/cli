@@ -13,33 +13,38 @@ import (
 	"github.com/contextvibes/cli/internal/exec"
 )
 
+//nolint:mnd // 1024 is standard buffer size.
+const bufferSize = 1024
+
 func isFileBinary(filePath string) (bool, error) {
-	// gosec:G304
+	//nolint:gosec // Reading file to check type is intended.
 	file, err := os.Open(filePath)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to open file: %w", err)
 	}
 
 	defer func() { _ = file.Close() }()
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, bufferSize)
 
 	n, err := file.Read(buffer)
 	if err != nil && !errors.Is(err, io.EOF) {
-		return false, err
+		return false, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	return bytes.Contains(buffer[:n], []byte{0}), nil
 }
 
+// GenerateReportHeader generates the header for the context report.
 func GenerateReportHeader(promptFile, defaultTitle, defaultTask string) (string, error) {
 	searchPaths := []string{
 		filepath.Join("docs", "prompts", promptFile),
 		filepath.Join("..", "thea", "building-blocks", "prompts", promptFile),
 	}
 	for _, path := range searchPaths {
+		//nolint:noinlineerr // Inline error check is standard here.
 		if _, err := os.Stat(path); err == nil {
-			// gosec:G304
+			//nolint:gosec // Reading prompt file is intended.
 			content, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return "", fmt.Errorf("failed to read prompt file %s: %w", path, readErr)
@@ -56,6 +61,9 @@ func GenerateReportHeader(promptFile, defaultTitle, defaultTask string) (string,
 	), nil
 }
 
+// ExportBook exports a set of files to a single markdown file.
+//
+//nolint:gocognit,funlen // Complexity is due to file processing logic.
 func ExportBook(
 	ctx context.Context,
 	execClient *exec.ExecutorClient,
@@ -63,7 +71,7 @@ func ExportBook(
 	excludePatterns []string,
 	paths ...string,
 ) (err error) {
-	// gosec:G304
+	//nolint:gosec // Writing to output file is intended.
 	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open output file: %w", err)
@@ -76,6 +84,7 @@ func ExportBook(
 		}
 	}()
 
+	//nolint:noinlineerr // Inline error check is standard here.
 	if _, err := fmt.Fprintf(f, "\n---\n## Book: %s\n\n", title); err != nil {
 		return fmt.Errorf("failed to write book header: %w", err)
 	}
@@ -125,7 +134,7 @@ fileLoop:
 			continue
 		}
 
-		// gosec:G304
+		//nolint:gosec // Reading source files is intended.
 		content, err := os.ReadFile(file)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -145,6 +154,7 @@ fileLoop:
 		sb.WriteString("\n```\n")
 		sb.WriteString(fmt.Sprintf("======== END FILE: %s ========\n\n", file))
 
+		//nolint:noinlineerr // Inline error check is standard here.
 		if _, err := f.WriteString(sb.String()); err != nil {
 			return fmt.Errorf("failed to write content for file %s: %w", file, err)
 		}

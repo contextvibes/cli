@@ -1,5 +1,4 @@
-# Create a new feature, bug, or chore suggestion as a GitHub Issue.
+# Create a new issue.
 
-Creates a new GitHub Issue, either interactively or non-interactively via flags.
-When using the --parent flag, it automatically adds the new issue to the
-parent's official GitHub Tasklist.
+Creates a new issue in the configured issue tracker (default: GitHub).
+Supports interactive mode (using forms) or flag-based input for title, body, and type.

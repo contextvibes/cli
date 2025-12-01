@@ -48,6 +48,7 @@ type ProjectWithID struct {
 
 // ParseGitHubRemote extracts the owner and repository name from a GitHub remote URL.
 func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
+	//nolint:mnd // Regex match count 3 is specific to this pattern.
 	if matches := sshRemoteRegex.FindStringSubmatch(remoteURL); len(matches) == 3 {
 		return matches[1], matches[2], nil
 	}
@@ -62,6 +63,7 @@ func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
 	}
 
 	pathParts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	//nolint:mnd // Expecting at least owner and repo.
 	if len(pathParts) < 2 {
 		return "", "", fmt.Errorf("remote URL path does not contain owner/repo: %s", parsed.Path)
 	}
@@ -86,6 +88,7 @@ export GITHUB_TOKEN="your_token_here"`
 	}
 
 	ts := oauth2.StaticTokenSource(
+		//nolint:exhaustruct // Only AccessToken is needed.
 		&oauth2.Token{AccessToken: token},
 	)
 	httpClient := oauth2.NewClient(ctx, ts)
@@ -113,7 +116,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 					URL    githubv4.URI
 				}
 			} `graphql:"projectsV2(first: 100)"`
-		} `graphql:"organization(login: $owner)"`
+		} `graphql:"organization(login: )"`
 	}
 
 	variables := map[string]any{"owner": githubv4.String(c.owner)}
@@ -127,6 +130,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 		return nil, fmt.Errorf("failed to query for projects: %w", err)
 	}
 
+	//nolint:prealloc // Pre-allocating is good but not strictly required for small lists.
 	var projects []Project
 	for _, p := range query.Organization.ProjectsV2.Nodes {
 		projects = append(projects, Project{
@@ -148,12 +152,13 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 				Title  githubv4.String
 				Number githubv4.Int
 				URL    githubv4.URI
-			} `graphql:"projectV2(number: $number)"`
-		} `graphql:"organization(login: $owner)"`
+			} `graphql:"projectV2(number: )"`
+		} `graphql:"organization(login: )"`
 	}
 
 	variables := map[string]any{
-		"owner":  githubv4.String(c.owner),
+		"owner": githubv4.String(c.owner),
+		//nolint:gosec // G115: Project number is unlikely to overflow int32.
 		"number": githubv4.Int(number),
 	}
 
@@ -196,7 +201,7 @@ func (c *Client) AddIssueToProject(ctx context.Context, projectID string, issueI
 			Item struct {
 				ID githubv4.ID
 			}
-		} `graphql:"addProjectV2ItemById(input: {projectId: $projectID, contentId: $issueID})"`
+		} `graphql:"addProjectV2ItemById(input: {projectId: , contentId: })"`
 	}
 
 	variables := map[string]any{
@@ -258,6 +263,7 @@ func (c *Client) CreateRepo(
 		isPrivate,
 	)
 
+	//nolint:exhaustruct // Partial initialization is standard for GitHub API requests.
 	repo := &github.Repository{
 		Name:        github.Ptr(name),
 		Description: github.Ptr(description),
@@ -267,6 +273,7 @@ func (c *Client) CreateRepo(
 
 	createdRepo, resp, err := c.Repositories.Create(ctx, owner, repo)
 	if err != nil {
+		//nolint:exhaustruct // Partial initialization for error checking.
 		errResp := &github.ErrorResponse{}
 		if errors.As(err, &errResp) {
 			if len(errResp.Errors) > 0 && errResp.Errors[0].Field == "name" {

@@ -1,5 +1,5 @@
-// In internal/thea/client_test.go
-package thea // Ensures this file is part of the 'thea' package
+// Package thea_test contains tests for the thea package.
+package thea_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/contextvibes/cli/internal/thea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,15 +19,19 @@ import (
 func newTestLogger() *slog.Logger {
 	// For CI or quiet tests, use io.Discard. For local debugging, os.Stdout is fine.
 	// return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	//nolint:exhaustruct // Default handler options are sufficient.
 	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }
 
 func TestFetchManifest_Success(t *testing.T) {
+	t.Parallel()
 	// These types are defined in client.go, in the same 'thea' package
-	expectedManifest := Manifest{ // No package qualifier
+	//nolint:exhaustruct // Partial initialization is sufficient for test.
+	expectedManifest := thea.Manifest{
 		ManifestSchemaVersion:       "1.3.0",
 		THEAFrameworkReleaseVersion: "v0.7.0",
-		Artifacts: []Artifact{ // No package qualifier
+		//nolint:exhaustruct // Partial initialization is sufficient for test.
+		Artifacts: []thea.Artifact{
 			{ID: "test-id", Title: "Test Artifact"},
 		},
 	}
@@ -35,12 +40,14 @@ func TestFetchManifest_Success(t *testing.T) {
 		assert.Equal(t, "/thea-manifest.json", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 		err := json.NewEncoder(w).Encode(expectedManifest)
+		//nolint:testifylint // require is acceptable in handler for test setup failure.
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 
 	// THEAServiceConfig is defined in client.go, in the same 'thea' package
-	cfg := THEAServiceConfig{ // No package qualifier
+	//nolint:exhaustruct // Partial config is sufficient for test.
+	cfg := thea.THEAServiceConfig{
 		ManifestURL:        server.URL + "/thea-manifest.json",
 		RawContentBaseURL:  "http://dummy-raw-base.com", // Provide a value
 		DefaultArtifactRef: "main",                      // Provide a value
@@ -48,12 +55,12 @@ func TestFetchManifest_Success(t *testing.T) {
 	}
 	logger := newTestLogger()
 	// NewClient is defined in client.go, in the same 'thea' package
-	client, err := NewClient(context.Background(), &cfg, logger) // No package qualifier
+	client, err := thea.NewClient(context.Background(), &cfg, logger)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 
-	manifest, err := client.fetchManifest(context.Background())
-	assert.NoError(t, err)
+	manifest, err := client.LoadManifest(context.Background())
+	require.NoError(t, err)
 	assert.NotNil(t, manifest)
 	assert.Equal(t, expectedManifest.ManifestSchemaVersion, manifest.ManifestSchemaVersion)
 	assert.Len(t, manifest.Artifacts, 1)
@@ -64,34 +71,32 @@ func TestFetchManifest_Success(t *testing.T) {
 }
 
 func TestFetchManifest_ServerReturns404(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 
 	// THEAServiceConfig is local to the 'thea' package
-	cfg := THEAServiceConfig{ // No package qualifier
+	//nolint:exhaustruct // Partial config is sufficient for test.
+	cfg := thea.THEAServiceConfig{
 		ManifestURL:        server.URL + "/thea-manifest.json",
 		RawContentBaseURL:  "http://dummy-raw-base.com",
 		DefaultArtifactRef: "main",
 	}
 	logger := newTestLogger()
 	// NewClient is local to the 'thea' package
-	client, err := NewClient(context.Background(), &cfg, logger) // No package qualifier
+	client, err := thea.NewClient(context.Background(), &cfg, logger)
 	require.NoError(
 		t,
 		err,
 	) // NewClient itself should not error with this config
 	require.NotNil(t, client)
 
-	_, err = client.fetchManifest(context.Background())
-	assert.Error(t, err)
+	_, err = client.LoadManifest(context.Background())
+	require.Error(t, err)
 
 	if err != nil { // Guard for err being non-nil before calling Contains
 		assert.Contains(t, err.Error(), "received status 404")
 	}
 }
-
-// ... (The TestFetchArtifactContentByID_Success and TestNewClient_Validation
-//      would also need similar corrections: remove package qualifiers for
-//      Manifest, Artifact, THEAServiceConfig, and NewClient) ...

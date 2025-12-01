@@ -20,41 +20,41 @@ linters:
     # - gosec             # Security scanner (finds hardcoded passwords, unsafe file reads, etc).
 
     # --- LEVEL 2: STYLE & MODERNIZATION (Easy wins) ---
-    # - modernize         # Suggests modern Go patterns (e.g. slices.Sort).
-    # - perfsprint        # Suggests faster alternatives to fmt.Sprintf.
-    # - revive            # General style linter (replacement for golint).
-    # - unused            # Finds and forces you to delete dead code.
+    - modernize         # Suggests modern Go patterns (e.g. slices.Sort).
+    - perfsprint        # Suggests faster alternatives to fmt.Sprintf.
+    - revive            # General style linter (replacement for golint).
+    - unused            # Finds and forces you to delete dead code.
 
     # --- LEVEL 3: ERROR HANDLING & BEST PRACTICES (Medium effort) ---
-    # - err113            # Forbids `errors.New("text")`. Wants static errors defined at top of file.
-    # - nilerr            # Reports functions returning nil instead of the checked error.
-    # - nlreturn          # Forces a blank line before every 'return' statement.
-    # - noinlineerr       # Disables `if err := func(); err != nil`.
-    # - staticcheck       # Go static analysis, detects bugs and performance issues.
+    - err113            # Forbids `errors.New("text")`. Wants static errors defined at top of file.
+    - nilerr            # Reports functions returning nil instead of the checked error.
+    - nlreturn          # Forces a blank line before every 'return' statement.
+    - noinlineerr       # Disables `if err := func(); err != nil`.
+    - staticcheck       # Go static analysis, detects bugs and performance issues.
 
     # --- LEVEL 4: COMPLEXITY & REFACTORING (Hard effort) ---
-    # - cyclop            # "Cyclomatic Complexity" - Counts paths through a function.
-    # - funlen            # Fails if a function is too long (lines of code).
-    # - gocognit          # "Cognitive Complexity" - Fails if logic is too hard to read.
-    # - maintidx          # "Maintainability Index" - Math formula for maintainability.
-    # - mnd               # "Magic Number Detector" - Fails on non-constant numbers.
-    # - nestif            # Fails if there are too many nested 'if' statements.
-    # - wrapcheck         # Requires errors from external packages to be wrapped.
+    - cyclop            # "Cyclomatic Complexity" - Counts paths through a function.
+    - funlen            # Fails if a function is too long (lines of code).
+    - gocognit          # "Cognitive Complexity" - Fails if logic is too hard to read.
+    - maintidx          # "Maintainability Index" - Math formula for maintainability.
+    - mnd               # "Magic Number Detector" - Fails on non-constant numbers.
+    - nestif            # Fails if there are too many nested 'if' statements.
+    - wrapcheck         # Requires errors from external packages to be wrapped.
 
     # --- LEVEL 5: STRICT STANDARDS & OPINIONS (The "Impossible" Level) ---
-    # - depguard          # Strict import rules (requires whitelist in settings).
-    # - exhaustruct       # Requires every single field in a struct to be initialized.
-    # - gochecknoglobals  # Bans global variables (even private ones).
-    # - godoclint         # Strict requirements for package comments.
-    # - ireturn           # Bans returning interfaces (accept interfaces, return structs).
-    # - lll               # "Line Length Linter" - Fails if lines > 120 chars.
-    # - varnamelen        # Fails if variable names are too short (bans 'db', 'i', etc).
-    # - wsl_v5            # Whitespace Linter (Internal/Duplicate).
+    - depguard          # Strict import rules (requires whitelist in settings).
+    - exhaustruct       # Requires every single field in a struct to be initialized.
+    - gochecknoglobals  # Bans global variables (even private ones).
+    - godoclint         # Strict requirements for package comments.
+    - ireturn           # Bans returning interfaces (accept interfaces, return structs).
+    - lll               # "Line Length Linter" - Fails if lines > 120 chars.
+    - varnamelen        # Fails if variable names are too short (bans 'db', 'i', etc).
+    - wsl_v5            # Whitespace Linter (Internal/Duplicate).
 
     # --- NOISE / LOW VALUE (Often disabled to reduce friction) ---
-    # - gocritic          # Opinionated checks, sometimes noisy.
-    # - thelper           # Requires t.Helper() in test helper functions.
-    # - unparam           # Reports unused function parameters.
+    - gocritic          # Opinionated checks, sometimes noisy.
+    - thelper           # Requires t.Helper() in test helper functions.
+    - unparam           # Reports unused function parameters.
 
   settings:
     ireturn:

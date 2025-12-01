@@ -1,4 +1,4 @@
-// cmd/product/quality/quality.go
+// Package quality provides the command to run code quality checks.
 package quality
 
 import (
@@ -20,13 +20,15 @@ import (
 var qualityLongDescription string
 
 // QualityCmd represents the quality command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var QualityCmd = &cobra.Command{
 	Use:           "quality",
 	Example:       `  contextvibes product quality`,
 	Args:          cobra.NoArgs,
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -36,14 +38,14 @@ var QualityCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to get current working directory: %v", err)
 
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			presenter.Error("Failed to detect project type: %v", err)
 
-			return err
+			return fmt.Errorf("failed to detect project type: %w", err)
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
 
@@ -86,6 +88,7 @@ type qualityCheck struct {
 	FailAdvice string
 }
 
+//nolint:funlen // Function length is acceptable for list of checks.
 func executeEnhancedGoQualityChecks(
 	ctx context.Context,
 	presenter *ui.Presenter,
@@ -150,6 +153,7 @@ func executeEnhancedGoQualityChecks(
 	return failures
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(qualityLongDescription, nil)
 	if err != nil {

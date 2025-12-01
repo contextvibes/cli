@@ -1,4 +1,4 @@
-// internal/git/config.go
+// Package git provides a high-level client for interacting with Git repositories.
 package git
 
 import (
@@ -7,6 +7,7 @@ import (
 	"github.com/contextvibes/cli/internal/exec" // Import the new exec package
 )
 
+// GitClientConfig configures the GitClient.
 type GitClientConfig struct {
 	GitExecutable         string
 	DefaultRemoteName     string               // Will be set by cmd layer from LoadedAppConfig
@@ -18,6 +19,8 @@ type GitClientConfig struct {
 // validateAndSetDefaults now expects that if an Executor is needed, it's either provided,
 // or can be created using a logger that should also be provided (or defaulted).
 // The primary logger for the application (AppLogger) can be passed to create a default executor.
+//
+//nolint:unparam // Error return is currently unused but kept for future validation.
 func (c GitClientConfig) validateAndSetDefaults() (GitClientConfig, error) {
 	validated := c
 

@@ -8,12 +8,12 @@ import (
 	"github.com/contextvibes/cli/internal/exec"
 )
 
-// These variables are initialized by the rootCmd in cmd/root.go
+// These variables are initialized by the rootCmd in cmd/root.go.
 var (
 	AppLogger       *slog.Logger
 	LoadedAppConfig *config.Config
 	ExecClient      *exec.ExecutorClient
 	AssumeYes       bool
 	// AppVersion is the current version of the CLI.
-	AppVersion      = "0.4.0"
+	AppVersion = "0.4.0"
 )

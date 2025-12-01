@@ -1,4 +1,4 @@
-// internal/bootstrap/steps.go
+// Package bootstrap provides the steps for bootstrapping a new project.
 package bootstrap
 
 import (
@@ -14,6 +14,7 @@ import (
 
 // --- Step 1: Create Remote Repository ---
 
+// CreateRemoteRepoStep creates a new remote repository on GitHub.
 type CreateRemoteRepoStep struct {
 	GHClient        *gh.Client
 	Presenter       workflow.PresenterInterface
@@ -26,19 +27,22 @@ type CreateRemoteRepoStep struct {
 	CloneURL       string
 }
 
+// Description returns a description of the step.
 func (s *CreateRemoteRepoStep) Description() string {
 	return fmt.Sprintf("Create remote GitHub repository: %s/%s", s.Owner, s.RepoName)
 }
 
-func (s *CreateRemoteRepoStep) PreCheck(ctx context.Context) error { return nil }
+// PreCheck performs pre-execution checks.
+func (s *CreateRemoteRepoStep) PreCheck(_ context.Context) error { return nil }
 
+// Execute runs the step.
 func (s *CreateRemoteRepoStep) Execute(ctx context.Context) error {
 	// CORRECTED: Pass the owner to the CreateRepo method
 	repo, err := s.GHClient.CreateRepo(ctx, s.Owner, s.RepoName, s.RepoDescription, s.IsPrivate)
 	if err != nil {
 		s.Presenter.Error("Failed to create GitHub repository: %v", err)
 
-		return err
+		return fmt.Errorf("failed to create repo: %w", err)
 	}
 
 	s.CreatedRepoURL = repo.GetHTMLURL()
@@ -50,6 +54,7 @@ func (s *CreateRemoteRepoStep) Execute(ctx context.Context) error {
 
 // --- Step 2: Clone Repository ---
 
+// CloneRepoStep clones a remote repository to a local path.
 type CloneRepoStep struct {
 	ExecClient *exec.ExecutorClient
 	Presenter  workflow.PresenterInterface
@@ -57,16 +62,21 @@ type CloneRepoStep struct {
 	LocalPath  string
 }
 
+// Description returns a description of the step.
 func (s *CloneRepoStep) Description() string {
 	return "Clone repository to local path: ./" + s.LocalPath
 }
-func (s *CloneRepoStep) PreCheck(ctx context.Context) error { return nil }
+
+// PreCheck performs pre-execution checks.
+func (s *CloneRepoStep) PreCheck(_ context.Context) error { return nil }
+
+// Execute runs the step.
 func (s *CloneRepoStep) Execute(ctx context.Context) error {
 	err := s.ExecClient.Execute(ctx, ".", "git", "clone", s.CloneURL, s.LocalPath)
 	if err != nil {
 		s.Presenter.Error("Failed to clone repository: %v", err)
 
-		return err
+		return fmt.Errorf("failed to clone repo: %w", err)
 	}
 
 	return nil
@@ -74,6 +84,7 @@ func (s *CloneRepoStep) Execute(ctx context.Context) error {
 
 // --- Step 3: Scaffold Project ---
 
+// ScaffoldProjectStep scaffolds the project structure and template files.
 type ScaffoldProjectStep struct {
 	Presenter    workflow.PresenterInterface
 	LocalPath    string
@@ -81,19 +92,25 @@ type ScaffoldProjectStep struct {
 	AppName      string
 }
 
+// Description returns a description of the step.
 func (s *ScaffoldProjectStep) Description() string {
 	return "Scaffold project structure and template files"
 }
-func (s *ScaffoldProjectStep) PreCheck(ctx context.Context) error { return nil }
-func (s *ScaffoldProjectStep) Execute(ctx context.Context) error {
+
+// PreCheck performs pre-execution checks.
+func (s *ScaffoldProjectStep) PreCheck(_ context.Context) error { return nil }
+
+// Execute runs the step.
+func (s *ScaffoldProjectStep) Execute(_ context.Context) error {
 	readmePath := filepath.Join(s.LocalPath, "README.md")
 	content := fmt.Sprintf("# %s\n\nGo Module: `%s`\n", s.AppName, s.GoModulePath)
 
+	//nolint:gosec // Writing README with 0644 is standard.
 	err := os.WriteFile(readmePath, []byte(content), 0o644)
 	if err != nil {
 		s.Presenter.Error("Failed to write placeholder README.md: %v", err)
 
-		return err
+		return fmt.Errorf("failed to write README: %w", err)
 	}
 
 	s.Presenter.Success("✓ Placeholder README.md created.")
@@ -103,28 +120,34 @@ func (s *ScaffoldProjectStep) Execute(ctx context.Context) error {
 
 // --- Step 4 & 5: Initial Commit and Push ---
 
+// InitialCommitAndPushStep creates and pushes the initial commit.
 type InitialCommitAndPushStep struct {
 	ExecClient *exec.ExecutorClient
 	Presenter  workflow.PresenterInterface
 	LocalPath  string
 }
 
-func (s *InitialCommitAndPushStep) Description() string                { return "Create and push initial commit" }
-func (s *InitialCommitAndPushStep) PreCheck(ctx context.Context) error { return nil }
+// Description returns a description of the step.
+func (s *InitialCommitAndPushStep) Description() string { return "Create and push initial commit" }
+
+// PreCheck performs pre-execution checks.
+func (s *InitialCommitAndPushStep) PreCheck(_ context.Context) error { return nil }
+
+// Execute runs the step.
 func (s *InitialCommitAndPushStep) Execute(ctx context.Context) error {
 	err := s.ExecClient.Execute(ctx, s.LocalPath, "git", "add", ".")
 	if err != nil {
-		return err
+		return fmt.Errorf("git add failed: %w", err)
 	}
 
 	err = s.ExecClient.Execute(ctx, s.LocalPath, "git", "commit", "-m", "Initial commit")
 	if err != nil {
-		return err
+		return fmt.Errorf("git commit failed: %w", err)
 	}
 
 	err = s.ExecClient.Execute(ctx, s.LocalPath, "git", "push")
 	if err != nil {
-		return err
+		return fmt.Errorf("git push failed: %w", err)
 	}
 
 	return nil

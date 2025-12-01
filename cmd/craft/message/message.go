@@ -16,11 +16,13 @@ import (
 var messageLongDescription string
 
 // MessageCmd represents the craft message command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var MessageCmd = &cobra.Command{
 	Use:     "message",
 	Aliases: []string{"commit", "msg"},
 	Short:   "Generates a suggested 'factory commit' command.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -28,7 +30,7 @@ var MessageCmd = &cobra.Command{
 
 		stagedDiff, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "git", "diff", "--staged")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get staged diff: %w", err)
 		}
 
 		if strings.TrimSpace(stagedDiff) == "" {
@@ -47,8 +49,10 @@ var MessageCmd = &cobra.Command{
 
 		// Simulated AI response:
 		simulatedSubject := "feat(craft): add placeholder for message generation"
+		//nolint:lll // Long string is expected here.
 		simulatedBody := "This change introduces the 'craft message' command but uses a hardcoded placeholder for the AI-generated commit message. The real implementation will call an LLM."
 
+		//nolint:errcheck // Printing to stdout is best effort.
 		fmt.Fprintf(
 			presenter.Out(),
 			"contextvibes factory commit -m \"%s\" -m \"%s\"\n",
@@ -60,6 +64,7 @@ var MessageCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(messageLongDescription, nil)
 	if err != nil {

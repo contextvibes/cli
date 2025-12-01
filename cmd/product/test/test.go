@@ -1,10 +1,11 @@
-// cmd/product/test/test.go
+// Package test provides the command to run project tests.
 package test
 
 import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -20,6 +21,8 @@ import (
 var testLongDescription string
 
 // TestCmd represents the test command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var TestCmd = &cobra.Command{
 	DisableFlagParsing: true,
 	Use:                "test [args...]",
@@ -36,14 +39,14 @@ var TestCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to get current working directory: %v", err)
 
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			presenter.Error("Failed to detect project type: %v", err)
 
-			return err
+			return fmt.Errorf("failed to detect project type: %w", err)
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
 
@@ -94,7 +97,12 @@ func executeGoTests(
 	testArgs = append(testArgs, passThroughArgs...)
 	presenter.Info("Executing: %s %s", tool, strings.Join(testArgs, " "))
 
-	return execClient.Execute(ctx, dir, tool, testArgs...)
+	err := execClient.Execute(ctx, dir, tool, testArgs...)
+	if err != nil {
+		return fmt.Errorf("go test failed: %w", err)
+	}
+
+	return nil
 }
 
 func executePythonTests(
@@ -107,18 +115,29 @@ func executePythonTests(
 	if execClient.CommandExists("pytest") {
 		presenter.Info("Executing: pytest %s", strings.Join(passThroughArgs, " "))
 
-		return execClient.Execute(ctx, dir, "pytest", passThroughArgs...)
+		err := execClient.Execute(ctx, dir, "pytest", passThroughArgs...)
+		if err != nil {
+			return fmt.Errorf("pytest failed: %w", err)
+		}
+
+		return nil
 	}
 
 	presenter.Info("`pytest` not found. Attempting `python -m unittest discover`...")
 
 	if execClient.CommandExists("python") {
-		return execClient.Execute(ctx, dir, "python", "-m", "unittest", "discover")
+		err := execClient.Execute(ctx, dir, "python", "-m", "unittest", "discover")
+		if err != nil {
+			return fmt.Errorf("python unittest failed: %w", err)
+		}
+
+		return nil
 	}
 
 	return errors.New("no python test runner found")
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(testLongDescription, nil)
 	if err != nil {
