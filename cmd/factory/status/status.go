@@ -18,7 +18,7 @@ import (
 //go:embed status.md.tpl
 var statusLongDescription string
 
-// StatusCmd represents the status command
+// StatusCmd represents the status command.
 var StatusCmd = &cobra.Command{
 	Use:     "status",
 	Example: `  contextvibes factory status`,
@@ -58,6 +58,7 @@ var StatusCmd = &cobra.Command{
 			}
 			presenter.Newline()
 		}
+
 		return nil
 	},
 }
@@ -67,6 +68,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	StatusCmd.Short = desc.Short
 	StatusCmd.Long = desc.Long
 }

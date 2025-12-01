@@ -19,7 +19,7 @@ import (
 //go:embed test.md.tpl
 var testLongDescription string
 
-// TestCmd represents the test command
+// TestCmd represents the test command.
 var TestCmd = &cobra.Command{
 	DisableFlagParsing: true,
 	Use:                "test [args...]",
@@ -35,12 +35,14 @@ var TestCmd = &cobra.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			presenter.Error("Failed to get current working directory: %v", err)
+
 			return err
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			presenter.Error("Failed to detect project type: %v", err)
+
 			return err
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
@@ -64,15 +66,18 @@ var TestCmd = &cobra.Command{
 		presenter.Newline()
 		if !testExecuted && testErr == nil {
 			presenter.Info("No tests were executed.")
+
 			return nil
 		}
 
 		if testErr != nil {
 			presenter.Error("Project tests failed.")
+
 			return testErr
 		}
 
 		presenter.Success("Project tests completed successfully.")
+
 		return nil
 	},
 }
@@ -88,6 +93,7 @@ func executeGoTests(
 	testArgs := []string{"test", "./..."}
 	testArgs = append(testArgs, passThroughArgs...)
 	presenter.Info("Executing: %s %s", tool, strings.Join(testArgs, " "))
+
 	return execClient.Execute(ctx, dir, tool, testArgs...)
 }
 
@@ -100,12 +106,16 @@ func executePythonTests(
 ) error {
 	if execClient.CommandExists("pytest") {
 		presenter.Info("Executing: pytest %s", strings.Join(passThroughArgs, " "))
+
 		return execClient.Execute(ctx, dir, "pytest", passThroughArgs...)
 	}
+
 	presenter.Info("`pytest` not found. Attempting `python -m unittest discover`...")
+
 	if execClient.CommandExists("python") {
 		return execClient.Execute(ctx, dir, "python", "-m", "unittest", "discover")
 	}
+
 	return errors.New("no python test runner found")
 }
 
@@ -114,6 +124,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	TestCmd.Short = desc.Short
 	TestCmd.Long = desc.Long
 }

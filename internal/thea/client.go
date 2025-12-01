@@ -4,6 +4,7 @@ package thea
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -59,22 +60,27 @@ type THEAServiceConfig struct {
 // individual methods like FetchArtifactContent will also take a context.
 func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (*Client, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("THEA service config cannot be nil")
+		return nil, errors.New("THEA service config cannot be nil")
 	}
+
 	if logger == nil {
-		return nil, fmt.Errorf("logger cannot be nil")
+		return nil, errors.New("logger cannot be nil")
 	}
+
 	if cfg.ManifestURL == "" {
-		return nil, fmt.Errorf("THEA manifest URL is not configured")
+		return nil, errors.New("THEA manifest URL is not configured")
 	}
+
 	if cfg.RawContentBaseURL == "" {
-		return nil, fmt.Errorf("THEA raw content base URL is not configured")
+		return nil, errors.New("THEA raw content base URL is not configured")
 	}
+
 	if cfg.DefaultArtifactRef == "" {
 		// Could default to "main" if not set, or error out
 		logger.Warn(
 			"THEA default artifact ref is not configured, consider setting it. Defaulting to 'main'.",
 		)
+
 		cfg.DefaultArtifactRef = "main" // Or handle as error
 	}
 
@@ -105,10 +111,12 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 			slog.String("url", c.config.ManifestURL),
 			slog.String("error", err.Error()),
 		)
+
 		return nil, fmt.Errorf("creating manifest request: %w", err)
 	}
 
 	c.logger.InfoContext(ctx, "Fetching THEA manifest", slog.String("url", c.config.ManifestURL))
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		c.logger.ErrorContext(
@@ -117,10 +125,13 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 			slog.String("url", c.config.ManifestURL),
 			slog.String("error", err.Error()),
 		)
+
 		return nil, fmt.Errorf("fetching manifest from %s: %w", c.config.ManifestURL, err)
 	}
+
 	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
 			c.logger.WarnContext(
 				ctx,
 				"Failed to close manifest response body",
@@ -136,6 +147,7 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 			slog.String("url", c.config.ManifestURL),
 			slog.Int("status", resp.StatusCode),
 		)
+
 		return nil, fmt.Errorf(
 			"fetching manifest: received status %d from %s",
 			resp.StatusCode,
@@ -151,6 +163,7 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 			slog.String("url", c.config.ManifestURL),
 			slog.String("error", err.Error()),
 		)
+
 		return nil, fmt.Errorf("decoding manifest JSON from %s: %w", c.config.ManifestURL, err)
 	}
 	// TODO: Add manifest caching logic here (save to c.config.CacheDir)
@@ -179,6 +192,7 @@ func (m *Manifest) GetArtifactByID(id string) (*Artifact, error) {
 			return &m.Artifacts[i], nil // Return a pointer to the artifact in the slice
 		}
 	}
+
 	return nil, fmt.Errorf("artifact with ID '%s' not found in manifest", id)
 }
 
@@ -226,6 +240,7 @@ func (c *Client) FetchArtifactContentByID(
 	} else {
 		effectiveSourcePathInRepo = artifact.ID // For files like .editorconfig where ID is full name
 	}
+
 	effectiveSourcePathInRepo = strings.TrimPrefix(
 		effectiveSourcePathInRepo,
 		"/",
@@ -240,6 +255,7 @@ func (c *Client) FetchArtifactContentByID(
 			slog.String("ref", gitRef),
 			slog.String("path_in_repo", effectiveSourcePathInRepo),
 			slog.String("error", err.Error()))
+
 		return "", fmt.Errorf("constructing artifact download URL: %w", err)
 	}
 
@@ -257,8 +273,10 @@ func (c *Client) FetchArtifactContentByID(
 	if err != nil {
 		return "", fmt.Errorf("fetching artifact content from %s: %w", fullURL, err)
 	}
+
 	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
 			c.logger.WarnContext(
 				ctx,
 				"Failed to close artifact content response body",
@@ -276,6 +294,7 @@ func (c *Client) FetchArtifactContentByID(
 			slog.String("url", fullURL),
 			slog.Int("status", resp.StatusCode),
 			slog.String("response_snippet", string(bodyBytes)))
+
 		return "", fmt.Errorf(
 			"fetching artifact content: received status %d from %s",
 			resp.StatusCode,

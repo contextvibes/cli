@@ -152,10 +152,12 @@ func (c *GitClient) GetRemoteURL(ctx context.Context, remoteName string) (string
 	if remoteName == "" {
 		return "", errors.New("remote name cannot be empty")
 	}
+
 	stdout, _, err := c.captureGitOutput(ctx, "remote", "get-url", remoteName)
 	if err != nil {
 		return "", fmt.Errorf("could not get URL for remote '%s': %w", remoteName, err)
 	}
+
 	return strings.TrimSpace(stdout), nil
 }
 
@@ -296,6 +298,7 @@ func (c *GitClient) IsWorkingDirClean(ctx context.Context) (bool, error) {
 
 func (c *GitClient) PullRebase(ctx context.Context, branch string) error {
 	remote := c.RemoteName()
+
 	err := c.runGit(ctx, "pull", "--rebase", remote, branch)
 	if err != nil {
 		return fmt.Errorf("git pull --rebase %s %s failed: %w", remote, branch, err)
@@ -391,6 +394,7 @@ func (c *GitClient) CreateAndSwitchBranch(
 
 func (c *GitClient) PushAndSetUpstream(ctx context.Context, branchName string) error {
 	remote := c.RemoteName()
+
 	err := c.runGit(ctx, "push", "--set-upstream", remote, branchName)
 	if err != nil {
 		return fmt.Errorf("git push --set-upstream %s %s failed: %w", remote, branchName, err)
@@ -466,5 +470,6 @@ func (c *GitClient) StashPush(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("git stash push failed: %w", err)
 	}
+
 	return nil
 }

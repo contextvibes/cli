@@ -39,6 +39,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -48,7 +49,7 @@ func newProvider(
 	}
 }
 
-// TreeCmd represents the project issues tree command
+// TreeCmd represents the project issues tree command.
 var TreeCmd = &cobra.Command{
 	Use:     "tree [issue-number]",
 	Short:   "Display a hierarchical tree of epics, stories, and tasks.",
@@ -61,6 +62,7 @@ var TreeCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -80,6 +82,7 @@ var TreeCmd = &cobra.Command{
 			root, err := resolver.BuildTree(ctx, issueNumber, fullView)
 			if err != nil {
 				presenter.Error("Failed to build work item tree: %v", err)
+
 				return err
 			}
 			printFunc(presenter, root, 0)
@@ -93,10 +96,12 @@ var TreeCmd = &cobra.Command{
 			epics, err := provider.ListItems(ctx, listOpts)
 			if err != nil {
 				presenter.Error("Failed to list epics: %v", err)
+
 				return err
 			}
 			if len(epics) == 0 {
 				presenter.Info("No open issues with the 'epic' label found.")
+
 				return nil
 			}
 
@@ -104,6 +109,7 @@ var TreeCmd = &cobra.Command{
 				root, err := resolver.BuildTree(ctx, epic.Number, fullView)
 				if err != nil {
 					presenter.Warning("Failed to build tree for Epic #%d: %v", epic.Number, err)
+
 					continue
 				}
 				if i > 0 {
@@ -121,6 +127,7 @@ var TreeCmd = &cobra.Command{
 func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(p.Out(), "%s- [%s] #%d: %s\n", indent, item.Type, item.Number, item.Title)
+
 	for _, child := range item.Children {
 		printSummaryTree(p, child, depth+1)
 	}
@@ -134,6 +141,7 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 
 	if len(item.Comments) > 0 {
 		fmt.Fprintf(p.Out(), "%s--- Comments (%d) ---\n", indent, len(item.Comments))
+
 		for _, comment := range item.Comments {
 			p.Out().Write([]byte(indent))
 			p.Header(
@@ -144,9 +152,10 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 				),
 			)
 			// Indent the body of the comment
-			for _, line := range strings.Split(comment.Body, "\n") {
+			for line := range strings.SplitSeq(comment.Body, "\n") {
 				fmt.Fprintf(p.Out(), "%s  %s\n", indent, line)
 			}
+
 			p.Out().Write([]byte(indent))
 			p.Separator()
 		}
@@ -163,6 +172,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	TreeCmd.Long = desc.Long
 	TreeCmd.Flags().
 		BoolVar(&fullView, "full", false, "Display the full details, including body and comments, for each issue in the tree.")

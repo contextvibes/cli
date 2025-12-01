@@ -11,7 +11,7 @@ import (
 	"github.com/contextvibes/cli/internal/workitem"
 )
 
-// issueLinkRegex finds GitHub task list items like '- [ ] #123' or '- [x] #456'
+// issueLinkRegex finds GitHub task list items like '- [ ] #123' or '- [x] #456'.
 var issueLinkRegex = regexp.MustCompile(`-\s+\[\s*[xX]?\s*]\s+#(\d+)`)
 
 // HierarchyResolver builds a tree of work items based on task list relationships.
@@ -44,19 +44,23 @@ func (r *HierarchyResolver) BuildTree(
 	}
 
 	var wg sync.WaitGroup
+
 	childChan := make(chan *workitem.WorkItem, len(childNumbers))
 	errChan := make(chan error, len(childNumbers))
 
 	for _, childNumber := range childNumbers {
 		wg.Add(1)
+
 		go func(num int) {
 			defer wg.Done()
 			// Recursively call BuildTree, passing the withComments flag through.
 			childTree, err := r.BuildTree(ctx, num, withComments)
 			if err != nil {
 				errChan <- err
+
 				return
 			}
+
 			childChan <- childTree
 		}(childNumber)
 	}
@@ -92,5 +96,6 @@ func (r *HierarchyResolver) parseChildIssueNumbers(body string) []int {
 			}
 		}
 	}
+
 	return numbers
 }

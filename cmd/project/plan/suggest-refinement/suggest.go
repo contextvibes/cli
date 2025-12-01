@@ -33,6 +33,7 @@ func newProvider(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
+
 		return github.New(ctx, logger, cfg)
 	default:
 		return nil, fmt.Errorf(
@@ -42,7 +43,7 @@ func newProvider(
 	}
 }
 
-// SuggestRefinementCmd represents the project plan suggest-refinement command
+// SuggestRefinementCmd represents the project plan suggest-refinement command.
 var SuggestRefinementCmd = &cobra.Command{
 	Use:     "suggest-refinement",
 	Short:   "Generate a prompt for an AI to classify untyped issues.",
@@ -54,6 +55,7 @@ var SuggestRefinementCmd = &cobra.Command{
 		provider, err := newProvider(ctx, globals.AppLogger, globals.LoadedAppConfig)
 		if err != nil {
 			presenter.Error("Failed to initialize work item provider: %v", err)
+
 			return err
 		}
 
@@ -62,11 +64,13 @@ var SuggestRefinementCmd = &cobra.Command{
 		items, err := provider.SearchItems(ctx, query)
 		if err != nil {
 			presenter.Error("Failed to search for unclassified issues: %v", err)
+
 			return err
 		}
 
 		if len(items) == 0 {
 			presenter.Success("No unclassified issues found. The backlog is clean!")
+
 			return nil
 		}
 
@@ -79,6 +83,7 @@ var SuggestRefinementCmd = &cobra.Command{
 			err := os.WriteFile(outputFile, []byte(prompt), 0o644)
 			if err != nil {
 				presenter.Error("Failed to write prompt to file %s: %v", outputFile, err)
+
 				return err
 			}
 			presenter.Success("AI prompt successfully generated at: %s", outputFile)

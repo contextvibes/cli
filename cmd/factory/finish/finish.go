@@ -16,7 +16,7 @@ import (
 //go:embed finish.md.tpl
 var finishLongDescription string
 
-// FinishCmd represents the finish command
+// FinishCmd represents the finish command.
 var FinishCmd = &cobra.Command{
 	Use: "finish",
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -51,6 +51,7 @@ var FinishCmd = &cobra.Command{
 
 		if !globals.ExecClient.CommandExists("gh") {
 			presenter.Warning("GitHub CLI ('gh') not found. Cannot create PR automatically.")
+
 			return nil
 		}
 
@@ -60,6 +61,7 @@ var FinishCmd = &cobra.Command{
 		}
 		if !confirmed {
 			presenter.Info("Aborted. You can create the PR later by running 'gh pr create'.")
+
 			return nil
 		}
 
@@ -69,6 +71,7 @@ var FinishCmd = &cobra.Command{
 		}
 
 		presenter.Success("Pull Request created.")
+
 		return nil
 	},
 }
@@ -78,6 +81,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	FinishCmd.Short = desc.Short
 	FinishCmd.Long = desc.Long
 }

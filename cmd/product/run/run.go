@@ -19,7 +19,7 @@ import (
 //go:embed run.md.tpl
 var runLongDescription string
 
-// RunCmd represents the run command
+// RunCmd represents the run command.
 var RunCmd = &cobra.Command{
 	Use:     "run",
 	Example: `  contextvibes product run`,
@@ -35,6 +35,7 @@ var RunCmd = &cobra.Command{
 		}
 		if len(examples) == 0 {
 			presenter.Warning("No runnable examples found in the './examples' directory.")
+
 			return nil
 		}
 
@@ -55,6 +56,7 @@ var RunCmd = &cobra.Command{
 		}
 
 		globals.AppLogger.InfoContext(ctx, "Successfully launched example", "example_path", choice)
+
 		return nil
 	},
 }
@@ -69,18 +71,23 @@ func runVerificationChecks(
 	if loadedAppConfig.Run.Examples == nil {
 		return nil
 	}
+
 	exampleSettings, ok := loadedAppConfig.Run.Examples[examplePath]
 	if !ok || len(exampleSettings.Verify) == 0 {
 		return nil
 	}
 
 	presenter.Header("--- 🔍 Verifying Prerequisites for '%s' ---", examplePath)
+
 	allPassed := true
+
 	for _, check := range exampleSettings.Verify {
 		_, stderr, err := execClient.CaptureOutput(ctx, ".", check.Command, check.Args...)
 		if err != nil {
 			allPassed = false
+
 			presenter.Error("  ❌ FAILED: Command '%s' failed.", check.Command)
+
 			if stderr != "" {
 				presenter.Detail("    Stderr: %s", stderr)
 			}
@@ -88,27 +95,34 @@ func runVerificationChecks(
 			presenter.Success("  ✅ PASSED")
 		}
 	}
+
 	if !allPassed {
 		return errors.New("verification failed")
 	}
+
 	return nil
 }
 
 func findRunnableExamples(rootDir string) ([]string, error) {
 	var examples []string
+
 	examplesDir := filepath.Join(rootDir, "examples")
+
 	entries, err := os.ReadDir(examplesDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+
 		return nil, err
 	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			examples = append(examples, filepath.ToSlash(filepath.Join("examples", entry.Name())))
 		}
 	}
+
 	return examples, nil
 }
 
@@ -117,6 +131,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	RunCmd.Short = desc.Short
 	RunCmd.Long = desc.Long
 }

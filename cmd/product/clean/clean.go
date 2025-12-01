@@ -15,7 +15,7 @@ import (
 //go:embed clean.md.tpl
 var cleanLongDescription string
 
-// CleanCmd represents the clean command
+// CleanCmd represents the clean command.
 var CleanCmd = &cobra.Command{
 	Use: "clean",
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -27,7 +27,8 @@ var CleanCmd = &cobra.Command{
 		dirsToRemove := []string{"./bin"}
 		for _, dir := range dirsToRemove {
 			presenter.Step("Removing directory: %s...", dir)
-			if err := os.RemoveAll(dir); err != nil {
+			err := os.RemoveAll(dir)
+			if err != nil {
 				if !os.IsNotExist(err) {
 					return fmt.Errorf("failed to remove directory %s: %w", dir, err)
 				}
@@ -42,7 +43,8 @@ var CleanCmd = &cobra.Command{
 		}
 		for _, file := range filesToRemove {
 			presenter.Step("Removing file: %s...", file)
-			if err := os.Remove(file); err != nil {
+			err := os.Remove(file)
+			if err != nil {
 				if !os.IsNotExist(err) {
 					return fmt.Errorf("failed to remove file %s: %w", file, err)
 				}
@@ -50,13 +52,15 @@ var CleanCmd = &cobra.Command{
 		}
 
 		presenter.Step("Cleaning Go build and test caches...")
-		if err := globals.ExecClient.Execute(ctx, ".", "go", "clean", "-cache", "-testcache"); err != nil {
+		err := globals.ExecClient.Execute(ctx, ".", "go", "clean", "-cache", "-testcache")
+		if err != nil {
 			return fmt.Errorf("failed to run 'go clean': %w", err)
 		}
 
 		presenter.Newline()
 		presenter.Success("Project files cleaned successfully.")
 		globals.AppLogger.InfoContext(ctx, "Project cleanup completed.")
+
 		return nil
 	},
 }
@@ -66,6 +70,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	CleanCmd.Short = desc.Short
 	CleanCmd.Long = desc.Long
 }

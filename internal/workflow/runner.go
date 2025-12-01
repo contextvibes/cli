@@ -21,19 +21,23 @@ func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 
 	// 1. Run all pre-checks first.
 	for _, step := range steps {
-		if err := step.PreCheck(ctx); err != nil {
+		err := step.PreCheck(ctx)
+		if err != nil {
 			// The step's PreCheck is responsible for its own user-facing error message.
 			return err
 		}
 	}
+
 	r.presenter.Success("✓ All prerequisite checks passed.")
 	r.presenter.Newline()
 
 	// 2. Explain the plan.
 	r.presenter.Info("Proposed Workflow Plan:")
+
 	for i, step := range steps {
 		r.presenter.Detail("%d. %s", i+1, step.Description())
 	}
+
 	r.presenter.Newline()
 
 	// 3. Confirm with the user.
@@ -42,19 +46,24 @@ func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 		if err != nil {
 			return err
 		}
+
 		if !confirmed {
 			r.presenter.Info("Workflow aborted by user.")
+
 			return nil
 		}
 	} else {
 		r.presenter.Info("Confirmation bypassed via --yes flag.")
 	}
+
 	r.presenter.Newline()
 
 	// 4. Execute all steps.
 	for _, step := range steps {
 		r.presenter.Step(step.Description())
-		if err := step.Execute(ctx); err != nil {
+
+		err := step.Execute(ctx)
+		if err != nil {
 			// The step's Execute method is responsible for its own user-facing error message.
 			return err // Abort on first failure.
 		}
@@ -69,6 +78,7 @@ func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 			r.presenter.Advice(
 				"Your uncommitted changes were stashed. Run `git stash pop` to restore them.",
 			)
+
 			break // Found it, no need to check further.
 		}
 	}

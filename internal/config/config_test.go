@@ -324,6 +324,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
 				assert.Equal(t, ctx, ctxIn)
+
 				if commandName == "git" && args[0] == "rev-parse" {
 					return "", "git error", errors.New("git rev-parse failed")
 				}
@@ -341,6 +342,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
 				assert.Equal(t, ctx, ctxIn)
+
 				if commandName == "git" && args[0] == "rev-parse" {
 					return "  ", "", nil
 				}
@@ -359,6 +361,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
 				assert.Equal(t, ctx, ctxIn)
+
 				if commandName == "git" && args[0] == "rev-parse" && args[1] == "--show-toplevel" {
 					return tempDir + "\n", "", nil
 				}
@@ -381,6 +384,7 @@ func TestFindRepoRootConfigPath(t *testing.T) {
 		mockExec := &mockExecutor{
 			CaptureOutputFunc: func(ctxIn context.Context, dir string, commandName string, args ...string) (string, string, error) {
 				assert.Equal(t, ctx, ctxIn)
+
 				if commandName == "git" && args[0] == "rev-parse" && args[1] == "--show-toplevel" {
 					return tempDir + "\n", "", nil
 				}

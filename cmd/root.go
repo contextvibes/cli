@@ -1,4 +1,4 @@
-// FILE: cmd/root.go
+// Package cmd provides the entry point for the ContextVibes CLI.
 package cmd
 
 import (
@@ -13,17 +13,24 @@ import (
 	"github.com/contextvibes/cli/cmd/library"
 	"github.com/contextvibes/cli/cmd/product"
 	"github.com/contextvibes/cli/cmd/project"
+	"github.com/contextvibes/cli/cmd/version"
 	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/spf13/cobra"
 )
 
+const (
+	// filePermUserRW represents read/write permissions for the user (0600).
+	filePermUserRW = 0o600
+)
+
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var rootCmd = &cobra.Command{
 	Use:   "contextvibes",
 	Short: "Manages project tasks: AI context generation, Git workflow, IaC, etc.",
 	Long:  `ContextVibes: Your Project Development Assistant CLI.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		bootstrapOSExecutor := exec.NewOSCommandExecutor(slog.New(slog.DiscardHandler))
 		bootstrapExecClient := exec.NewClient(bootstrapOSExecutor)
 
@@ -49,17 +56,22 @@ var rootCmd = &cobra.Command{
 			if aiLogFileFlagValue != "" {
 				targetAILogFile = aiLogFileFlagValue
 			}
+			//nolint:gosec // G304: User-provided path for logging is intended behavior.
 			logFileHandle, errLogFile := os.OpenFile(
 				targetAILogFile,
 				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-				0o600,
+				filePermUserRW,
 			)
 			if errLogFile == nil {
 				aiOut = logFileHandle
 			}
 		}
 		globals.AppLogger = slog.New(
-			slog.NewJSONHandler(aiOut, &slog.HandlerOptions{Level: aiLevel}),
+			slog.NewJSONHandler(aiOut, &slog.HandlerOptions{
+				Level:       aiLevel,
+				AddSource:   false,
+				ReplaceAttr: nil,
+			}),
 		)
 
 		mainOSExecutor := exec.NewOSCommandExecutor(globals.AppLogger)
@@ -70,22 +82,24 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// Execute runs the root command and handles exit codes.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	err := rootCmd.Execute()
+	if err != nil {
 		os.Exit(1)
 	}
 }
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	logLevelAIValue    string
 	aiLogFileFlagValue string
 	assumeYes          bool
 )
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
-	// THE FIX: Set rootCmd.Version to our global variable.
-	// This automatically enables the 'version' command and '--version' flag.
-	// We'll set the actual value of globals.AppVersion during the build.
+	// Set the version for the --version flag
 	rootCmd.Version = globals.AppVersion
 
 	rootCmd.PersistentFlags().
@@ -99,7 +113,8 @@ func init() {
 	rootCmd.AddCommand(factory.FactoryCmd)
 	rootCmd.AddCommand(library.LibraryCmd)
 	rootCmd.AddCommand(craft.CraftCmd)
-	rootCmd.AddCommand(feedback.FeedbackCmd) // ADDED
+	rootCmd.AddCommand(feedback.FeedbackCmd)
+	rootCmd.AddCommand(version.VersionCmd) // ADDED
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {

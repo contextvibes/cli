@@ -27,16 +27,20 @@ func ParseAndExecute(templateContent string, data any) (CommandDesc, error) {
 	}
 
 	var shortDesc, longDesc string
+
 	lines := strings.Split(executedTpl.String(), "\n")
 	foundTitle := false
+
 	var longLines []string
 
 	for _, line := range lines {
 		if !foundTitle && strings.HasPrefix(line, "# ") {
 			shortDesc = strings.TrimSpace(strings.TrimPrefix(line, "# "))
 			foundTitle = true
+
 			continue
 		}
+
 		if foundTitle {
 			longLines = append(longLines, line)
 		}

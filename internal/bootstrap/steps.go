@@ -37,11 +37,14 @@ func (s *CreateRemoteRepoStep) Execute(ctx context.Context) error {
 	repo, err := s.GHClient.CreateRepo(ctx, s.Owner, s.RepoName, s.RepoDescription, s.IsPrivate)
 	if err != nil {
 		s.Presenter.Error("Failed to create GitHub repository: %v", err)
+
 		return err
 	}
+
 	s.CreatedRepoURL = repo.GetHTMLURL()
 	s.CloneURL = repo.GetCloneURL()
 	s.Presenter.Success("✓ Remote repository created at %s", s.CreatedRepoURL)
+
 	return nil
 }
 
@@ -55,15 +58,17 @@ type CloneRepoStep struct {
 }
 
 func (s *CloneRepoStep) Description() string {
-	return fmt.Sprintf("Clone repository to local path: ./%s", s.LocalPath)
+	return "Clone repository to local path: ./" + s.LocalPath
 }
 func (s *CloneRepoStep) PreCheck(ctx context.Context) error { return nil }
 func (s *CloneRepoStep) Execute(ctx context.Context) error {
 	err := s.ExecClient.Execute(ctx, ".", "git", "clone", s.CloneURL, s.LocalPath)
 	if err != nil {
 		s.Presenter.Error("Failed to clone repository: %v", err)
+
 		return err
 	}
+
 	return nil
 }
 
@@ -87,9 +92,12 @@ func (s *ScaffoldProjectStep) Execute(ctx context.Context) error {
 	err := os.WriteFile(readmePath, []byte(content), 0o644)
 	if err != nil {
 		s.Presenter.Error("Failed to write placeholder README.md: %v", err)
+
 		return err
 	}
+
 	s.Presenter.Success("✓ Placeholder README.md created.")
+
 	return nil
 }
 
@@ -104,14 +112,20 @@ type InitialCommitAndPushStep struct {
 func (s *InitialCommitAndPushStep) Description() string                { return "Create and push initial commit" }
 func (s *InitialCommitAndPushStep) PreCheck(ctx context.Context) error { return nil }
 func (s *InitialCommitAndPushStep) Execute(ctx context.Context) error {
-	if err := s.ExecClient.Execute(ctx, s.LocalPath, "git", "add", "."); err != nil {
+	err := s.ExecClient.Execute(ctx, s.LocalPath, "git", "add", ".")
+	if err != nil {
 		return err
 	}
-	if err := s.ExecClient.Execute(ctx, s.LocalPath, "git", "commit", "-m", "Initial commit"); err != nil {
+
+	err = s.ExecClient.Execute(ctx, s.LocalPath, "git", "commit", "-m", "Initial commit")
+	if err != nil {
 		return err
 	}
-	if err := s.ExecClient.Execute(ctx, s.LocalPath, "git", "push"); err != nil {
+
+	err = s.ExecClient.Execute(ctx, s.LocalPath, "git", "push")
+	if err != nil {
 		return err
 	}
+
 	return nil
 }

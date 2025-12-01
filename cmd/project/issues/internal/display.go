@@ -23,6 +23,7 @@ func DisplayWorkItem(p *ui.Presenter, item *workitem.WorkItem) {
 	if len(item.Labels) > 0 {
 		p.Detail("Labels: %s", strings.Join(item.Labels, ", "))
 	}
+
 	if len(item.Assignees) > 0 {
 		p.Detail("Assignees: %s", strings.Join(item.Assignees, ", "))
 	}

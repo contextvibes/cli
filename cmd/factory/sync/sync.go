@@ -16,7 +16,7 @@ import (
 //go:embed sync.md.tpl
 var syncLongDescription string
 
-// SyncCmd represents the sync command
+// SyncCmd represents the sync command.
 var SyncCmd = &cobra.Command{
 	Use:     "sync",
 	Example: `  contextvibes factory sync`,
@@ -39,6 +39,7 @@ var SyncCmd = &cobra.Command{
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
+
 			return err
 		}
 
@@ -49,6 +50,7 @@ var SyncCmd = &cobra.Command{
 		if !isClean {
 			presenter.Error("Working directory has uncommitted changes.")
 			presenter.Advice("Please commit or stash your changes before syncing.")
+
 			return errors.New("working directory not clean")
 		}
 
@@ -69,12 +71,14 @@ var SyncCmd = &cobra.Command{
 			}
 			if !confirmed {
 				presenter.Info("Sync aborted by user.")
+
 				return nil
 			}
 		}
 
 		if err := client.PullRebase(ctx, currentBranch); err != nil {
 			presenter.Error("Error during 'git pull --rebase'. Resolve conflicts manually.")
+
 			return err
 		}
 
@@ -83,13 +87,15 @@ var SyncCmd = &cobra.Command{
 			return err
 		}
 		if isAhead {
-			if err := client.Push(ctx, currentBranch); err != nil {
+			err := client.Push(ctx, currentBranch)
+			if err != nil {
 				return err
 			}
 		}
 
 		presenter.Newline()
 		presenter.Success("Sync completed successfully.")
+
 		return nil
 	},
 }
@@ -99,6 +105,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	SyncCmd.Short = desc.Short
 	SyncCmd.Long = desc.Long
 }

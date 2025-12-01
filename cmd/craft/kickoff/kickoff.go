@@ -12,7 +12,7 @@ import (
 //go:embed kickoff.md.tpl
 var kickoffLongDescription string
 
-// KickoffCmd represents the craft kickoff command
+// KickoffCmd represents the craft kickoff command.
 var KickoffCmd = &cobra.Command{
 	Use:   "kickoff",
 	Short: "Starts an AI-guided strategic project planning session.",
@@ -37,6 +37,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	KickoffCmd.Short = desc.Short
 	KickoffCmd.Long = desc.Long
 }

@@ -22,7 +22,7 @@ var (
 	buildDebugFlag  bool
 )
 
-// BuildCmd represents the build command
+// BuildCmd represents the build command.
 var BuildCmd = &cobra.Command{
 	Use: "build [--output <path>] [--debug]",
 	Example: `  contextvibes product build                  # Build an optimized binary to ./bin/
@@ -37,15 +37,18 @@ var BuildCmd = &cobra.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			presenter.Error("Failed to get current working directory: %v", err)
+
 			return err
 		}
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			presenter.Error("Failed to detect project type: %v", err)
+
 			return err
 		}
 		if projType != project.Go {
 			presenter.Info("Build command is only applicable for Go projects. Nothing to do.")
+
 			return nil
 		}
 		presenter.Info("Go project detected.")
@@ -57,9 +60,11 @@ var BuildCmd = &cobra.Command{
 				presenter.Error(
 					"Directory './cmd/' not found. Cannot determine main package to build.",
 				)
+
 				return errors.New("cmd directory not found")
 			}
 			presenter.Error("Failed to read './cmd/' directory: %v", err)
+
 			return err
 		}
 
@@ -72,10 +77,12 @@ var BuildCmd = &cobra.Command{
 
 		if len(mainPackageDirs) == 0 {
 			presenter.Error("No subdirectories found in './cmd/'. Cannot determine main package.")
+
 			return errors.New("no main package found in cmd")
 		}
 		if len(mainPackageDirs) > 1 {
 			presenter.Error("Multiple subdirectories found in './cmd/': %v", mainPackageDirs)
+
 			return errors.New("ambiguous main package in cmd")
 		}
 		mainPackageName := mainPackageDirs[0]
@@ -85,8 +92,10 @@ var BuildCmd = &cobra.Command{
 		outputPath := buildOutputFlag
 		if outputPath == "" {
 			binDir := filepath.Join(cwd, "bin")
-			if err := os.MkdirAll(binDir, 0o750); err != nil {
+			err := os.MkdirAll(binDir, 0o750)
+			if err != nil {
 				presenter.Error("Failed to create './bin/' directory: %v", err)
+
 				return err
 			}
 			outputPath = filepath.Join("./bin", mainPackageName)
@@ -107,6 +116,7 @@ var BuildCmd = &cobra.Command{
 		err = globals.ExecClient.Execute(ctx, cwd, "go", buildArgs...)
 		if err != nil {
 			presenter.Error("'go build' command failed. See output above for details.")
+
 			return errors.New("go build failed")
 		}
 
@@ -131,6 +141,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	BuildCmd.Short = desc.Short
 	BuildCmd.Long = desc.Long
 

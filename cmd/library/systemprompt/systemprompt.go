@@ -22,7 +22,7 @@ var (
 	systemPromptOutput string
 )
 
-// SystemPromptCmd represents the system-prompt command
+// SystemPromptCmd represents the system-prompt command.
 var SystemPromptCmd = &cobra.Command{
 	Use:     "system-prompt",
 	Aliases: []string{"prompt"},
@@ -62,11 +62,13 @@ var SystemPromptCmd = &cobra.Command{
 		if outputPath == "-" {
 			_, _ = fmt.Fprint(presenter.Out(), finalPrompt.String())
 		} else {
-			if err := os.WriteFile(outputPath, []byte(finalPrompt.String()), 0o600); err != nil {
+			err := os.WriteFile(outputPath, []byte(finalPrompt.String()), 0o600)
+			if err != nil {
 				return err
 			}
 			presenter.Success("Successfully generated system prompt at %s.", outputPath)
 		}
+
 		return nil
 	},
 }
@@ -76,6 +78,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	SystemPromptCmd.Short = desc.Short
 	SystemPromptCmd.Long = desc.Long
 	SystemPromptCmd.Flags().

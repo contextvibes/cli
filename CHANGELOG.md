@@ -15,6 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.4.0] - 2025-12-01
+
+### Added
+- **New \`factory scrub\` Command:**
+  - A "Scorched Earth" cleanup tool for the development environment.
+  - Cleans Android artifacts, Go caches, Docker system (prune), Nix garbage, and user caches.
+  - Includes safety prompts to prevent accidental data loss.
+- **Enhanced \`product format\` Command:**
+  - Now accepts specific file paths or directories as arguments (e.g., \`contextvibes product format cmd/root.go\`), allowing for faster feedback loops.
+- **Environment Modernization:**
+  - Upgraded project foundation to **Go 1.25**.
+  - Updated Nix channel to \`stable-25.11\`.
+  - Added \`gcc\` to the environment to support CGO tools (Delve, gopls).
+
+### Changed
+- **Code Quality Overhaul:**
+  - Addressed over 400 linter violations.
+  - Hardened \`.golangci.yml\` with stricter rules (magic numbers, error wrapping, global variables).
+  - Fixed critical bugs in \`deploy\`, \`index\`, and config loading logic (handling of nil errors).
+- **Configuration:**
+  - Removed unnecessary \`replace\` directive from \`go.mod\`.
+
 ## [0.3.0] - 2025-08-11
 
 ### Added
@@ -43,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Resolved numerous `golangci-lint` warnings, including `errcheck`, `unused`, and `stdmethods`.
 
 ---
-## [0.2.0] - 2025-06-08 
+## [0.2.0] - 2025-06-08
 
 ### Added
 - **`contextvibes index` Command Enhancement:**

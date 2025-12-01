@@ -18,7 +18,7 @@ import (
 //go:embed init.md.tpl
 var initLongDescription string
 
-// InitCmd represents the init command
+// InitCmd represents the init command.
 var InitCmd = &cobra.Command{
 	Use: "init",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,6 +37,7 @@ var InitCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to determine project root. Are you inside a Git repository?")
 			presenter.Detail("Stderr: %s", stderr)
+
 			return errors.New("not a git repository")
 		}
 		projectRoot := strings.TrimSpace(stdout)
@@ -44,6 +45,7 @@ var InitCmd = &cobra.Command{
 
 		if _, err := os.Stat(configPath); err == nil {
 			presenter.Info("Configuration file already exists: %s", presenter.Highlight(configPath))
+
 			return nil
 		}
 
@@ -53,6 +55,7 @@ var InitCmd = &cobra.Command{
 		}
 
 		presenter.Success("Successfully created .contextvibes.yaml.")
+
 		return nil
 	},
 }
@@ -62,6 +65,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	InitCmd.Short = desc.Short
 	InitCmd.Long = desc.Long
 }

@@ -20,7 +20,7 @@ var diffLongDescription string
 
 const fixedDiffOutputFile = "contextvibes.md"
 
-// DiffCmd represents the diff command
+// DiffCmd represents the diff command.
 var DiffCmd = &cobra.Command{
 	Use:     "diff",
 	Example: `  contextvibes factory diff`,
@@ -43,6 +43,7 @@ var DiffCmd = &cobra.Command{
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
+
 			return err
 		}
 
@@ -83,10 +84,12 @@ var DiffCmd = &cobra.Command{
 		if !hasChanges {
 			presenter.Info("No pending changes found.")
 		} else {
-			if errWrite := tools.WriteBufferToFile(fixedDiffOutputFile, &outputBuffer); errWrite != nil {
+			errWrite := tools.WriteBufferToFile(fixedDiffOutputFile, &outputBuffer)
+			if errWrite != nil {
 				return errWrite
 			}
 		}
+
 		return nil
 	},
 }
@@ -96,6 +99,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	DiffCmd.Short = desc.Short
 	DiffCmd.Long = desc.Long
 }

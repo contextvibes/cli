@@ -19,7 +19,7 @@ import (
 //go:embed quality.md.tpl
 var qualityLongDescription string
 
-// QualityCmd represents the quality command
+// QualityCmd represents the quality command.
 var QualityCmd = &cobra.Command{
 	Use:           "quality",
 	Example:       `  contextvibes product quality`,
@@ -35,12 +35,14 @@ var QualityCmd = &cobra.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			presenter.Error("Failed to get current working directory: %v", err)
+
 			return err
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
 			presenter.Error("Failed to detect project type: %v", err)
+
 			return err
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
@@ -55,6 +57,7 @@ var QualityCmd = &cobra.Command{
 			}
 		default:
 			presenter.Info("No specific quality checks for project type: %s", projType)
+
 			return nil
 		}
 
@@ -66,9 +69,11 @@ var QualityCmd = &cobra.Command{
 			for _, failure := range criticalErrors {
 				presenter.Detail("- %s", failure)
 			}
+
 			return errors.New(errorMsg)
 		}
 		presenter.Success("All quality checks passed.")
+
 		return nil
 	},
 }
@@ -121,10 +126,12 @@ func executeEnhancedGoQualityChecks(
 
 	for _, check := range goQualityChecks {
 		presenter.Step("Running check: %s...", check.Name)
+
 		if !execClient.CommandExists(check.Command) {
 			errMsg := fmt.Sprintf("Required tool '%s' not found in PATH.", check.Command)
 			presenter.Error(errMsg)
 			failures = append(failures, errMsg)
+
 			continue
 		}
 
@@ -136,8 +143,10 @@ func executeEnhancedGoQualityChecks(
 		} else {
 			presenter.Success("✓ %s", check.SuccessMsg)
 		}
+
 		presenter.Newline()
 	}
+
 	return failures
 }
 
@@ -146,6 +155,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
 	QualityCmd.Short = desc.Short
 	QualityCmd.Long = desc.Long
 }

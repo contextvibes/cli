@@ -1,6 +1,6 @@
 module github.com/contextvibes/cli
 
-go 1.24.2
+go 1.25.4
 
 require (
 	github.com/charmbracelet/huh v0.7.0
@@ -53,5 +53,3 @@ require (
 	github.com/spf13/pflag v1.0.7 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 )
-
-replace github.com/contextvibes/cli => ./

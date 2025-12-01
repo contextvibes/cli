@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -33,6 +32,7 @@ func (m *mockBuildExecutor) Execute(
 	if m.ExecuteFunc != nil {
 		return m.ExecuteFunc(ctx, dir, commandName, args...)
 	}
+
 	return nil
 }
 
@@ -49,7 +49,7 @@ func (m *mockBuildExecutor) CommandExists(commandName string) bool { return true
 
 func (m *mockBuildExecutor) Logger() *slog.Logger {
 	// THE FIX: Return a valid logger that discards output.
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+	return slog.New(slog.DiscardHandler)
 }
 
 func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
@@ -66,7 +66,7 @@ func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command)
 
 	globals.ExecClient = execClient
 	// THE FIX: Initialize the global logger with a discard handler for tests.
-	globals.AppLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	globals.AppLogger = slog.New(slog.DiscardHandler)
 
 	// Create a new command instance for each test to avoid state leakage
 	cmd := *BuildCmd // Make a copy
@@ -78,6 +78,7 @@ func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command)
 func runBuildCmd(cmd *cobra.Command, args []string) (string, string, error) {
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
+
 	cmd.SetOut(outBuf)
 	cmd.SetErr(errBuf)
 	cmd.SetArgs(args)
@@ -96,6 +97,7 @@ func TestBuildCmd(t *testing.T) {
 		require.True(t, ok)
 
 		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o600))
+
 		cmdDir := filepath.Join("cmd", "mycoolapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
@@ -108,6 +110,7 @@ func TestBuildCmd(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, out, "Build successful")
+
 		expectedCommand := []string{
 			"go",
 			"build",
@@ -126,6 +129,7 @@ func TestBuildCmd(t *testing.T) {
 		require.True(t, ok)
 
 		require.NoError(t, os.WriteFile("go.mod", []byte("module test"), 0o600))
+
 		cmdDir := filepath.Join("cmd", "myapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
@@ -137,6 +141,7 @@ func TestBuildCmd(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, out, "Compiling with debug symbols.")
+
 		expectedCommand := []string{
 			"go",
 			"build",

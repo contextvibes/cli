@@ -39,6 +39,7 @@ func NewPresenter(outW, errW io.Writer) *Presenter {
 	if outW != nil {
 		out = outW
 	}
+
 	var err io.Writer = os.Stderr
 	if errW != nil {
 		err = errW
@@ -74,8 +75,10 @@ func (p *Presenter) getInteractiveReader() (reader io.Reader, cleanup func(), er
 				ttyErr,
 			)
 		}
+
 		return tty, func() { _ = tty.Close() }, nil
 	}
+
 	return os.Stdin, func() {}, nil
 }
 
@@ -145,22 +148,28 @@ func (p *Presenter) PromptForInput(prompt string) (string, error) {
 	interactiveReader, cleanup, err := p.getInteractiveReader()
 	if err != nil {
 		p.Error("Could not get an interactive terminal for prompting: %v", err)
+
 		return "", err
 	}
 	defer cleanup()
 
 	reader := bufio.NewReader(interactiveReader)
+
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, ":") {
 		prompt += ":"
 	}
+
 	prompt += " "
 	_, _ = p.promptColor.Fprint(p.errW, prompt)
+
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
+
 		return "", fmt.Errorf("reading input failed: %w", err)
 	}
+
 	return strings.TrimSpace(input), nil
 }
 
@@ -168,30 +177,38 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 	interactiveReader, cleanup, err := p.getInteractiveReader()
 	if err != nil {
 		p.Error("Could not get an interactive terminal for prompting: %v", err)
+
 		return false, err
 	}
 	defer cleanup()
 
 	reader := bufio.NewReader(interactiveReader)
+
 	prompt = strings.TrimSpace(prompt)
 	if !strings.HasSuffix(prompt, "?") {
 		prompt += "?"
 	}
+
 	fullPrompt := prompt + " [y/N]: "
 	for {
 		_, _ = p.promptColor.Fprint(p.errW, fullPrompt)
+
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
+
 			return false, fmt.Errorf("reading confirmation failed: %w", err)
 		}
+
 		input = strings.ToLower(strings.TrimSpace(input))
 		if input == "y" || input == "yes" {
 			return true, nil
 		}
+
 		if input == "n" || input == "no" || input == "" {
 			return false, nil
 		}
+
 		_, _ = p.warningColor.Fprintf(
 			p.errW,
 			"~ Invalid input. Please enter 'y' or 'n'.\n",
@@ -213,7 +230,8 @@ func (p *Presenter) PromptForSelect(title string, options []string) (string, err
 		Options(huhOptions...).
 		Value(&choice)
 
-	if err := form.Run(); err != nil {
+	err := form.Run()
+	if err != nil {
 		return "", err
 	}
 
@@ -234,7 +252,8 @@ func (p *Presenter) PromptForMultiSelect(title string, options []string) ([]stri
 		Options(huhOptions...).
 		Value(&choices)
 
-	if err := form.Run(); err != nil {
+	err := form.Run()
+	if err != nil {
 		return nil, err
 	}
 
