@@ -1,4 +1,4 @@
-// cmd/project/issues/tree/tree.go
+// Package tree provides the command to display issue hierarchy.
 package tree
 
 import (
@@ -23,9 +23,12 @@ import (
 //go:embed tree.md.tpl
 var treeLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var fullView bool
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -33,15 +36,16 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
-		return github.New(ctx, logger, cfg)
+		return github.New(ctx, logger, cfg) //nolint:wrapcheck // Factory function.
 	case "":
 		logger.DebugContext(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
-		return github.New(ctx, logger, cfg)
+		return github.New(ctx, logger, cfg) //nolint:wrapcheck // Factory function.
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -50,6 +54,8 @@ func newProvider(
 }
 
 // TreeCmd represents the project issues tree command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var TreeCmd = &cobra.Command{
 	Use:     "tree [issue-number]",
 	Short:   "Display a hierarchical tree of epics, stories, and tasks.",
@@ -76,6 +82,7 @@ var TreeCmd = &cobra.Command{
 		if len(args) > 0 {
 			issueNumber, err := strconv.Atoi(args[0])
 			if err != nil {
+				//nolint:err113 // Dynamic error is appropriate here.
 				return fmt.Errorf("invalid issue number provided: %s", args[0])
 			}
 			presenter.Summary("Building work item tree for Epic #%d...", issueNumber)
@@ -83,11 +90,12 @@ var TreeCmd = &cobra.Command{
 			if err != nil {
 				presenter.Error("Failed to build work item tree: %v", err)
 
-				return err
+				return fmt.Errorf("failed to build tree: %w", err)
 			}
 			printFunc(presenter, root, 0)
 		} else {
 			presenter.Summary("Fetching all Epics to build trees...")
+			//nolint:exhaustruct,mnd // Partial options are valid, 100 is a reasonable limit.
 			listOpts := workitem.ListOptions{
 				State:  workitem.StateOpen,
 				Labels: []string{"epic"},
@@ -97,7 +105,7 @@ var TreeCmd = &cobra.Command{
 			if err != nil {
 				presenter.Error("Failed to list epics: %v", err)
 
-				return err
+				return fmt.Errorf("failed to list epics: %w", err)
 			}
 			if len(epics) == 0 {
 				presenter.Info("No open issues with the 'epic' label found.")
@@ -105,6 +113,7 @@ var TreeCmd = &cobra.Command{
 				return nil
 			}
 
+			//nolint:varnamelen // 'i' is standard for index.
 			for i, epic := range epics {
 				root, err := resolver.BuildTree(ctx, epic.Number, fullView)
 				if err != nil {
@@ -124,8 +133,11 @@ var TreeCmd = &cobra.Command{
 }
 
 // printSummaryTree recursively prints the work item hierarchy in a compact format.
+//
+//nolint:varnamelen // 'p' is standard for presenter.
 func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
+	//nolint:errcheck // Printing to stdout is best effort.
 	fmt.Fprintf(p.Out(), "%s- [%s] #%d: %s\n", indent, item.Type, item.Number, item.Title)
 
 	for _, child := range item.Children {
@@ -134,16 +146,21 @@ func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 }
 
 // printFullTree recursively prints the work item hierarchy with full details.
+//
+//nolint:varnamelen // 'p' is standard for presenter.
 func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
-	p.Out().Write([]byte(indent)) // Write indent manually for the header
+	//nolint:errcheck,gosec // Printing to stdout is best effort.
+	_, _ = p.Out().Write([]byte(indent)) // Write indent manually for the header
 	internal.DisplayWorkItem(p, item)
 
 	if len(item.Comments) > 0 {
+		//nolint:errcheck // Printing to stdout is best effort.
 		fmt.Fprintf(p.Out(), "%s--- Comments (%d) ---\n", indent, len(item.Comments))
 
 		for _, comment := range item.Comments {
-			p.Out().Write([]byte(indent))
+			//nolint:errcheck,gosec // Printing to stdout is best effort.
+			_, _ = p.Out().Write([]byte(indent))
 			p.Header(
 				fmt.Sprintf(
 					"Comment by %s on %s",
@@ -153,10 +170,12 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 			)
 			// Indent the body of the comment
 			for line := range strings.SplitSeq(comment.Body, "\n") {
+				//nolint:errcheck // Printing to stdout is best effort.
 				fmt.Fprintf(p.Out(), "%s  %s\n", indent, line)
 			}
 
-			p.Out().Write([]byte(indent))
+			//nolint:errcheck,gosec // Printing to stdout is best effort.
+			_, _ = p.Out().Write([]byte(indent))
 			p.Separator()
 		}
 	}
@@ -167,6 +186,7 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	}
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(treeLongDescription, nil)
 	if err != nil {
@@ -174,6 +194,7 @@ func init() {
 	}
 
 	TreeCmd.Long = desc.Long
+	//nolint:lll // Flag description is long.
 	TreeCmd.Flags().
 		BoolVar(&fullView, "full", false, "Display the full details, including body and comments, for each issue in the tree.")
 }

@@ -1,4 +1,4 @@
-// cmd/project/describe/describe.go
+// Package describe provides the command to generate a project context description.
 package describe
 
 import (
@@ -23,6 +23,7 @@ import (
 //go:embed describe.md.tpl
 var describeLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	describeOutputFile string
 	describePromptFlag string
@@ -30,15 +31,18 @@ var (
 
 const (
 	maxFileSizeKB     = 500
+	//nolint:lll // Pattern is long.
 	treeIgnorePattern = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
 )
 
 // DescribeCmd represents the describe command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var DescribeCmd = &cobra.Command{
 	Use:     "describe [-o <output_file>]",
 	Example: `  contextvibes project describe -o project_snapshot.md`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -46,9 +50,10 @@ var DescribeCmd = &cobra.Command{
 
 		workDir, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitCfg := git.GitClientConfig{
 			Logger:                globals.AppLogger,
 			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
@@ -59,7 +64,7 @@ var DescribeCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
 
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 		cwd := client.Path()
 
@@ -90,10 +95,12 @@ var DescribeCmd = &cobra.Command{
 			excludeRes = append(excludeRes, re)
 		}
 
+		//nolint:mnd // 1024 is standard KB conversion.
 		maxSizeBytes := int64(maxFileSizeKB * 1024)
 
 		var aiExcluder gitignore.GitIgnore
 		aiExcludeFilePath := filepath.Join(cwd, ".aiexclude")
+		//nolint:gosec // Reading .aiexclude is intended.
 		aiExcludeContent, readErr := os.ReadFile(aiExcludeFilePath)
 		if readErr == nil {
 			aiExcluder = gitignore.New(bytes.NewReader(aiExcludeContent), cwd, nil)
@@ -107,11 +114,12 @@ var DescribeCmd = &cobra.Command{
 			var promptErr error
 			userPrompt, promptErr = presenter.PromptForInput("Enter a prompt for the AI: ")
 			if promptErr != nil {
-				return promptErr
+				return fmt.Errorf("prompt input failed: %w", promptErr)
 			}
 		}
 
 		if userPrompt == "" {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("prompt cannot be empty")
 		}
 
@@ -144,7 +152,7 @@ var DescribeCmd = &cobra.Command{
 
 		gitLsFilesOutput, _, err := client.ListTrackedAndCachedFiles(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to list git files: %w", err)
 		}
 		filesToList := strings.SplitSeq(strings.TrimSpace(gitLsFilesOutput), "\n")
 
@@ -199,8 +207,9 @@ var DescribeCmd = &cobra.Command{
 			}
 		}
 
+		//nolint:noinlineerr // Inline check is standard.
 		if err := tools.WriteBufferToFile(describeOutputFile, &outputBuffer); err != nil {
-			return err
+			return fmt.Errorf("failed to write output file: %w", err)
 		}
 
 		presenter.Success("Successfully generated context file: %s", describeOutputFile)
@@ -209,6 +218,7 @@ var DescribeCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(describeLongDescription, nil)
 	if err != nil {

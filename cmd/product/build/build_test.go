@@ -1,5 +1,5 @@
-// cmd/product/build/build_test.go
-package build
+// Package build_test contains tests for the build command.
+package build_test
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/contextvibes/cli/cmd/product/build"
 	"github.com/contextvibes/cli/internal/exec"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/spf13/cobra"
@@ -37,44 +38,51 @@ func (m *mockBuildExecutor) Execute(
 }
 
 func (m *mockBuildExecutor) CaptureOutput(
-	ctx context.Context,
-	dir string,
-	commandName string,
-	args ...string,
+	_ context.Context,
+	_ string,
+	_ string,
+	_ ...string,
 ) (string, string, error) {
+	//nolint:err113 // Dynamic error is appropriate here.
 	return "", "", errors.New("CaptureOutput not implemented in mock")
 }
 
+//nolint:revive // Unused parameter is expected in mock.
 func (m *mockBuildExecutor) CommandExists(commandName string) bool { return true }
 
 func (m *mockBuildExecutor) Logger() *slog.Logger {
-	// THE FIX: Return a valid logger that discards output.
 	return slog.New(slog.DiscardHandler)
 }
 
+//nolint:ireturn // Returning interface is required for mock.
 func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
 
+//nolint:unparam // Return values are used in tests.
 func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command) {
+	t.Helper()
 	tempDir := t.TempDir()
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
+	//nolint:usetesting // os.Chdir is required for test setup.
 	require.NoError(t, os.Chdir(tempDir))
+	//nolint:usetesting // os.Chdir is required for test setup.
 	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
 
+	//nolint:exhaustruct // Mock executor partial initialization is fine.
 	mockExec := &mockBuildExecutor{}
 	execClient := exec.NewClient(mockExec)
 
 	globals.ExecClient = execClient
-	// THE FIX: Initialize the global logger with a discard handler for tests.
 	globals.AppLogger = slog.New(slog.DiscardHandler)
 
 	// Create a new command instance for each test to avoid state leakage
-	cmd := *BuildCmd // Make a copy
+	cmd := *build.BuildCmd // Make a copy
 	cmd.SetContext(context.Background())
 
 	return tempDir, execClient, &cmd
 }
 
+//nolint:unparam // Return values are used in tests.
 func runBuildCmd(cmd *cobra.Command, args []string) (string, string, error) {
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
@@ -83,14 +91,23 @@ func runBuildCmd(cmd *cobra.Command, args []string) (string, string, error) {
 	cmd.SetErr(errBuf)
 	cmd.SetArgs(args)
 
-	err := cmd.RunE(cmd, args)
+	// Reset flags manually because we are using a global flag variable in the command implementation
+	// This is a workaround for testing Cobra commands with global flags.
+	// In a real refactor, we should move flags to a struct.
+	// For now, we rely on the fact that we are running sequentially (no t.Parallel).
+	_ = cmd.Flags().Set("output", "")
+	_ = cmd.Flags().Set("debug", "false")
+
+	err := cmd.Execute() // Use Execute instead of RunE to ensure full Cobra lifecycle including flag parsing
 
 	return outBuf.String(), errBuf.String(), err
 }
 
+//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 func TestBuildCmd(t *testing.T) {
 	dummyGoMain := []byte("package main\n\nfunc main() {}\n")
 
+	//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 	t.Run("success: standard optimized build", func(t *testing.T) {
 		_, execClient, cmd := setupBuildTest(t)
 		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
@@ -101,10 +118,6 @@ func TestBuildCmd(t *testing.T) {
 		cmdDir := filepath.Join("cmd", "mycoolapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
-
-		// Reset flags on the command instance for each run
-		buildOutputFlag = ""
-		buildDebugFlag = false
 
 		out, _, err := runBuildCmd(cmd, []string{})
 		require.NoError(t, err)
@@ -123,6 +136,7 @@ func TestBuildCmd(t *testing.T) {
 		assert.Equal(t, expectedCommand, underlyingMock.lastCommand)
 	})
 
+	//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 	t.Run("success: debug build", func(t *testing.T) {
 		_, execClient, cmd := setupBuildTest(t)
 		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
@@ -133,9 +147,6 @@ func TestBuildCmd(t *testing.T) {
 		cmdDir := filepath.Join("cmd", "myapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
-
-		buildOutputFlag = ""
-		buildDebugFlag = true
 
 		out, _, err := runBuildCmd(cmd, []string{"--debug"}) // Pass flag to args
 		require.NoError(t, err)

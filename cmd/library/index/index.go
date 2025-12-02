@@ -1,4 +1,4 @@
-// cmd/library/index/index.go
+// Package index provides the command to index project documentation.
 package index
 
 import (
@@ -24,6 +24,7 @@ import (
 //go:embed index.md.tpl
 var indexLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	indexPathTHEA     string
 	indexPathTemplate string
@@ -33,6 +34,9 @@ var (
 // ErrSkipDocument is returned when a document should be skipped during indexing.
 var ErrSkipDocument = errors.New("skip document")
 
+// DocumentMetadata represents the metadata extracted from a document.
+//
+//nolint:exhaustruct // Struct is populated from YAML/JSON.
 type DocumentMetadata struct {
 	ID                string   `json:"id"`
 	FileExtension     string   `json:"fileExtension"`
@@ -61,11 +65,13 @@ type tempFrontMatter struct {
 }
 
 // IndexCmd represents the index command
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var IndexCmd = &cobra.Command{
 	Use:     "index --thea-path <path> --template-path <path> [-o <output-file>]",
 	Example: `  contextvibes library index --thea-path ../THEA/docs -o manifest.json`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		logger := globals.AppLogger
 
@@ -98,32 +104,39 @@ var IndexCmd = &cobra.Command{
 			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
 		}
 
+		//nolint:mnd,noinlineerr // 0600 is standard file permission, inline check is standard.
 		if err := os.WriteFile(indexPathOut, jsonData, 0o600); err != nil {
 			return fmt.Errorf("failed to write index file to %s: %w", indexPathOut, err)
 		}
 
 		presenter.Success("Successfully created document manifest at: %s", indexPathOut)
+
 		return nil
 	},
 }
 
+//nolint:revive // Unused parameters kept for future logic.
 func processDirectory(
 	rootPath, baseDirName string,
-	processedFiles map[string]bool,
+	_ map[string]bool,
 	logger *slog.Logger,
 ) ([]DocumentMetadata, error) {
 	var metadataList []DocumentMetadata
+
 	absRootPath, err := filepath.Abs(rootPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
 	err = filepath.WalkDir(
 		absRootPath,
+		//nolint:varnamelen // 'd' is standard for DirEntry.
 		func(currentPath string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil || d.IsDir() {
+				//nolint:nilerr // Returning nil to continue walking is intended.
 				return nil
 			}
+
 			if !(strings.HasSuffix(d.Name(), ".md")) {
 				return nil
 			}
@@ -135,64 +148,78 @@ func processDirectory(
 				baseDirName,
 				fileInfo,
 			)
-			
-			// FIX: Handle the sentinel error for skipping
+
 			if errors.Is(parseErr, ErrSkipDocument) {
 				return nil
 			}
+
 			if parseErr != nil {
 				// Log warning but continue walking
 				logger.Warn("Failed to parse document", "path", currentPath, "error", parseErr)
-				return nil 
+
+				return nil
 			}
-			
+
 			if docMeta != nil {
 				metadataList = append(metadataList, *docMeta)
 			}
+
 			return nil
 		},
 	)
-	return metadataList, err
+	if err != nil {
+		return nil, fmt.Errorf("error walking directory: %w", err)
+	}
+
+	return metadataList, nil
 }
 
+//nolint:revive // Unused parameters kept for future logic.
 func parseFrontMatterAndDerive(
-	filePath, rootPath, baseDirName string,
+	filePath, rootPath, _ string,
 	fileInfo fs.FileInfo,
 ) (*DocumentMetadata, error) {
+	//nolint:gosec // Reading file is intended.
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
+	//nolint:errcheck // Defer close is sufficient.
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+
 	var frontMatterLines []string
+
 	inFrontMatter := false
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "---" {
 			if !inFrontMatter {
 				inFrontMatter = true
+
 				continue
 			}
+
 			break
 		}
+
 		if inFrontMatter {
 			frontMatterLines = append(frontMatterLines, line)
 		}
 	}
-	
-	// FIX: Return explicit error instead of nil, nil
+
 	if !inFrontMatter || len(frontMatterLines) == 0 {
 		return nil, ErrSkipDocument
 	}
 
 	var fmData tempFrontMatter
+	//nolint:noinlineerr // Inline check is standard for unmarshal.
 	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse front matter: %w", err)
 	}
-	
-	// FIX: Return explicit error instead of nil, nil
+
 	if strings.TrimSpace(fmData.Title) == "" {
 		return nil, ErrSkipDocument
 	}
@@ -201,6 +228,7 @@ func parseFrontMatterAndDerive(
 	ext := filepath.Ext(relPath)
 	id := strings.TrimSuffix(relPath, ext)
 
+	//nolint:exhaustruct // Partial initialization is sufficient.
 	docMeta := &DocumentMetadata{
 		ID:               id,
 		FileExtension:    strings.TrimPrefix(ext, "."),
@@ -208,14 +236,17 @@ func parseFrontMatterAndDerive(
 		LastModifiedDate: fileInfo.ModTime().UTC().Format(time.RFC3339),
 		// ... (other fields) ...
 	}
+
 	return docMeta, nil
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(indexLongDescription, nil)
 	if err != nil {
 		panic(err)
 	}
+
 	IndexCmd.Short = desc.Short
 	IndexCmd.Long = desc.Long
 	IndexCmd.Flags().

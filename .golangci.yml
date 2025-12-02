@@ -10,57 +10,71 @@ linters:
   default: all
 
   # 2. Disable specific linters.
-  #    Uncomment lines below to disable that specific linter.
   disable:
-    # --- DEPRECATED / REMOVED LINTERS (Must be disabled or 'default: all' will crash) ---
+    # --- DEPRECATED / REMOVED LINTERS ---
     - wsl
 
-    # --- LEVEL 1: CRITICAL BUGS & SECURITY (Fix these FIRST) ---
-    # - forcetypeassert   # Fails on `x.(string)`. Forces `x, ok := ...` to prevent runtime panics.
-    # - gosec             # Security scanner (finds hardcoded passwords, unsafe file reads, etc).
+    # --- LEVEL 1: CRITICAL BUGS & SECURITY ---
+    # - forcetypeassert
+    # - gosec
 
-    # --- LEVEL 2: STYLE & MODERNIZATION (Easy wins) ---
-    # - modernize         # Suggests modern Go patterns (e.g. slices.Sort).
-    # - perfsprint        # Suggests faster alternatives to fmt.Sprintf.
-    # - revive            # General style linter (replacement for golint).
-    # - unused            # Finds and forces you to delete dead code.
+    # --- LEVEL 2: STYLE & MODERNIZATION ---
+    # - modernize
+    # - perfsprint
+    # - revive
+    # - unused
+    # - goconst
 
-    # --- LEVEL 3: ERROR HANDLING & BEST PRACTICES (Medium effort) ---
-    # - err113            # Forbids `errors.New("text")`. Wants static errors defined at top of file.
-    # - nilerr            # Reports functions returning nil instead of the checked error.
-    # - nlreturn          # Forces a blank line before every 'return' statement.
-    # - noinlineerr       # Disables `if err := func(); err != nil`.
-    # - staticcheck       # Go static analysis, detects bugs and performance issues.
+    # --- LEVEL 3: ERROR HANDLING & BEST PRACTICES ---
+    # - err113
+    # - nilerr
+    # - nlreturn
+    # - noinlineerr
+    # - staticcheck
+    # - errcheck          # Unchecked errors
+    # - nonamedreturns    # Named returns usage
 
-    # --- LEVEL 4: COMPLEXITY & REFACTORING (Hard effort) ---
-    # - cyclop            # "Cyclomatic Complexity" - Counts paths through a function.
-    # - funlen            # Fails if a function is too long (lines of code).
-    # - gocognit          # "Cognitive Complexity" - Fails if logic is too hard to read.
-    # - maintidx          # "Maintainability Index" - Math formula for maintainability.
-    # - mnd               # "Magic Number Detector" - Fails on non-constant numbers.
-    # - nestif            # Fails if there are too many nested 'if' statements.
-    # - wrapcheck         # Requires errors from external packages to be wrapped.
+    # --- LEVEL 4: COMPLEXITY & REFACTORING ---
+    # - cyclop
+    # - funlen
+    # - gocognit
+    # - maintidx
+    # - mnd
+    # - nestif
+    # - wrapcheck
 
-    # --- LEVEL 5: STRICT STANDARDS & OPINIONS (The "Impossible" Level) ---
-    # - depguard          # Strict import rules (requires whitelist in settings).
-    # - exhaustruct       # Requires every single field in a struct to be initialized.
-    # - gochecknoglobals  # Bans global variables (even private ones).
-    # - godoclint         # Strict requirements for package comments.
-    # - ireturn           # Bans returning interfaces (accept interfaces, return structs).
-    # - lll               # "Line Length Linter" - Fails if lines > 120 chars.
-    # - varnamelen        # Fails if variable names are too short (bans 'db', 'i', etc).
-    # - wsl_v5            # Whitespace Linter (Internal/Duplicate).
+    # --- LEVEL 5: STRICT STANDARDS & OPINIONS ---
+    # - depguard
+    # - exhaustruct
+    # - gochecknoglobals
+    # - godoclint
+    # - ireturn
+    # - lll
+    # - varnamelen
+    # - wsl_v5
+    # - forbidigo         # Forbidden identifiers (fmt.Print, etc)
+    # - funcorder         # Function ordering
+    # - gochecknoinits    # Init functions
+    # - godox             # TODOs
+    # - goprintffuncname  # Printf-like naming
+    # - tagliatelle       # JSON struct tags
+    - nolintlint
 
-    # --- NOISE / LOW VALUE (Often disabled to reduce friction) ---
-    # - gocritic          # Opinionated checks, sometimes noisy.
-    # - thelper           # Requires t.Helper() in test helper functions.
-    # - unparam           # Reports unused function parameters.
+    # --- TESTING ---
+    # - testifylint
+    # - usetesting
+    # - paralleltest      # (Added to ensure tests run without forcing parallel)
+
+    # --- NOISE / LOW VALUE ---
+    # - gocritic
+    # - thelper
+    # - unparam
+    # - exhaustive        # Exhaustive switch statements
 
   settings:
     ireturn:
       allow:
         - error
-        # Allow specific library interfaces that we are required to return
     depguard:
       rules:
         main:

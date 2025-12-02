@@ -1,4 +1,4 @@
-// cmd/project/issues/list/list.go
+// Package list provides the command to list project issues.
 package list
 
 import (
@@ -20,6 +20,7 @@ import (
 //go:embed list.md.tpl
 var listLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	issueAssignee string
 	issueLabel    string
@@ -29,6 +30,8 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -36,6 +39,7 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
+		//nolint:wrapcheck // Factory function.
 		return github.New(ctx, logger, cfg)
 	case "":
 		logger.DebugContext(
@@ -43,8 +47,10 @@ func newProvider(
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
+		//nolint:wrapcheck // Factory function.
 		return github.New(ctx, logger, cfg)
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -53,10 +59,12 @@ func newProvider(
 }
 
 // ListCmd represents the project issues list command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var ListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls"},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -67,6 +75,7 @@ var ListCmd = &cobra.Command{
 			return err
 		}
 
+		//nolint:exhaustruct // Partial options are valid.
 		listOpts := workitem.ListOptions{
 			Limit:    issueLimit,
 			Assignee: issueAssignee,
@@ -86,7 +95,7 @@ var ListCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to list work items: %v", err)
 
-			return err
+			return fmt.Errorf("failed to list items: %w", err)
 		}
 
 		if len(items) == 0 {
@@ -107,6 +116,7 @@ var ListCmd = &cobra.Command{
 			}
 		} else {
 			for _, item := range items {
+				//nolint:errcheck // Printing to stdout is best effort.
 				fmt.Fprintf(presenter.Out(), "#%d [%s] %s\n", item.Number, item.State, item.Title)
 			}
 		}
@@ -115,6 +125,7 @@ var ListCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(listLongDescription, nil)
 	if err != nil {
@@ -128,6 +139,7 @@ func init() {
 	ListCmd.Flags().StringVarP(&issueLabel, "label", "l", "", "Filter by label")
 	ListCmd.Flags().
 		StringVarP(&issueState, "state", "s", "open", "Filter by state (open, closed, all)")
+	//nolint:mnd // 30 is a reasonable default limit.
 	ListCmd.Flags().IntVarP(&issueLimit, "limit", "L", 30, "Maximum number of issues to return")
 	ListCmd.Flags().
 		BoolVar(&fullView, "full", false, "Display the full details for each issue found")

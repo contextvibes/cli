@@ -1,10 +1,11 @@
-// cmd/factory/plan/plan.go
+// Package plan provides the command to plan infrastructure changes.
 package plan
 
 import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -20,22 +21,24 @@ import (
 var planLongDescription string
 
 // PlanCmd represents the plan command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var PlanCmd = &cobra.Command{
 	Use:     "plan",
 	Example: `  contextvibes factory plan`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to detect project type: %w", err)
 		}
 
 		switch projType {
@@ -43,6 +46,8 @@ var PlanCmd = &cobra.Command{
 			return executeTerraformPlan(ctx, presenter, globals.ExecClient, cwd)
 		case project.Pulumi:
 			return executePulumiPreview(ctx, presenter, globals.ExecClient, cwd)
+		case project.Go, project.Python, project.Unknown:
+			fallthrough
 		default:
 			presenter.Info("Plan command is not applicable for this project type.")
 
@@ -71,6 +76,7 @@ func executeTerraformPlan(
 
 		presenter.Error("'terraform plan' command failed.")
 
+		//nolint:err113 // Dynamic error is appropriate here.
 		return errors.New("terraform plan failed")
 	}
 
@@ -87,6 +93,7 @@ func executePulumiPreview(
 ) error {
 	err := execClient.Execute(ctx, dir, "pulumi", "preview")
 	if err != nil {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return errors.New("pulumi preview failed")
 	}
 
@@ -95,6 +102,7 @@ func executePulumiPreview(
 	return nil
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(planLongDescription, nil)
 	if err != nil {

@@ -1,4 +1,3 @@
-// internal/apply/prompt.go
 package apply
 
 import _ "embed"

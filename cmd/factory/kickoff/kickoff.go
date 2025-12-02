@@ -1,8 +1,9 @@
-// cmd/factory/kickoff/kickoff.go
+// Package kickoff provides the command to start a new task or project.
 package kickoff
 
 import (
 	_ "embed"
+	"fmt"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/git"
@@ -15,16 +16,20 @@ import (
 //go:embed kickoff.md.tpl
 var kickoffLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var branchNameFlag string
 
 // KickoffCmd represents the kickoff command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var KickoffCmd = &cobra.Command{
 	Use:  "kickoff [--branch <branch-name>]",
 	Args: cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 			Logger:                globals.AppLogger,
 			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
@@ -32,7 +37,7 @@ var KickoffCmd = &cobra.Command{
 			Executor:              globals.ExecClient.UnderlyingExecutor(),
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
 		validatedBranchName, err := workflow.GetValidatedBranchName(
@@ -44,7 +49,7 @@ var KickoffCmd = &cobra.Command{
 			globals.AssumeYes,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("branch validation failed: %w", err)
 		}
 
 		runner := workflow.NewRunner(presenter, globals.AssumeYes)
@@ -53,6 +58,7 @@ var KickoffCmd = &cobra.Command{
 			ctx,
 			"Daily Development Kickoff",
 			&workflow.CheckOnMainBranchStep{GitClient: gitClient, Presenter: presenter},
+			//nolint:exhaustruct // DidStash is an output field.
 			&workflow.CheckAndPromptStashStep{
 				GitClient: gitClient,
 				Presenter: presenter,
@@ -67,6 +73,7 @@ var KickoffCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(kickoffLongDescription, nil)
 	if err != nil {

@@ -1,17 +1,3 @@
-# project labels create
+# Create a new label in the repository.
 
-Creates a new label in the repository.
-
-This command allows you to define a new label that can be used on issues. You must provide a name, and can optionally provide a description and a hex color code.
-
-### Examples
-
-```bash
-# Create a simple label
-contextvibes project labels create --name "priority: high"
-
-# Create a label with a description and color
-contextvibes project labels create \
-  --name "needs-triage" \
-  --description "This issue requires review from the team" \
-  --color "f29513"```
+Adds a new label to the project's issue tracker with a specified name, color, and description.

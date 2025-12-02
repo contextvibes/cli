@@ -1,9 +1,10 @@
-// cmd/factory/diff/diff.go
+// Package diff provides the command to show git diffs.
 package diff
 
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"os"
 	"strings"
 
@@ -21,11 +22,13 @@ var diffLongDescription string
 const fixedDiffOutputFile = "contextvibes.md"
 
 // DiffCmd represents the diff command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var DiffCmd = &cobra.Command{
 	Use:     "diff",
 	Example: `  contextvibes factory diff`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -33,9 +36,10 @@ var DiffCmd = &cobra.Command{
 
 		workDir, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitCfg := git.GitClientConfig{
 			Logger:   globals.AppLogger,
 			Executor: globals.ExecClient.UnderlyingExecutor(),
@@ -44,7 +48,7 @@ var DiffCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
 
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
 		var outputBuffer bytes.Buffer
@@ -52,6 +56,7 @@ var DiffCmd = &cobra.Command{
 
 		stagedOut, _, stagedErr := client.GetDiffCached(ctx)
 		if stagedErr != nil {
+			//nolint:wrapcheck // Wrapping is handled by caller.
 			return stagedErr
 		}
 		if strings.TrimSpace(stagedOut) != "" {
@@ -62,6 +67,7 @@ var DiffCmd = &cobra.Command{
 
 		unstagedOut, _, unstagedErr := client.GetDiffUnstaged(ctx)
 		if unstagedErr != nil {
+			//nolint:wrapcheck // Wrapping is handled by caller.
 			return unstagedErr
 		}
 		if strings.TrimSpace(unstagedOut) != "" {
@@ -72,6 +78,7 @@ var DiffCmd = &cobra.Command{
 
 		untrackedOut, _, untrackedErr := client.ListUntrackedFiles(ctx)
 		if untrackedErr != nil {
+			//nolint:wrapcheck // Wrapping is handled by caller.
 			return untrackedErr
 		}
 		if strings.TrimSpace(untrackedOut) != "" {
@@ -86,6 +93,7 @@ var DiffCmd = &cobra.Command{
 		} else {
 			errWrite := tools.WriteBufferToFile(fixedDiffOutputFile, &outputBuffer)
 			if errWrite != nil {
+				//nolint:wrapcheck // Wrapping is handled by caller.
 				return errWrite
 			}
 		}
@@ -94,6 +102,7 @@ var DiffCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(diffLongDescription, nil)
 	if err != nil {

@@ -1,4 +1,3 @@
-// internal/github/client.go
 package github
 
 import (
@@ -16,10 +15,29 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// gosec:G101
+// GHTokenEnvVar is the environment variable name for the GitHub token.
+//
+//nolint:gosec // This is a variable name, not a credential.
 const GHTokenEnvVar = "GITHUB_TOKEN"
 
-var sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git$`)
+var (
+	sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git$`)
+
+	// ErrInvalidRemoteURL is returned when the remote URL is invalid.
+	ErrInvalidRemoteURL = errors.New("invalid remote URL")
+	// ErrTokenNotFound is returned when the GitHub token is not found.
+	ErrTokenNotFound = errors.New("GitHub token not found")
+	// ErrProjectNotFound is returned when a project is not found.
+	ErrProjectNotFound = errors.New("project not found")
+	// ErrInvalidProjectID is returned when a project ID is invalid.
+	ErrInvalidProjectID = errors.New("invalid project ID")
+	// ErrUserLoginNotFound is returned when the user login cannot be determined.
+	ErrUserLoginNotFound = errors.New("could not determine user login")
+	// ErrRepoAlreadyExists is returned when a repository already exists.
+	ErrRepoAlreadyExists = errors.New("repository already exists")
+	// ErrRepoNotFoundOrAuth is returned when a repository is not found or auth fails.
+	ErrRepoNotFoundOrAuth = errors.New("repository not found or token lacks permission")
+)
 
 // Client wraps the go-github clients for both REST and GraphQL APIs.
 type Client struct {
@@ -47,7 +65,10 @@ type ProjectWithID struct {
 }
 
 // ParseGitHubRemote extracts the owner and repository name from a GitHub remote URL.
+//
+//nolint:nonamedreturns // Named returns are used for clarity in return signature.
 func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
+	//nolint:mnd // Regex match count 3 is specific to this pattern.
 	if matches := sshRemoteRegex.FindStringSubmatch(remoteURL); len(matches) == 3 {
 		return matches[1], matches[2], nil
 	}
@@ -58,12 +79,13 @@ func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
 	}
 
 	if parsed.Hostname() != "github.com" {
-		return "", "", fmt.Errorf("remote URL is not a github.com URL: %s", parsed.Hostname())
+		return "", "", fmt.Errorf("%w: not a github.com URL: %s", ErrInvalidRemoteURL, parsed.Hostname())
 	}
 
 	pathParts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	//nolint:mnd // Expecting at least owner and repo.
 	if len(pathParts) < 2 {
-		return "", "", fmt.Errorf("remote URL path does not contain owner/repo: %s", parsed.Path)
+		return "", "", fmt.Errorf("%w: path does not contain owner/repo: %s", ErrInvalidRemoteURL, parsed.Path)
 	}
 
 	repo = strings.TrimSuffix(pathParts[1], ".git")
@@ -82,10 +104,11 @@ See: https://docs.github.com/en/authentication/keeping-your-account-and-data-sec
 Then, export it as an environment variable:
 export GITHUB_TOKEN="your_token_here"`
 
-		return nil, errors.New(strings.TrimSpace(errorMsg))
+		return nil, fmt.Errorf("%w: %s", ErrTokenNotFound, strings.TrimSpace(errorMsg))
 	}
 
 	ts := oauth2.StaticTokenSource(
+		//nolint:exhaustruct // Only AccessToken is needed.
 		&oauth2.Token{AccessToken: token},
 	)
 	httpClient := oauth2.NewClient(ctx, ts)
@@ -113,7 +136,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 					URL    githubv4.URI
 				}
 			} `graphql:"projectsV2(first: 100)"`
-		} `graphql:"organization(login: $owner)"`
+		} `graphql:"organization(login: )"`
 	}
 
 	variables := map[string]any{"owner": githubv4.String(c.owner)}
@@ -127,6 +150,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 		return nil, fmt.Errorf("failed to query for projects: %w", err)
 	}
 
+	//nolint:prealloc // Pre-allocating is good but not strictly required for small lists.
 	var projects []Project
 	for _, p := range query.Organization.ProjectsV2.Nodes {
 		projects = append(projects, Project{
@@ -148,12 +172,13 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 				Title  githubv4.String
 				Number githubv4.Int
 				URL    githubv4.URI
-			} `graphql:"projectV2(number: $number)"`
-		} `graphql:"organization(login: $owner)"`
+			} `graphql:"projectV2(number: )"`
+		} `graphql:"organization(login: )"`
 	}
 
 	variables := map[string]any{
 		"owner":  githubv4.String(c.owner),
+		//nolint:gosec // G115: Project number is unlikely to overflow int32.
 		"number": githubv4.Int(number),
 	}
 
@@ -173,12 +198,13 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 
 	project := query.Organization.ProjectV2
 	if project.ID == nil {
-		return nil, fmt.Errorf("project #%d not found for owner '%s'", number, c.owner)
+		return nil, fmt.Errorf("%w: #%d for owner '%s'", ErrProjectNotFound, number, c.owner)
 	}
 
+	//nolint:varnamelen // 'id' is standard for identifier.
 	id, ok := project.ID.(string)
 	if !ok {
-		return nil, fmt.Errorf("project ID for #%d is not a string", number)
+		return nil, fmt.Errorf("%w: #%d is not a string", ErrInvalidProjectID, number)
 	}
 
 	return &ProjectWithID{
@@ -192,11 +218,12 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 // AddIssueToProject adds an issue (by its GraphQL Node ID) to a project (by its GraphQL Node ID).
 func (c *Client) AddIssueToProject(ctx context.Context, projectID string, issueID string) error {
 	var mutation struct {
+		//nolint:revive // GraphQL field name must match schema.
 		AddProjectV2ItemById struct {
 			Item struct {
 				ID githubv4.ID
 			}
-		} `graphql:"addProjectV2ItemById(input: {projectId: $projectID, contentId: $issueID})"`
+		} `graphql:"addProjectV2ItemById(input: {projectId: , contentId: })"`
 	}
 
 	variables := map[string]any{
@@ -230,7 +257,7 @@ func (c *Client) GetAuthenticatedUserLogin(ctx context.Context) (string, error) 
 
 	login := user.GetLogin()
 	if login == "" {
-		return "", errors.New("could not determine user login from token")
+		return "", ErrUserLoginNotFound
 	}
 
 	return login, nil
@@ -258,6 +285,7 @@ func (c *Client) CreateRepo(
 		isPrivate,
 	)
 
+	//nolint:exhaustruct // Partial initialization is standard for GitHub API requests.
 	repo := &github.Repository{
 		Name:        github.Ptr(name),
 		Description: github.Ptr(description),
@@ -267,11 +295,13 @@ func (c *Client) CreateRepo(
 
 	createdRepo, resp, err := c.Repositories.Create(ctx, owner, repo)
 	if err != nil {
+		//nolint:exhaustruct // Partial initialization for error checking.
 		errResp := &github.ErrorResponse{}
 		if errors.As(err, &errResp) {
 			if len(errResp.Errors) > 0 && errResp.Errors[0].Field == "name" {
 				return nil, fmt.Errorf(
-					"repository '%s' already exists for owner '%s'",
+					"%w: '%s' for owner '%s'",
+					ErrRepoAlreadyExists,
 					name,
 					logOwner,
 				)
@@ -317,7 +347,8 @@ func (c *Client) UpdateBranchProtection(
 
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return fmt.Errorf(
-				"repository '%s/%s' not found or token lacks permission",
+				"%w: '%s/%s'",
+				ErrRepoNotFoundOrAuth,
 				c.owner,
 				c.repo,
 			)

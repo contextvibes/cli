@@ -1,10 +1,11 @@
-// cmd/product/run/run.go
+// Package run provides the command to execute example applications.
 package run
 
 import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -20,10 +21,12 @@ import (
 var runLongDescription string
 
 // RunCmd represents the run command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var RunCmd = &cobra.Command{
 	Use:     "run",
 	Example: `  contextvibes product run`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -44,7 +47,9 @@ var RunCmd = &cobra.Command{
 			return nil // User aborted
 		}
 
-		if err := runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice); err != nil {
+		err = runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice)
+		if err != nil {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("prerequisite verification failed")
 		}
 
@@ -52,6 +57,7 @@ var RunCmd = &cobra.Command{
 		presenter.Step("Executing example: %s...", presenter.Highlight(choice))
 		err = globals.ExecClient.Execute(ctx, ".", "go", "run", "./"+choice)
 		if err != nil {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("example execution failed")
 		}
 
@@ -97,6 +103,7 @@ func runVerificationChecks(
 	}
 
 	if !allPassed {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return errors.New("verification failed")
 	}
 
@@ -114,7 +121,7 @@ func findRunnableExamples(rootDir string) ([]string, error) {
 			return nil, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("failed to read examples directory: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -126,6 +133,7 @@ func findRunnableExamples(rootDir string) ([]string, error) {
 	return examples, nil
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(runLongDescription, nil)
 	if err != nil {

@@ -1,4 +1,3 @@
-// internal/workitem/provider.go
 package workitem
 
 import "context"

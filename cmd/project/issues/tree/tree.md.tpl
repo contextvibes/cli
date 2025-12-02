@@ -1,6 +1,4 @@
-# Display Work Item Hierarchy
+# Display a hierarchical tree of epics, stories, and tasks.
 
-Shows a hierarchical tree of work items based on GitHub's task list syntax (`- [ ] #123`).
-
-When run with an issue number, it displays the tree for that specific epic.
-When run without arguments, it finds all open issues with the 'epic' label and displays a tree for each one, giving a full overview of the project's work breakdown.
+Analyzes issue bodies for task lists (e.g., `- [ ] #123`) to build a parent-child relationship tree.
+Visualizes the breakdown of work from Epics down to individual Tasks.

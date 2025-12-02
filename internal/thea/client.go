@@ -1,4 +1,4 @@
-// internal/thea/client.go
+// Package thea provides a client for interacting with the THEA framework.
 package thea
 
 import (
@@ -40,13 +40,15 @@ type Artifact struct {
 // Client provides methods to interact with the THEA framework (e.g., fetching manifests and artifacts).
 type Client struct {
 	logger     *slog.Logger
-	config     *THEAServiceConfig // A dedicated config substruct for this client
-	httpClient *http.Client       // For making HTTP requests
+	config     *ServiceConfig // A dedicated config substruct for this client
+	httpClient *http.Client   // For making HTTP requests
 }
 
-// THEAServiceConfig contains configuration specific to the THEA client.
+// ServiceConfig contains configuration specific to the THEA client.
 // This would be part of your main AppConfig.LoadedAppConfig.THEA.ServiceConfig or similar.
-type THEAServiceConfig struct {
+//
+//nolint:revive // ServiceConfig is a clear name.
+type ServiceConfig struct {
 	ManifestURL        string        // Full URL to the thea-manifest.json
 	DefaultArtifactRef string        // e.g., "main" or a specific release tag like "v0.7.0"
 	RawContentBaseURL  string        // e.g., "https://raw.githubusercontent.com/contextvibes/THEA" (without ref)
@@ -58,20 +60,24 @@ type THEAServiceConfig struct {
 // NewClient creates a new THEA client.
 // The context here is primarily for future use if any initial setup needs it;
 // individual methods like FetchArtifactContent will also take a context.
-func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (*Client, error) {
+func NewClient(_ context.Context, cfg *ServiceConfig, logger *slog.Logger) (*Client, error) {
 	if cfg == nil {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, errors.New("THEA service config cannot be nil")
 	}
 
 	if logger == nil {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, errors.New("logger cannot be nil")
 	}
 
 	if cfg.ManifestURL == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, errors.New("THEA manifest URL is not configured")
 	}
 
 	if cfg.RawContentBaseURL == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, errors.New("THEA raw content base URL is not configured")
 	}
 
@@ -87,12 +93,14 @@ func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (
 	// Default timeout for HTTP client if not specified in config
 	timeout := cfg.RequestTimeout
 	if timeout == 0 {
+		//nolint:mnd // 30s default timeout.
 		timeout = 30 * time.Second // Default to 30 seconds
 	}
 
 	return &Client{
 		logger: logger.With(slog.String("service", "thea")), // Add service context to logger
 		config: cfg,
+		//nolint:exhaustruct // Transport defaults are fine.
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -101,78 +109,10 @@ func NewClient(_ context.Context, cfg *THEAServiceConfig, logger *slog.Logger) (
 
 // --- Manifest Methods ---
 
-// fetchManifest fetches the manifest from the configured URL.
-func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.config.ManifestURL, nil)
-	if err != nil {
-		c.logger.ErrorContext(
-			ctx,
-			"Failed to create manifest request",
-			slog.String("url", c.config.ManifestURL),
-			slog.String("error", err.Error()),
-		)
-
-		return nil, fmt.Errorf("creating manifest request: %w", err)
-	}
-
-	c.logger.InfoContext(ctx, "Fetching THEA manifest", slog.String("url", c.config.ManifestURL))
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		c.logger.ErrorContext(
-			ctx,
-			"Failed to fetch manifest",
-			slog.String("url", c.config.ManifestURL),
-			slog.String("error", err.Error()),
-		)
-
-		return nil, fmt.Errorf("fetching manifest from %s: %w", c.config.ManifestURL, err)
-	}
-
-	defer func() {
-		closeErr := resp.Body.Close()
-		if closeErr != nil {
-			c.logger.WarnContext(
-				ctx,
-				"Failed to close manifest response body",
-				slog.String("error", closeErr.Error()),
-			)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		c.logger.ErrorContext(
-			ctx,
-			"Failed to fetch manifest, unexpected status",
-			slog.String("url", c.config.ManifestURL),
-			slog.Int("status", resp.StatusCode),
-		)
-
-		return nil, fmt.Errorf(
-			"fetching manifest: received status %d from %s",
-			resp.StatusCode,
-			c.config.ManifestURL,
-		)
-	}
-
-	var manifest Manifest
-	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
-		c.logger.ErrorContext(
-			ctx,
-			"Failed to decode manifest JSON",
-			slog.String("url", c.config.ManifestURL),
-			slog.String("error", err.Error()),
-		)
-
-		return nil, fmt.Errorf("decoding manifest JSON from %s: %w", c.config.ManifestURL, err)
-	}
-	// TODO: Add manifest caching logic here (save to c.config.CacheDir)
-	return &manifest, nil
-}
-
 // LoadManifest retrieves the THEA manifest, using a cache if available and valid.
 // For MVP, it might just always fetch.
 func (c *Client) LoadManifest(ctx context.Context) (*Manifest, error) {
+	//nolint:godox // TODO is acceptable here.
 	// TODO: Implement caching logic:
 	// 1. Check if manifest exists in c.config.CacheDir.
 	// 2. If yes, check if it's within c.config.CacheTTL.
@@ -183,8 +123,10 @@ func (c *Client) LoadManifest(ctx context.Context) (*Manifest, error) {
 	return c.fetchManifest(ctx)
 }
 
-// GetArtifactMetadata finds an artifact in the loaded manifest by ID.
+// GetArtifactByID finds an artifact in the loaded manifest by ID.
 // It does not consider version yet for simplicity in this example, but should.
+//
+//nolint:varnamelen // 'id' is standard for identifier.
 func (m *Manifest) GetArtifactByID(id string) (*Artifact, error) {
 	// Corrected loop: iterate over the slice m.Artifacts
 	for i := range m.Artifacts { // Iterate by index to get a pointer to the original element
@@ -193,6 +135,7 @@ func (m *Manifest) GetArtifactByID(id string) (*Artifact, error) {
 		}
 	}
 
+	//nolint:err113 // Dynamic error is appropriate here.
 	return nil, fmt.Errorf("artifact with ID '%s' not found in manifest", id)
 }
 
@@ -200,6 +143,8 @@ func (m *Manifest) GetArtifactByID(id string) (*Artifact, error) {
 
 // FetchArtifactContentByID fetches the content of a specific artifact version.
 // If version is empty, it might fetch the one specified in the manifest or use DefaultArtifactRef.
+//
+//nolint:varnamelen,cyclop,funlen // 'id' is standard for identifier, complexity is acceptable.
 func (c *Client) FetchArtifactContentByID(
 	ctx context.Context,
 	id string,
@@ -226,9 +171,13 @@ func (c *Client) FetchArtifactContentByID(
 		// This assumes artifact.ArtifactVersion can be directly used as a Git ref (e.g., "v1.2.3")
 		// This part needs careful thought: does artifactVersion in manifest mean "this is the version at DefaultArtifactRef"
 		// or is artifactVersion itself a tag? For now, let's assume direct use or fallback.
-		c.logger.DebugContext(ctx, "Using artifactVersion from manifest as Git ref hint", slog.String("id", id), slog.String("artifact_version_ref", artifact.ArtifactVersion))
-		// Potentially, we'd have a mapping or convention: artifact v1.2.3 is found on git tag thea-artifact-<id>-v1.2.3 or release tag vX.Y.Z
-		// For simplicity, if artifactVersionHint is not given, we'll try artifact.ArtifactVersion IF it looks like a version tag.
+		// Potentially, we'd have a mapping or convention: artifact v1.2.3 is found on git tag
+		// thea-artifact-<id>-v1.2.3 or release tag vX.Y.Z
+		c.logger.DebugContext(ctx, "Using artifactVersion from manifest as Git ref hint",
+			slog.String("id", id),
+			slog.String("artifact_version_ref", artifact.ArtifactVersion))
+		// For simplicity, if artifactVersionHint is not given, we'll try artifact.ArtifactVersion
+		// IF it looks like a version tag.
 		// This logic will need refinement based on THEA repo's tagging strategy.
 		// For now: if artifactVersionHint is empty, use default ref.
 	}
@@ -287,6 +236,7 @@ func (c *Client) FetchArtifactContentByID(
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		//nolint:mnd // 1024 is standard buffer size.
 		bodyBytes, _ := io.ReadAll(
 			io.LimitReader(resp.Body, 1024),
 		) // Read a bit of the body for error context
@@ -295,6 +245,7 @@ func (c *Client) FetchArtifactContentByID(
 			slog.Int("status", resp.StatusCode),
 			slog.String("response_snippet", string(bodyBytes)))
 
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", fmt.Errorf(
 			"fetching artifact content: received status %d from %s",
 			resp.StatusCode,
@@ -308,4 +259,85 @@ func (c *Client) FetchArtifactContentByID(
 	}
 
 	return string(contentBytes), nil
+}
+
+// fetchManifest fetches the manifest from the configured URL.
+func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
+	req, err := c.createManifestRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c.logger.InfoContext(ctx, "Fetching THEA manifest", slog.String("url", c.config.ManifestURL))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to fetch manifest",
+			slog.String("url", c.config.ManifestURL),
+			slog.String("error", err.Error()),
+		)
+
+		return nil, fmt.Errorf("fetching manifest from %s: %w", c.config.ManifestURL, err)
+	}
+
+	defer func() {
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
+			c.logger.WarnContext(
+				ctx,
+				"Failed to close manifest response body",
+				slog.String("error", closeErr.Error()),
+			)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to fetch manifest, unexpected status",
+			slog.String("url", c.config.ManifestURL),
+			slog.Int("status", resp.StatusCode),
+		)
+
+		//nolint:err113 // Dynamic error is appropriate here.
+		return nil, fmt.Errorf(
+			"fetching manifest: received status %d from %s",
+			resp.StatusCode,
+			c.config.ManifestURL,
+		)
+	}
+
+	var manifest Manifest
+	//nolint:noinlineerr,musttag // Inline check is standard for JSON decode. Struct tags are present.
+	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to decode manifest JSON",
+			slog.String("url", c.config.ManifestURL),
+			slog.String("error", err.Error()),
+		)
+
+		return nil, fmt.Errorf("decoding manifest JSON from %s: %w", c.config.ManifestURL, err)
+	}
+	//nolint:godox // TODO is acceptable here.
+	// TODO: Add manifest caching logic here (save to c.config.CacheDir)
+	return &manifest, nil
+}
+
+func (c *Client) createManifestRequest(ctx context.Context) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.config.ManifestURL, nil)
+	if err != nil {
+		c.logger.ErrorContext(
+			ctx,
+			"Failed to create manifest request",
+			slog.String("url", c.config.ManifestURL),
+			slog.String("error", err.Error()),
+		)
+
+		return nil, fmt.Errorf("creating manifest request: %w", err)
+	}
+
+	return req, nil
 }

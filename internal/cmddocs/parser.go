@@ -2,6 +2,7 @@ package cmddocs
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 )
@@ -18,12 +19,14 @@ type CommandDesc struct {
 func ParseAndExecute(templateContent string, data any) (CommandDesc, error) {
 	tmpl, err := template.New("cmddoc").Parse(templateContent)
 	if err != nil {
-		return CommandDesc{}, err
+		return CommandDesc{}, fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	var executedTpl bytes.Buffer
-	if err := tmpl.Execute(&executedTpl, data); err != nil {
-		return CommandDesc{}, err
+
+	err = tmpl.Execute(&executedTpl, data)
+	if err != nil {
+		return CommandDesc{}, fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	var shortDesc, longDesc string

@@ -1,4 +1,3 @@
-// internal/apply/types.go
 package apply
 
 import "github.com/contextvibes/cli/internal/codemod"

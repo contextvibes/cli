@@ -1,4 +1,4 @@
-# Displays a list of issues or a detailed view of an issue's hierarchy.
+# List project issues.
 
-Fetches and displays GitHub issues. Can be filtered by state, label, assignee,
-or a custom search query.
+Lists work items (issues) from the configured provider.
+Supports filtering by state, assignee, and labels.

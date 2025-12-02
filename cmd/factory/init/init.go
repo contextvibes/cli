@@ -1,9 +1,10 @@
-// cmd/factory/init/init.go
-package init_cmd
+// Package initcmd provides the command to initialize the project configuration.
+package initcmd
 
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,9 +20,11 @@ import (
 var initLongDescription string
 
 // InitCmd represents the init command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var InitCmd = &cobra.Command{
 	Use: "init",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -38,11 +41,13 @@ var InitCmd = &cobra.Command{
 			presenter.Error("Failed to determine project root. Are you inside a Git repository?")
 			presenter.Detail("Stderr: %s", stderr)
 
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("not a git repository")
 		}
 		projectRoot := strings.TrimSpace(stdout)
 		configPath := filepath.Join(projectRoot, config.DefaultConfigFileName)
 
+		//nolint:noinlineerr // Inline check is standard for os.Stat.
 		if _, err := os.Stat(configPath); err == nil {
 			presenter.Info("Configuration file already exists: %s", presenter.Highlight(configPath))
 
@@ -50,8 +55,9 @@ var InitCmd = &cobra.Command{
 		}
 
 		defaultConfig := config.GetDefaultConfig()
+		//nolint:noinlineerr // Inline check is standard for config save.
 		if err := config.UpdateAndSaveConfig(defaultConfig, configPath); err != nil {
-			return err
+			return fmt.Errorf("failed to save config: %w", err)
 		}
 
 		presenter.Success("Successfully created .contextvibes.yaml.")
@@ -60,6 +66,7 @@ var InitCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(initLongDescription, nil)
 	if err != nil {

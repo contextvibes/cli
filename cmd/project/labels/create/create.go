@@ -1,4 +1,4 @@
-// cmd/project/labels/create/create.go
+// Package create provides the command to create labels.
 package create
 
 import (
@@ -21,6 +21,7 @@ import (
 //go:embed create.md.tpl
 var createLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
 	labelName        string
 	labelDescription string
@@ -28,6 +29,8 @@ var (
 )
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -35,6 +38,7 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
+		//nolint:wrapcheck // Factory function.
 		return github.New(ctx, logger, cfg)
 	case "":
 		logger.DebugContext(
@@ -42,8 +46,10 @@ func newProvider(
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
+		//nolint:wrapcheck // Factory function.
 		return github.New(ctx, logger, cfg)
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -52,15 +58,18 @@ func newProvider(
 }
 
 // CreateCmd represents the project labels create command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CreateCmd = &cobra.Command{
 	Use:     "create --name <label-name>",
 	Short:   "Create a new label in the repository.",
 	Example: `  contextvibes project labels create --name "docs" --description "Documentation updates" --color "0075ca"`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
 		if strings.TrimSpace(labelName) == "" {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("label name cannot be empty, please provide the --name flag")
 		}
 
@@ -78,11 +87,12 @@ var CreateCmd = &cobra.Command{
 		}
 
 		presenter.Summary("Creating label '%s'...", newLabel.Name)
+		//nolint:wrapcheck // Wrapping is handled by caller.
 		_, err = provider.CreateLabel(ctx, newLabel)
 		if err != nil {
 			presenter.Error("Failed to create label: %v", err)
 
-			return err
+			return fmt.Errorf("failed to create label: %w", err)
 		}
 
 		presenter.Success("Successfully created label '%s'.", newLabel.Name)
@@ -91,12 +101,14 @@ var CreateCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(createLongDescription, nil)
 	if err != nil {
 		panic(err)
 	}
 
+	CreateCmd.Short = desc.Short
 	CreateCmd.Long = desc.Long
 
 	CreateCmd.Flags().StringVarP(&labelName, "name", "n", "", "The name of the label (required)")
@@ -105,6 +117,7 @@ func init() {
 	CreateCmd.Flags().
 		StringVarP(&labelColor, "color", "c", "", "A 6-character hex color code for the label (without the #)")
 
+	//nolint:noinlineerr // Inline check is standard for flag marking.
 	if err := CreateCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)
 	}

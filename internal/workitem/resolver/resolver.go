@@ -1,4 +1,4 @@
-// internal/workitem/resolver/resolver.go
+// Package resolver provides functionality to build hierarchical trees of work items.
 package resolver
 
 import (
@@ -43,16 +43,16 @@ func (r *HierarchyResolver) BuildTree(
 		return rootItem, nil // This item is a leaf node
 	}
 
-	var wg sync.WaitGroup
+	var waitGroup sync.WaitGroup
 
 	childChan := make(chan *workitem.WorkItem, len(childNumbers))
 	errChan := make(chan error, len(childNumbers))
 
 	for _, childNumber := range childNumbers {
-		wg.Add(1)
+		waitGroup.Add(1)
 
 		go func(num int) {
-			defer wg.Done()
+			defer waitGroup.Done()
 			// Recursively call BuildTree, passing the withComments flag through.
 			childTree, err := r.BuildTree(ctx, num, withComments)
 			if err != nil {
@@ -65,7 +65,7 @@ func (r *HierarchyResolver) BuildTree(
 		}(childNumber)
 	}
 
-	wg.Wait()
+	waitGroup.Wait()
 	close(childChan)
 	close(errChan)
 
@@ -90,7 +90,9 @@ func (r *HierarchyResolver) parseChildIssueNumbers(body string) []int {
 
 	numbers := make([]int, 0, len(matches))
 	for _, match := range matches {
+		//nolint:mnd // Regex match count 2 is specific to this pattern.
 		if len(match) == 2 {
+			//nolint:noinlineerr // Inline check is standard for Atoi.
 			if num, err := strconv.Atoi(match[1]); err == nil {
 				numbers = append(numbers, num)
 			}

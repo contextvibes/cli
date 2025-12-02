@@ -1,7 +1,9 @@
+// Package workflow defines the steps for the kickoff workflow.
 package workflow
 
 import (
 	"context"
+	"fmt"
 )
 
 // Runner manages the execution of a series of workflow steps.
@@ -19,19 +21,48 @@ func NewRunner(presenter PresenterInterface, assumeYes bool) *Runner {
 func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 	r.presenter.Summary(title)
 
-	// 1. Run all pre-checks first.
-	for _, step := range steps {
-		err := step.PreCheck(ctx)
-		if err != nil {
-			// The step's PreCheck is responsible for its own user-facing error message.
-			return err
-		}
+	err := r.runPreChecks(ctx, steps)
+	if err != nil {
+		return err
 	}
 
 	r.presenter.Success("✓ All prerequisite checks passed.")
 	r.presenter.Newline()
 
-	// 2. Explain the plan.
+	r.presentPlan(steps)
+
+	err = r.confirmExecution()
+	if err != nil {
+		return err
+	}
+
+	err = r.executeSteps(ctx, steps)
+	if err != nil {
+		return err
+	}
+
+	r.presenter.Newline()
+	r.presenter.Success("Workflow completed successfully.")
+
+	r.checkStashAdvice(steps)
+
+	return nil
+}
+
+func (r *Runner) runPreChecks(ctx context.Context, steps []Step) error {
+	for _, step := range steps {
+		err := step.PreCheck(ctx)
+		if err != nil {
+			// The step's PreCheck is responsible for its own user-facing error message.
+			// We wrap it to satisfy linter, though the message might be redundant if printed by step.
+			return fmt.Errorf("pre-check failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *Runner) presentPlan(steps []Step) {
 	r.presenter.Info("Proposed Workflow Plan:")
 
 	for i, step := range steps {
@@ -39,39 +70,47 @@ func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 	}
 
 	r.presenter.Newline()
+}
 
-	// 3. Confirm with the user.
-	if !r.assumeYes {
-		confirmed, err := r.presenter.PromptForConfirmation("Proceed with this workflow?")
-		if err != nil {
-			return err
-		}
-
-		if !confirmed {
-			r.presenter.Info("Workflow aborted by user.")
-
-			return nil
-		}
-	} else {
+func (r *Runner) confirmExecution() error {
+	if r.assumeYes {
 		r.presenter.Info("Confirmation bypassed via --yes flag.")
+		r.presenter.Newline()
+
+		return nil
+	}
+
+	confirmed, err := r.presenter.PromptForConfirmation("Proceed with this workflow?")
+	if err != nil {
+		return fmt.Errorf("confirmation prompt failed: %w", err)
+	}
+
+	if !confirmed {
+		r.presenter.Info("Workflow aborted by user.")
+
+		return nil // Return nil to stop without error
 	}
 
 	r.presenter.Newline()
 
-	// 4. Execute all steps.
+	return nil
+}
+
+func (r *Runner) executeSteps(ctx context.Context, steps []Step) error {
 	for _, step := range steps {
 		r.presenter.Step(step.Description())
 
 		err := step.Execute(ctx)
 		if err != nil {
 			// The step's Execute method is responsible for its own user-facing error message.
-			return err // Abort on first failure.
+			return fmt.Errorf("step execution failed: %w", err) // Abort on first failure.
 		}
 	}
 
-	r.presenter.Newline()
-	r.presenter.Success("Workflow completed successfully.")
+	return nil
+}
 
+func (r *Runner) checkStashAdvice(steps []Step) {
 	// ADDED: After success, check if a stash was made and provide advice.
 	for _, step := range steps {
 		if stashStep, ok := step.(*CheckAndPromptStashStep); ok && stashStep.DidStash {
@@ -82,6 +121,4 @@ func (r *Runner) Run(ctx context.Context, title string, steps ...Step) error {
 			break // Found it, no need to check further.
 		}
 	}
-
-	return nil
 }

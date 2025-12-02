@@ -1,4 +1,4 @@
-// cmd/project/issues/internal/display.go
+// Package internal provides internal helpers for issues commands.
 package internal
 
 import (
@@ -11,6 +11,8 @@ import (
 
 // DisplayWorkItem renders a detailed, multi-line view of a single work item.
 // It does not handle comments, which are displayed by the calling command.
+//
+//nolint:varnamelen // 'p' is standard for presenter.
 func DisplayWorkItem(p *ui.Presenter, item *workitem.WorkItem) {
 	p.Header(fmt.Sprintf("%s (#%d)", item.Title, item.Number))
 	p.Detail(
@@ -29,6 +31,7 @@ func DisplayWorkItem(p *ui.Presenter, item *workitem.WorkItem) {
 	}
 
 	p.Separator()
-	_, _ = fmt.Fprintln(p.Out(), item.Body)
+	//nolint:errcheck // Printing to stdout is best effort.
+	fmt.Fprintln(p.Out(), item.Body)
 	p.Separator()
 }

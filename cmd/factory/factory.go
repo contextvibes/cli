@@ -11,6 +11,7 @@ import (
 	"github.com/contextvibes/cli/cmd/factory/kickoff"
 	"github.com/contextvibes/cli/cmd/factory/plan"
 	"github.com/contextvibes/cli/cmd/factory/scrub"
+	"github.com/contextvibes/cli/cmd/factory/setupidentity"
 	"github.com/contextvibes/cli/cmd/factory/status"
 	"github.com/contextvibes/cli/cmd/factory/sync"
 	"github.com/contextvibes/cli/cmd/factory/tidy"
@@ -39,4 +40,5 @@ func init() {
 	FactoryCmd.AddCommand(apply.ApplyCmd)
 	FactoryCmd.AddCommand(deploy.DeployCmd)
 	FactoryCmd.AddCommand(scrub.ScrubCmd)
+	FactoryCmd.AddCommand(setupidentity.SetupIdentityCmd)
 }

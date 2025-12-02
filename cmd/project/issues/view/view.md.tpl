@@ -1,5 +1,4 @@
-# View Issue Details
+# Display the details of a specific issue.
 
-Displays the full details for a single work item (issue, task, story) from the configured provider.
-
-This command fetches the title, body, author, labels, and other metadata for the specified issue number. Using the `--comments` flag will also fetch and display all associated comments, providing a complete picture of the discussion around the work item directly in your terminal.
+Fetches and renders the full details of a work item, including its description, status, assignees, and labels.
+Optionally displays comments.

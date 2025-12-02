@@ -4,14 +4,14 @@
 
 pkgs.stdenv.mkDerivation {
   pname = "contextvibes";
-  version = "0.2.1";
+  version = "0.4.0";
 
   # Fetch the pre-built binary from the GitHub Release.
   src = pkgs.fetchurl {
     # URL for the release asset.
-    url = "https://github.com/contextvibes/cli/releases/download/v0.2.1/contextvibes";
+    url = "https://github.com/contextvibes/cli/releases/download/v0.4.0/contextvibes";
     # SHA256 hash of the downloaded file.
-    sha256 = "sha256:524045cb90a3dc799c2c8edc3c157b9fd3ad6adfac2f31060f3f355a1e025ebd";
+    sha256 = "sha256:3a6a5196c90a5e2dc910d1c819e450246f47127855b79a11869f5c6d3274ca6f";
   };
 
   dontUnpack = true;

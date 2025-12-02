@@ -1,9 +1,11 @@
-// cmd/factory/finish/finish.go
+// Package finish provides the command to finish a feature branch.
 package finish
 
 import (
 	_ "embed"
 	"errors"
+	"fmt"
+	//nolint:revive // Blank import for side effects (though none obvious here, keeping for safety).
 	_ "os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
@@ -17,6 +19,8 @@ import (
 var finishLongDescription string
 
 // FinishCmd represents the finish command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var FinishCmd = &cobra.Command{
 	Use: "finish",
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -25,6 +29,7 @@ var FinishCmd = &cobra.Command{
 
 		presenter.Summary("Finishing work on the current branch.")
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitClient, err := git.NewClient(
 			ctx,
 			".",
@@ -34,19 +39,21 @@ var FinishCmd = &cobra.Command{
 			},
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
 		currentBranch, err := gitClient.GetCurrentBranchName(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get current branch: %w", err)
 		}
 		if currentBranch == gitClient.MainBranchName() {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("cannot create a pull request from the main branch")
 		}
 
+		//nolint:noinlineerr // Inline check is standard.
 		if err := gitClient.Push(ctx, currentBranch); err != nil {
-			return err
+			return fmt.Errorf("failed to push branch: %w", err)
 		}
 
 		if !globals.ExecClient.CommandExists("gh") {
@@ -57,7 +64,7 @@ var FinishCmd = &cobra.Command{
 
 		confirmed, err := presenter.PromptForConfirmation("Create a GitHub Pull Request now?")
 		if err != nil {
-			return err
+			return fmt.Errorf("confirmation failed: %w", err)
 		}
 		if !confirmed {
 			presenter.Info("Aborted. You can create the PR later by running 'gh pr create'.")
@@ -66,8 +73,9 @@ var FinishCmd = &cobra.Command{
 		}
 
 		presenter.Step("Running 'gh pr create'...")
+		//nolint:noinlineerr // Inline check is standard.
 		if err := globals.ExecClient.Execute(ctx, ".", "gh", "pr", "create", "--fill", "--web"); err != nil {
-			return err
+			return fmt.Errorf("gh pr create failed: %w", err)
 		}
 
 		presenter.Success("Pull Request created.")
@@ -76,6 +84,7 @@ var FinishCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(finishLongDescription, nil)
 	if err != nil {

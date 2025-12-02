@@ -1,4 +1,4 @@
-// cmd/project/board/list/list.go
+// Package list provides the command to list project boards.
 package list
 
 import (
@@ -25,6 +25,7 @@ func newGHClient(
 	logger *slog.Logger,
 	cfg *config.Config,
 ) (*github.Client, error) {
+	//nolint:exhaustruct // Partial config is sufficient for discovery.
 	gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 		Executor: globals.ExecClient.UnderlyingExecutor(),
 		Logger:   logger,
@@ -47,15 +48,22 @@ func newGHClient(
 		)
 	}
 
-	return github.NewClient(ctx, logger, owner, repo)
+	client, err := github.NewClient(ctx, logger, owner, repo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	return client, nil
 }
 
 // ListCmd represents the project board list command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var ListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "Lists available project boards.",
 	Aliases: []string{"ls"},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -72,7 +80,7 @@ var ListCmd = &cobra.Command{
 			presenter.Error("Failed to fetch project boards: %v", err)
 			presenter.Advice("Please ensure your GITHUB_TOKEN has the 'read:project' scope.")
 
-			return err
+			return fmt.Errorf("failed to list projects: %w", err)
 		}
 
 		if len(projects) == 0 {
@@ -91,6 +99,7 @@ var ListCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(listLongDescription, nil)
 	if err != nil {
