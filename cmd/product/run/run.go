@@ -47,7 +47,9 @@ var RunCmd = &cobra.Command{
 			return nil // User aborted
 		}
 
-		if err := runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice); err != nil {
+		err = runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice)
+		if err != nil {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("prerequisite verification failed")
 		}
 
@@ -55,6 +57,7 @@ var RunCmd = &cobra.Command{
 		presenter.Step("Executing example: %s...", presenter.Highlight(choice))
 		err = globals.ExecClient.Execute(ctx, ".", "go", "run", "./"+choice)
 		if err != nil {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("example execution failed")
 		}
 
@@ -100,6 +103,7 @@ func runVerificationChecks(
 	}
 
 	if !allPassed {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return errors.New("verification failed")
 	}
 

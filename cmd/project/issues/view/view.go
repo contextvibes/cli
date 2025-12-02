@@ -35,6 +35,7 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
+		//nolint:wrapcheck // Wrapping is handled by caller.
 		return github.New(ctx, logger, cfg)
 	case "":
 		logger.DebugContext(
@@ -42,8 +43,10 @@ func newProvider(
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
+		//nolint:wrapcheck // Wrapping is handled by caller.
 		return github.New(ctx, logger, cfg)
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -65,6 +68,7 @@ var ViewCmd = &cobra.Command{
 
 		issueNumber, err := strconv.Atoi(args[0])
 		if err != nil {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("invalid issue number provided")
 		}
 

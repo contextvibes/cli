@@ -21,16 +21,17 @@ func newIntegrationTestLogger() *slog.Logger {
 // Build Tag: //go:build integration.
 func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 	t.Parallel()
+
 	if os.Getenv("RUN_INTEGRATION_TESTS") == "" && !testing.Short() {
 		t.Skip("Skipping integration test: THEAClient_Integration_FetchRealManifest...")
 	}
 
 	//nolint:exhaustruct // Partial config is sufficient for test.
-	cfg := thea.THEAServiceConfig{
-		ManifestURL:        "https://raw.githubusercontent.com/contextvibes/THEA/main/thea-manifest.json", // LIVE URL
-		RawContentBaseURL:  "https://raw.githubusercontent.com/contextvibes/THEA",                         // LIVE URL base
+	cfg := thea.ServiceConfig{
+		ManifestURL:       "https://raw.githubusercontent.com/contextvibes/THEA/main/thea-manifest.json", // LIVE URL
+		RawContentBaseURL: "https://raw.githubusercontent.com/contextvibes/THEA",                         // LIVE URL base
 		//nolint:lll // Comment is long.
-		DefaultArtifactRef: "main",                                                                        // Using main branch
+		DefaultArtifactRef: "main", // Using main branch
 		RequestTimeout:     60 * time.Second,
 	}
 	logger := newIntegrationTestLogger()
@@ -85,6 +86,7 @@ func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 // Build Tag: //go:build integration.
 func TestTHEAClient_Integration_FetchRealArtifactContent(t *testing.T) {
 	t.Parallel()
+
 	if os.Getenv("RUN_INTEGRATION_TESTS") == "" && !testing.Short() {
 		t.Skip("Skipping integration test: TestTHEAClient_Integration_FetchRealArtifactContent...")
 	}
@@ -92,10 +94,10 @@ func TestTHEAClient_Integration_FetchRealArtifactContent(t *testing.T) {
 	testArtifactID := "playbooks/project_initiation/master_strategic_kickoff_prompt" // REAL ID
 	testArtifactRef := "main"                                                        // Fetch from main branch
 	//nolint:lll // Comment is long.
-	expectedContentSubstring := "AI Facilitator Instructions & Persona"              // REAL SUBSTRING from your kickoff prompt
+	expectedContentSubstring := "AI Facilitator Instructions & Persona" // REAL SUBSTRING from your kickoff prompt
 
 	//nolint:exhaustruct // Partial config is sufficient for test.
-	cfg := thea.THEAServiceConfig{
+	cfg := thea.ServiceConfig{
 		ManifestURL:        "https://raw.githubusercontent.com/contextvibes/THEA/main/thea-manifest.json",
 		RawContentBaseURL:  "https://raw.githubusercontent.com/contextvibes/THEA",
 		DefaultArtifactRef: "main",

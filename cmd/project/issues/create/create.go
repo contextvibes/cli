@@ -30,7 +30,7 @@ var (
 
 // newProvider is a factory function that returns the configured work item provider.
 //
-
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -38,15 +38,16 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
-		return github.New(ctx, logger, cfg)
+		return github.New(ctx, logger, cfg) //nolint:wrapcheck // Factory function.
 	case "":
 		logger.DebugContext(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
-		return github.New(ctx, logger, cfg)
+		return github.New(ctx, logger, cfg) //nolint:wrapcheck // Factory function.
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -89,6 +90,7 @@ var CreateCmd = &cobra.Command{
 		}
 
 		if issueTitle == "" {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("title cannot be empty")
 		}
 

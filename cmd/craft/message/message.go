@@ -1,4 +1,4 @@
-// cmd/craft/message/message.go
+// Package message provides the command to generate commit messages.
 package message
 
 import (

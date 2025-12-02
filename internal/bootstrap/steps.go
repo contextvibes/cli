@@ -1,4 +1,4 @@
-// Package bootstrap provides the steps for bootstrapping a new project.
+// Package bootstrap provides workflow steps for initializing a new project.
 package bootstrap
 
 import (
@@ -10,6 +10,11 @@ import (
 	"github.com/contextvibes/cli/internal/exec"
 	gh "github.com/contextvibes/cli/internal/github" // aliased to avoid conflict
 	"github.com/contextvibes/cli/internal/workflow"
+)
+
+const (
+	// FilePermReadWrite is 0o644.
+	FilePermReadWrite = 0o644
 )
 
 // --- Step 1: Create Remote Repository ---
@@ -106,7 +111,7 @@ func (s *ScaffoldProjectStep) Execute(_ context.Context) error {
 	content := fmt.Sprintf("# %s\n\nGo Module: `%s`\n", s.AppName, s.GoModulePath)
 
 	//nolint:gosec // Writing README with 0644 is standard.
-	err := os.WriteFile(readmePath, []byte(content), 0o644)
+	err := os.WriteFile(readmePath, []byte(content), FilePermReadWrite)
 	if err != nil {
 		s.Presenter.Error("Failed to write placeholder README.md: %v", err)
 

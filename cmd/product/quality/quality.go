@@ -57,6 +57,8 @@ var QualityCmd = &cobra.Command{
 			if len(failures) > 0 {
 				criticalErrors = append(criticalErrors, failures...)
 			}
+		case project.Terraform, project.Pulumi, project.Python, project.Unknown:
+			fallthrough
 		default:
 			presenter.Info("No specific quality checks for project type: %s", projType)
 
@@ -72,6 +74,7 @@ var QualityCmd = &cobra.Command{
 				presenter.Detail("- %s", failure)
 			}
 
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New(errorMsg)
 		}
 		presenter.Success("All quality checks passed.")
@@ -116,6 +119,7 @@ func executeEnhancedGoQualityChecks(
 			Command:    "golangci-lint",
 			Args:       []string{"run"},
 			SuccessMsg: "Linter passed (includes formatting checks).",
+			//nolint:lll // Advice string is long.
 			FailAdvice: "Review the linter output above to fix issues, or run 'contextvibes product format' to apply auto-fixes.",
 		},
 		{

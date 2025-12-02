@@ -1,4 +1,3 @@
-// internal/workitem/types.go
 package workitem
 
 import "time"
@@ -6,6 +5,7 @@ import "time"
 // Type represents the classification of a work item (e.g., Story, Task).
 type Type string
 
+// Work item types.
 const (
 	TypeStory Type = "Story"
 	TypeTask  Type = "Task"
@@ -17,6 +17,7 @@ const (
 // State represents the status of a work item (e.g., Open, Closed).
 type State string
 
+// Work item states.
 const (
 	StateOpen   State = "Open"
 	StateClosed State = "Closed"

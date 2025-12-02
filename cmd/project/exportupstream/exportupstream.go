@@ -142,6 +142,7 @@ var ExportUpstreamCmd = &cobra.Command{
 		// Write to file
 		err := tools.WriteBufferToFile(outputFlag, &outputBuffer)
 		if err != nil {
+			//nolint:wrapcheck // Wrapping is handled by caller.
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 
@@ -157,12 +158,14 @@ func resolveModule(ctx context.Context, mod string) (string, string, error) {
 	//nolint:lll // Command line arguments are long.
 	out, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "go", "list", "-mod=readonly", "-m", "-f", "{{.Dir}}|{{.Version}}", mod)
 	if err != nil {
+		//nolint:wrapcheck // Wrapping is handled by caller.
 		return "", "", err
 	}
 
 	parts := strings.Split(strings.TrimSpace(out), "|")
 	//nolint:mnd // 2 parts expected: Dir and Version.
 	if len(parts) != 2 {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", "", fmt.Errorf("unexpected go list output format: %s", out)
 	}
 

@@ -1,9 +1,8 @@
-// internal/workitem/github/provider.go
+// Package github provides the GitHub implementation of the workitem provider.
 package github
 
 import (
 	"context"
-	_ "errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -25,6 +24,8 @@ type Provider struct {
 }
 
 // NewWithClient creates a new Provider with an existing GitHub client.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func NewWithClient(client *gh.Client, logger *slog.Logger, owner, repo string) workitem.Provider {
 	return &Provider{
 		ghClient: client,
@@ -35,9 +36,12 @@ func NewWithClient(client *gh.Client, logger *slog.Logger, owner, repo string) w
 }
 
 // New creates a new Provider by discovering the repository from the local git remote.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
 	tempExecutor := exec.NewOSCommandExecutor(logger)
 
+	//nolint:exhaustruct // Partial config is sufficient for discovery.
 	gitClient, err := git.NewClient(
 		ctx,
 		".",
@@ -78,10 +82,12 @@ func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem
 	return NewWithClient(ghClient, logger, owner, repo), nil
 }
 
+// ListItems retrieves a collection of work items based on the provided options.
 func (p *Provider) ListItems(
 	ctx context.Context,
 	options workitem.ListOptions,
 ) ([]workitem.WorkItem, error) {
+	//nolint:exhaustruct // Partial options are valid.
 	ghOpts := &github.IssueListByRepoOptions{
 		State:    "open",
 		Labels:   options.Labels,
@@ -111,6 +117,7 @@ func (p *Provider) ListItems(
 		return nil, fmt.Errorf("failed to list github issues: %w", err)
 	}
 
+	//nolint:prealloc // Pre-allocating is good but not strictly required.
 	workItems := make([]workitem.WorkItem, 0, len(issues))
 	for _, issue := range issues {
 		if issue.IsPullRequest() {
@@ -123,6 +130,7 @@ func (p *Provider) ListItems(
 	return workItems, nil
 }
 
+// GetItem retrieves a single work item by its public number, optionally fetching comments.
 func (p *Provider) GetItem(
 	ctx context.Context,
 	number int,
@@ -169,6 +177,7 @@ func (p *Provider) GetItem(
 	return &item, nil
 }
 
+// CreateItem creates a new work item in the backend system.
 func (p *Provider) CreateItem(
 	ctx context.Context,
 	item workitem.WorkItem,
@@ -195,6 +204,7 @@ func (p *Provider) CreateItem(
 	return &newItem, nil
 }
 
+// UpdateItem updates an existing work item in the backend system.
 func (p *Provider) UpdateItem(
 	ctx context.Context,
 	number int,
@@ -223,6 +233,7 @@ func (p *Provider) UpdateItem(
 	return &newItem, nil
 }
 
+// SearchItems uses a provider-specific query string to find work items.
 func (p *Provider) SearchItems(ctx context.Context, query string) ([]workitem.WorkItem, error) {
 	fullQuery := fmt.Sprintf("repo:%s/%s %s", p.owner, p.repo, query)
 	p.logger.DebugContext(ctx, "Searching GitHub issues", "query", fullQuery)
@@ -232,6 +243,7 @@ func (p *Provider) SearchItems(ctx context.Context, query string) ([]workitem.Wo
 		return nil, fmt.Errorf("failed to search github issues: %w", err)
 	}
 
+	//nolint:prealloc // Pre-allocating is good but not strictly required.
 	workItems := make([]workitem.WorkItem, 0, len(result.Issues))
 	for _, issue := range result.Issues {
 		if issue.IsPullRequest() {
@@ -244,6 +256,7 @@ func (p *Provider) SearchItems(ctx context.Context, query string) ([]workitem.Wo
 	return workItems, nil
 }
 
+// CreateLabel creates a new label in the backend system.
 func (p *Provider) CreateLabel(ctx context.Context, label workitem.Label) (*workitem.Label, error) {
 	p.logger.DebugContext(
 		ctx,
@@ -255,6 +268,7 @@ func (p *Provider) CreateLabel(ctx context.Context, label workitem.Label) (*work
 		"name",
 		label.Name,
 	)
+	//nolint:exhaustruct // Partial initialization is valid for creation.
 	ghLabel := &github.Label{
 		Name:        github.Ptr(label.Name),
 		Description: github.Ptr(label.Description),
@@ -283,6 +297,7 @@ func toComment(comment *github.IssueComment) workitem.Comment {
 }
 
 func toWorkItem(issue *github.Issue) workitem.WorkItem {
+	//nolint:exhaustruct // Partial initialization is valid.
 	item := workitem.WorkItem{
 		ID:        issue.GetNodeID(),
 		Number:    issue.GetNumber(),
@@ -340,6 +355,7 @@ func fromWorkItem(item workitem.WorkItem) *github.IssueRequest {
 		assignees = []string{}
 	}
 
+	//nolint:exhaustruct // Partial initialization is valid.
 	req := &github.IssueRequest{
 		Title:     github.Ptr(item.Title),
 		Body:      github.Ptr(item.Body),

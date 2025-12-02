@@ -34,6 +34,7 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
+		//nolint:wrapcheck // Wrapping is handled by caller.
 		return github.New(ctx, logger, cfg)
 	case "":
 		logger.DebugContext(
@@ -41,8 +42,10 @@ func newProvider(
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
+		//nolint:wrapcheck // Wrapping is handled by caller.
 		return github.New(ctx, logger, cfg)
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -90,7 +93,7 @@ var SuggestRefinementCmd = &cobra.Command{
 			//nolint:errcheck // Printing to stdout is best effort here.
 			fmt.Fprint(presenter.Out(), prompt)
 		} else {
-			//nolint:gosec // Writing to user-specified file is intended.
+			//nolint:gosec,mnd // Writing to user-specified file is intended, 0644 is standard.
 			err := os.WriteFile(outputFile, []byte(prompt), 0o644)
 			if err != nil {
 				presenter.Error("Failed to write prompt to file %s: %v", outputFile, err)
@@ -106,57 +109,51 @@ var SuggestRefinementCmd = &cobra.Command{
 
 //nolint:lll // Prompt strings are long.
 func generateAIPrompt(items []workitem.WorkItem) string {
-	var b bytes.Buffer
+	var buffer bytes.Buffer
 
-	fmt.Fprintln(&b, "# AI Prompt: Scrum Master Backlog Refinement")
-	fmt.Fprintln(&b, "\n## Your Role & Goal")
+	fmt.Fprintln(&buffer, "# AI Prompt: Scrum Master Backlog Refinement")
+	fmt.Fprintln(&buffer, "\n## Your Role & Goal")
 	fmt.Fprintln(
-		&b,
+		&buffer,
 		"You are an expert Scrum Master. Your goal is to analyze the following list of unclassified GitHub issues. For each issue, you must decide if it is an **Epic**, **Story**, **Task**, **Bug**, or **Chore**. Based on your decision, you will generate a `bash` script that uses the `gh` CLI to apply the correct label to each issue.",
 	)
 
-	fmt.Fprintln(&b, "\n## Rules")
+	fmt.Fprintln(&buffer, "\n## Rules")
 	fmt.Fprintln(
-		&b,
+		&buffer,
 		"1.  **Analyze Content**: Base your decision on the title and body of each issue.",
 	)
 	fmt.Fprintln(
-		&b,
+		&buffer,
 		"2.  **Use `gh` CLI**: The output script MUST use the format `gh issue edit <number> --add-label <type>` for each issue.",
 	)
 	fmt.Fprintln(
-		&b,
+		&buffer,
 		"3.  **Script Only**: Your final output MUST be a single, runnable `bash` script block and nothing else.",
 	)
 	fmt.Fprintln(
-		&b,
+		&buffer,
 		"4.  **Be Decisive**: Do not skip any issues. Assign a type to every issue provided.",
 	)
 
-	fmt.Fprintln(&b, "\n## Unclassified Issues for Review")
-	fmt.Fprintln(&b, "---")
+	fmt.Fprintln(&buffer, "\n## Unclassified Issues for Review")
+	fmt.Fprintln(&buffer, "---")
 
 	for _, item := range items {
-		fmt.Fprintf(&b, "\n### Issue #%d: %s\n", item.Number, item.Title)
-		fmt.Fprintln(&b, "```")
-		fmt.Fprintln(&b, item.Body)
-		fmt.Fprintln(&b, "```")
+		fmt.Fprintf(&buffer, "\n### Issue #%d: %s\n", item.Number, item.Title)
+		fmt.Fprintln(&buffer, "```")
+		fmt.Fprintln(&buffer, item.Body)
+		fmt.Fprintln(&buffer, "```")
 	}
 
-	return b.String()
+	return buffer.String()
 }
 
 //nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
-	// Create a default description if the template file is missing or empty during dev
-	desc := cmddocs.CommandDesc{
-		Short: "Generate a prompt for an AI to classify untyped issues.",
-		Long:  "Scans for unclassified issues and generates a prompt for an AI to classify them.",
-	}
-
-	parsed, err := cmddocs.ParseAndExecute(suggestLongDescription, nil)
-	if err == nil {
-		desc = parsed
+	desc, err := cmddocs.ParseAndExecute(suggestLongDescription, nil)
+	if err != nil {
+		panic(err)
 	}
 
 	SuggestRefinementCmd.Short = desc.Short

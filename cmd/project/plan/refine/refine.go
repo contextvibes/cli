@@ -1,4 +1,4 @@
-// cmd/project/plan/refine/refine.go
+// Package refine provides the command to refine issues.
 package refine
 
 import (
@@ -21,6 +21,8 @@ import (
 var refineLongDescription string
 
 // newProvider is a factory function that returns the configured work item provider.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -28,6 +30,7 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
+		//nolint:wrapcheck // Factory function.
 		return github.New(ctx, logger, cfg)
 	case "":
 		logger.DebugContext(
@@ -35,8 +38,10 @@ func newProvider(
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
+		//nolint:wrapcheck // Factory function.
 		return github.New(ctx, logger, cfg)
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -45,11 +50,13 @@ func newProvider(
 }
 
 // RefineCmd represents the project plan refine command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var RefineCmd = &cobra.Command{
 	Use:     "refine",
 	Short:   "Interactively classify untyped issues.",
 	Example: `  contextvibes project plan refine`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -68,7 +75,7 @@ var RefineCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed to search for unclassified issues: %v", err)
 
-			return err
+			return fmt.Errorf("failed to search items: %w", err)
 		}
 
 		if len(items) == 0 {
@@ -87,6 +94,7 @@ var RefineCmd = &cobra.Command{
 			form := huh.NewForm(
 				huh.NewGroup(
 					huh.NewNote().Title(prompt).Description(item.Body),
+					//nolint:lll // Long line for options.
 					huh.NewSelect[string]().
 						Title("What is the correct type for this issue?").
 						Options(
@@ -103,7 +111,7 @@ var RefineCmd = &cobra.Command{
 
 			err := form.Run()
 			if err != nil {
-				return err // User likely hit Ctrl+C
+				return fmt.Errorf("input form failed: %w", err)
 			}
 
 			if issueType != "skip" && issueType != "" {
@@ -138,6 +146,7 @@ var RefineCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(refineLongDescription, nil)
 	if err != nil {

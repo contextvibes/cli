@@ -20,6 +20,7 @@ import (
 const (
 	dirPermSecure = 0o700
 	filePermRW    = 0o600
+	filePermRead  = 0o644
 	minKeyParts   = 5
 )
 
@@ -44,17 +45,20 @@ var SetupIdentityCmd = &cobra.Command{
 		presenter.Header("1. Configuring Tools & Shell")
 
 		// 1.1 GPG Agent
-		if err := configureGPGAgent(ctx, presenter); err != nil {
+		err := configureGPGAgent(ctx, presenter)
+		if err != nil {
 			return err
 		}
 
 		// 1.2 Git Security
-		if err := configureGitSecurity(ctx, presenter); err != nil {
+		err = configureGitSecurity(ctx, presenter)
+		if err != nil {
 			return err
 		}
 
 		// 1.3 Bashrc Integration
-		if err := configureBashrc(presenter); err != nil {
+		err = configureBashrc(presenter)
+		if err != nil {
 			return err
 		}
 
@@ -70,17 +74,20 @@ var SetupIdentityCmd = &cobra.Command{
 		}
 
 		// 2.2 Trust Key
-		if err := trustGPGKey(ctx, presenter, keyID); err != nil {
+		err = trustGPGKey(ctx, presenter, keyID)
+		if err != nil {
 			return err
 		}
 
 		// 2.3 Initialize Pass
-		if err := initPass(ctx, presenter, keyID); err != nil {
+		err = initPass(ctx, presenter, keyID)
+		if err != nil {
 			return err
 		}
 
 		// 2.4 GitHub Auth
-		if err := authenticateGitHub(ctx, presenter); err != nil {
+		err = authenticateGitHub(ctx, presenter)
+		if err != nil {
 			return err
 		}
 
@@ -91,11 +98,13 @@ var SetupIdentityCmd = &cobra.Command{
 	},
 }
 
+//nolint:varnamelen // 'p' is standard for presenter.
 func configureGPGAgent(ctx context.Context, p *ui.Presenter) error {
 	home, _ := os.UserHomeDir()
 	gnupgDir := filepath.Join(home, ".gnupg")
 
-	if err := os.MkdirAll(gnupgDir, dirPermSecure); err != nil {
+	err := os.MkdirAll(gnupgDir, dirPermSecure)
+	if err != nil {
 		return fmt.Errorf("failed to create ~/.gnupg: %w", err)
 	}
 
@@ -109,10 +118,9 @@ func configureGPGAgent(ctx context.Context, p *ui.Presenter) error {
 	pinentryPath := strings.TrimSpace(out)
 	if pinentryPath != "" {
 		confPath := filepath.Join(gnupgDir, "gpg-agent.conf")
-
 		confContent := fmt.Sprintf("pinentry-program %s\n", pinentryPath)
 
-		err := os.WriteFile(confPath, []byte(confContent), filePermRW)
+		err = os.WriteFile(confPath, []byte(confContent), filePermRW)
 		if err != nil {
 			return fmt.Errorf("failed to write gpg-agent.conf: %w", err)
 		}
@@ -125,6 +133,7 @@ func configureGPGAgent(ctx context.Context, p *ui.Presenter) error {
 	return nil
 }
 
+//nolint:varnamelen // 'p' is standard for presenter.
 func configureGitSecurity(ctx context.Context, p *ui.Presenter) error {
 	keyID := os.Getenv("GPG_KEY_ID")
 	if keyID == "" {
@@ -151,18 +160,19 @@ func configureGitSecurity(ctx context.Context, p *ui.Presenter) error {
 	return nil
 }
 
-func configureBashrc(p *ui.Presenter) error {
+func configureBashrc(presenter *ui.Presenter) error {
 	home, _ := os.UserHomeDir()
 	bashrcPath := filepath.Join(home, ".bashrc")
 	marker := "# --- SECURE ENV CONFIG ---"
 
+	//nolint:gosec // Reading user bashrc is intended.
 	content, err := os.ReadFile(bashrcPath)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to read .bashrc: %w", err)
 	}
 
 	if strings.Contains(string(content), marker) {
-		p.Info("Shell configuration already present.")
+		presenter.Info("Shell configuration already present.")
 
 		return nil
 	}
@@ -186,46 +196,50 @@ alias p='pass'
 alias g='git'
 `
 	//nolint:gosec // Writing to user's bashrc is intended.
-	f, err := os.OpenFile(bashrcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(bashrcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, filePermRead)
 	if err != nil {
 		return fmt.Errorf("failed to open .bashrc: %w", err)
 	}
-	defer f.Close()
+	//nolint:errcheck // Defer close is sufficient.
+	defer file.Close()
 
-	if _, err := f.WriteString(block); err != nil {
+	_, err = file.WriteString(block)
+	if err != nil {
 		return fmt.Errorf("failed to write to .bashrc: %w", err)
 	}
 
-	p.Success("✓ Shell configuration updated (.bashrc)")
+	presenter.Success("✓ Shell configuration updated (.bashrc)")
 
 	return nil
 }
 
-func importGPGKey(ctx context.Context, p *ui.Presenter) (string, error) {
+func importGPGKey(ctx context.Context, presenter *ui.Presenter) (string, error) {
 	// Check if key exists
 	out, _, _ := globals.ExecClient.CaptureOutput(ctx, ".", "gpg", "--list-secret-keys", "--with-colons")
 	if strings.Contains(out, "sec:") {
-		p.Info("Secret key already exists. Skipping import.")
+		presenter.Info("Secret key already exists. Skipping import.")
 
 		return extractKeyID(out), nil
 	}
 
-	p.Info("👉 Please paste your ASCII-Armored Private GPG Key.")
-	p.Info("   (Press Enter, paste key, then press Ctrl+D to finish)")
+	presenter.Info("👉 Please paste your ASCII-Armored Private GPG Key.")
+	presenter.Info("   (Press Enter, paste key, then press Ctrl+D to finish)")
 
 	// Interactive import using standard input
-	if err := globals.ExecClient.Execute(ctx, ".", "gpg", "--import"); err != nil {
+	err := globals.ExecClient.Execute(ctx, ".", "gpg", "--import")
+	if err != nil {
 		return "", fmt.Errorf("gpg import failed: %w", err)
 	}
 
 	// Re-check to get ID
-	out, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "gpg", "--list-secret-keys", "--with-colons")
+	out, _, err = globals.ExecClient.CaptureOutput(ctx, ".", "gpg", "--list-secret-keys", "--with-colons")
 	if err != nil {
 		return "", fmt.Errorf("failed to list keys after import: %w", err)
 	}
 
 	keyID := extractKeyID(out)
 	if keyID == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", errors.New("no secret key found after import")
 	}
 
@@ -246,6 +260,7 @@ func extractKeyID(gpgOutput string) string {
 	return ""
 }
 
+//nolint:varnamelen // 'p' is standard for presenter.
 func trustGPGKey(ctx context.Context, p *ui.Presenter, keyID string) error {
 	p.Step("Applying 'Ultimate Trust' to key: %s", keyID)
 
@@ -261,11 +276,13 @@ func trustGPGKey(ctx context.Context, p *ui.Presenter, keyID string) error {
 	return nil
 }
 
+//nolint:varnamelen // 'p' is standard for presenter.
 func initPass(ctx context.Context, p *ui.Presenter, keyID string) error {
 	home, _ := os.UserHomeDir()
 	passDir := filepath.Join(home, ".password-store")
 
-	if _, err := os.Stat(passDir); err == nil {
+	_, err := os.Stat(passDir)
+	if err == nil {
 		p.Info("Password store already initialized.")
 
 		return nil
@@ -273,7 +290,7 @@ func initPass(ctx context.Context, p *ui.Presenter, keyID string) error {
 
 	p.Step("Initializing 'pass' vault...")
 
-	err := globals.ExecClient.Execute(ctx, ".", "pass", "init", keyID)
+	err = globals.ExecClient.Execute(ctx, ".", "pass", "init", keyID)
 	if err != nil {
 		return fmt.Errorf("pass init failed: %w", err)
 	}
@@ -283,6 +300,7 @@ func initPass(ctx context.Context, p *ui.Presenter, keyID string) error {
 	return nil
 }
 
+//nolint:varnamelen // 'p' is standard for presenter.
 func authenticateGitHub(ctx context.Context, p *ui.Presenter) error {
 	var token string
 
@@ -304,6 +322,7 @@ func authenticateGitHub(ctx context.Context, p *ui.Presenter) error {
 	}
 
 	if strings.TrimSpace(token) == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return errors.New("token cannot be empty")
 	}
 

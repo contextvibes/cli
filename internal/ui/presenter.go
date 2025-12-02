@@ -1,5 +1,4 @@
-// internal/ui/presenter.go
-
+// Package ui provides the presentation layer for the CLI, handling output formatting and user interaction.
 package ui
 
 import (
@@ -34,6 +33,8 @@ type Presenter struct {
 }
 
 // NewPresenter creates a new Console instance with Pulumi-like color support.
+//
+//nolint:ireturn // Returning interface is intended.
 func NewPresenter(outW, errW io.Writer) *Presenter {
 	var out io.Writer = os.Stdout
 	if outW != nil {
@@ -63,87 +64,119 @@ func NewPresenter(outW, errW io.Writer) *Presenter {
 	}
 }
 
-// getInteractiveReader intelligently selects the correct input for user prompts.
-// If stdin is a pipe, it opens /dev/tty for interactive input. Otherwise, it uses stdin.
-// The returned cleanup function MUST be called by the caller to close /dev/tty if it was opened.
-func (p *Presenter) getInteractiveReader() (reader io.Reader, cleanup func(), err error) {
-	if !isatty.IsTerminal(os.Stdin.Fd()) {
-		tty, ttyErr := os.Open("/dev/tty")
-		if ttyErr != nil {
-			return nil, func() {}, fmt.Errorf(
-				"stdin is a pipe and could not open /dev/tty for interactive prompt: %w",
-				ttyErr,
-			)
-		}
-
-		return tty, func() { _ = tty.Close() }, nil
-	}
-
-	return os.Stdin, func() {}, nil
-}
-
 // Out returns the configured output writer (typically os.Stdout).
+//
+//nolint:ireturn // Returning interface is intended.
 func (p *Presenter) Out() io.Writer {
 	return p.outW
 }
 
 // Err returns the configured error writer (typically os.Stderr).
+//
+//nolint:ireturn // Returning interface is intended.
 func (p *Presenter) Err() io.Writer {
 	return p.errW
 }
 
 // --- Output Formatting Methods ---
 
+// Header prints a header.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Header(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.headerColor.Fprintf(p.outW, format+"\n", a...)
 }
 
+// Summary prints a summary.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Summary(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.summaryColor.Fprint(p.outW, "SUMMARY:\n")
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = fmt.Fprintf(p.outW, "  "+format+"\n", a...)
 	p.Newline()
 }
 
+// Step prints a step.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Step(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.stepColor.Fprintf(p.outW, "- "+format+"\n", a...)
 }
 
+// Info prints info.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Info(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.infoColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
 
+// InfoPrefixOnly prints the info prefix.
+//
+//nolint:errcheck // Printing to stdout is best effort.
 func (p *Presenter) InfoPrefixOnly() { _, _ = p.infoColor.Fprint(p.outW, "~ ") }
 
+// Success prints success.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Success(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.successColor.Fprintf(p.outW, "+ "+format+"\n", a...)
 }
 
+// Error prints an error.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Error(format string, a ...any) {
+	//nolint:errcheck // Printing to stderr is best effort.
 	_, _ = p.errorColor.Fprintf(p.errW, "! "+format+"\n", a...)
 }
 
+// Warning prints a warning.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Warning(format string, a ...any) {
+	//nolint:errcheck // Printing to stderr is best effort.
 	_, _ = p.warningColor.Fprintf(p.errW, "~ "+format+"\n", a...)
 }
 
+// Advice prints advice.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Advice(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.warningColor.Fprintf(p.outW, "~ "+format+"\n", a...)
 }
 
+// Detail prints detail.
+//
+//nolint:goprintffuncname // Noun-based naming is intended.
 func (p *Presenter) Detail(format string, a ...any) {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = p.detailColor.Fprintf(p.outW, "  "+format+"\n", a...)
 }
 
+// Highlight highlights text.
 func (p *Presenter) Highlight(text string) string { return p.boldColor.Sprint(text) }
 
+// Newline prints a newline.
+//
+//nolint:errcheck // Printing to stdout is best effort.
 func (p *Presenter) Newline() { _, _ = fmt.Fprintln(p.outW) }
 
+// Separator prints a separator.
 func (p *Presenter) Separator() {
+	//nolint:errcheck // Printing to stdout is best effort.
 	_, _ = color.New(color.Faint).Fprintln(p.outW, "----------------------------------------")
 }
 
 // --- Input Methods ---
 
+// PromptForInput prompts the user for input.
 func (p *Presenter) PromptForInput(prompt string) (string, error) {
 	interactiveReader, cleanup, err := p.getInteractiveReader()
 	if err != nil {
@@ -161,10 +194,12 @@ func (p *Presenter) PromptForInput(prompt string) (string, error) {
 	}
 
 	prompt += " "
+	//nolint:errcheck // Printing to stderr is best effort.
 	_, _ = p.promptColor.Fprint(p.errW, prompt)
 
 	input, err := reader.ReadString('\n')
 	if err != nil {
+		//nolint:errcheck // Printing to stderr is best effort.
 		_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading input: %v\n", err)
 
 		return "", fmt.Errorf("reading input failed: %w", err)
@@ -173,6 +208,7 @@ func (p *Presenter) PromptForInput(prompt string) (string, error) {
 	return strings.TrimSpace(input), nil
 }
 
+// PromptForConfirmation prompts the user for confirmation.
 func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 	interactiveReader, cleanup, err := p.getInteractiveReader()
 	if err != nil {
@@ -191,10 +227,12 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 
 	fullPrompt := prompt + " [y/N]: "
 	for {
+		//nolint:errcheck // Printing to stderr is best effort.
 		_, _ = p.promptColor.Fprint(p.errW, fullPrompt)
 
 		input, err := reader.ReadString('\n')
 		if err != nil {
+			//nolint:errcheck // Printing to stderr is best effort.
 			_, _ = p.errorColor.Fprintf(p.errW, "\n! Error reading confirmation: %v\n", err)
 
 			return false, fmt.Errorf("reading confirmation failed: %w", err)
@@ -209,6 +247,7 @@ func (p *Presenter) PromptForConfirmation(prompt string) (bool, error) {
 			return false, nil
 		}
 
+		//nolint:errcheck // Printing to stderr is best effort.
 		_, _ = p.warningColor.Fprintf(
 			p.errW,
 			"~ Invalid input. Please enter 'y' or 'n'.\n",
@@ -232,7 +271,7 @@ func (p *Presenter) PromptForSelect(title string, options []string) (string, err
 
 	err := form.Run()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("selection failed: %w", err)
 	}
 
 	return choice, nil
@@ -254,8 +293,29 @@ func (p *Presenter) PromptForMultiSelect(title string, options []string) ([]stri
 
 	err := form.Run()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("multi-selection failed: %w", err)
 	}
 
 	return choices, nil
+}
+
+// getInteractiveReader intelligently selects the correct input for user prompts.
+// If stdin is a pipe, it opens /dev/tty for interactive input. Otherwise, it uses stdin.
+// The returned cleanup function MUST be called by the caller to close /dev/tty if it was opened.
+//
+//nolint:ireturn // Returning interface is intended.
+func (p *Presenter) getInteractiveReader() (io.Reader, func(), error) {
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		tty, ttyErr := os.Open("/dev/tty")
+		if ttyErr != nil {
+			return nil, func() {}, fmt.Errorf(
+				"stdin is a pipe and could not open /dev/tty for interactive prompt: %w",
+				ttyErr,
+			)
+		}
+
+		return tty, func() { _ = tty.Close() }, nil
+	}
+
+	return os.Stdin, func() {}, nil
 }

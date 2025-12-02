@@ -1,4 +1,4 @@
-// cmd/factory/status/status.go
+// Package status provides the command to show git status.
 package status
 
 import (
@@ -19,31 +19,34 @@ import (
 var statusLongDescription string
 
 // StatusCmd represents the status command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var StatusCmd = &cobra.Command{
 	Use:     "status",
 	Example: `  contextvibes factory status`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
 		workDir, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitCfg := git.GitClientConfig{
 			Logger:   globals.AppLogger,
 			Executor: globals.ExecClient.UnderlyingExecutor(),
 		}
 		client, err := git.NewClient(ctx, workDir, gitCfg)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
 		stdout, _, err := client.GetStatusShort(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get git status: %w", err)
 		}
 
 		trimmedStdout := strings.TrimSpace(stdout)
@@ -51,10 +54,12 @@ var StatusCmd = &cobra.Command{
 			presenter.Info("Working tree is clean.")
 		} else {
 			presenter.InfoPrefixOnly()
-			_, _ = fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):")
+			//nolint:errcheck // Printing to stdout is best effort.
+			fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):")
 			scanner := bufio.NewScanner(strings.NewReader(trimmedStdout))
 			for scanner.Scan() {
-				_, _ = fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
+				//nolint:errcheck // Printing to stdout is best effort.
+				fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
 			}
 			presenter.Newline()
 		}
@@ -63,6 +68,7 @@ var StatusCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(statusLongDescription, nil)
 	if err != nil {

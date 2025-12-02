@@ -1,3 +1,4 @@
+// Package contextgen provides helpers for generating project context reports.
 package contextgen
 
 import (
@@ -15,6 +16,11 @@ import (
 
 //nolint:mnd // 1024 is standard buffer size.
 const bufferSize = 1024
+
+const (
+	// FilePermReadWrite is 0o644.
+	FilePermReadWrite = 0o644
+)
 
 func isFileBinary(filePath string) (bool, error) {
 	//nolint:gosec // Reading file to check type is intended.
@@ -42,8 +48,8 @@ func GenerateReportHeader(promptFile, defaultTitle, defaultTask string) (string,
 		filepath.Join("..", "thea", "building-blocks", "prompts", promptFile),
 	}
 	for _, path := range searchPaths {
-		//nolint:noinlineerr // Inline error check is standard here.
-		if _, err := os.Stat(path); err == nil {
+		_, err := os.Stat(path)
+		if err == nil {
 			//nolint:gosec // Reading prompt file is intended.
 			content, readErr := os.ReadFile(path)
 			if readErr != nil {
@@ -62,8 +68,6 @@ func GenerateReportHeader(promptFile, defaultTitle, defaultTask string) (string,
 }
 
 // ExportBook exports a set of files to a single markdown file.
-//
-//nolint:gocognit,funlen // Complexity is due to file processing logic.
 func ExportBook(
 	ctx context.Context,
 	execClient *exec.ExecutorClient,
@@ -72,20 +76,20 @@ func ExportBook(
 	paths ...string,
 ) (err error) {
 	//nolint:gosec // Writing to output file is intended.
-	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	outFile, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, FilePermReadWrite)
 	if err != nil {
 		return fmt.Errorf("failed to open output file: %w", err)
 	}
 
 	defer func() {
-		closeErr := f.Close()
+		closeErr := outFile.Close()
 		if closeErr != nil && err == nil {
 			err = fmt.Errorf("failed to close output file: %w", closeErr)
 		}
 	}()
 
-	//nolint:noinlineerr // Inline error check is standard here.
-	if _, err := fmt.Fprintf(f, "\n---\n## Book: %s\n\n", title); err != nil {
+	_, err = fmt.Fprintf(outFile, "\n---\n## Book: %s\n\n", title)
+	if err != nil {
 		return fmt.Errorf("failed to write book header: %w", err)
 	}
 
@@ -98,27 +102,18 @@ func ExportBook(
 
 	files := strings.Split(gitFilesBytes, "\n")
 
+	return processFiles(outFile, files, excludePatterns)
+}
+
+func processFiles(writer io.Writer, files []string, excludePatterns []string) error {
 fileLoop:
 	for _, file := range files {
 		if file == "" {
 			continue
 		}
 
-		// Perform robust exclusion matching in Go.
-		for _, pattern := range excludePatterns {
-			// If pattern ends with '/', treat it as a directory prefix.
-			if strings.HasSuffix(pattern, "/") && strings.HasPrefix(file, pattern) {
-				fmt.Fprintf(os.Stderr, "[INFO] Excluding file in directory '%s': %s\n", pattern, file)
-
-				continue fileLoop
-			}
-			// Otherwise, use standard glob matching for files.
-			matched, _ := filepath.Match(pattern, file)
-			if matched {
-				fmt.Fprintf(os.Stderr, "[INFO] Excluding file matching pattern '%s': %s\n", pattern, file)
-
-				continue fileLoop
-			}
+		if shouldExclude(file, excludePatterns) {
+			continue fileLoop
 		}
 
 		isBinary, checkErr := isFileBinary(file)
@@ -134,30 +129,58 @@ fileLoop:
 			continue
 		}
 
-		//nolint:gosec // Reading source files is intended.
-		content, err := os.ReadFile(file)
+		err := appendFileContent(writer, file)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
+			return err
+		}
+	}
 
-			return fmt.Errorf("failed to read file %s: %w", file, err)
+	return nil
+}
+
+func shouldExclude(file string, patterns []string) bool {
+	for _, pattern := range patterns {
+		if strings.HasSuffix(pattern, "/") && strings.HasPrefix(file, pattern) {
+			fmt.Fprintf(os.Stderr, "[INFO] Excluding file in directory '%s': %s\n", pattern, file)
+
+			return true
 		}
 
-		ext := filepath.Ext(file)
-		lang := strings.TrimPrefix(ext, ".")
+		matched, _ := filepath.Match(pattern, file)
+		if matched {
+			fmt.Fprintf(os.Stderr, "[INFO] Excluding file matching pattern '%s': %s\n", pattern, file)
 
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("======== FILE: %s ========\n", file))
-		sb.WriteString("```" + lang + "\n")
-		sb.Write(content)
-		sb.WriteString("\n```\n")
-		sb.WriteString(fmt.Sprintf("======== END FILE: %s ========\n\n", file))
-
-		//nolint:noinlineerr // Inline error check is standard here.
-		if _, err := f.WriteString(sb.String()); err != nil {
-			return fmt.Errorf("failed to write content for file %s: %w", file, err)
+			return true
 		}
+	}
+
+	return false
+}
+
+func appendFileContent(writer io.Writer, file string) error {
+	//nolint:gosec // Reading source files is intended.
+	content, err := os.ReadFile(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("failed to read file %s: %w", file, err)
+	}
+
+	ext := filepath.Ext(file)
+	lang := strings.TrimPrefix(ext, ".")
+
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("======== FILE: %s ========\n", file))
+	builder.WriteString("```" + lang + "\n")
+	builder.Write(content)
+	builder.WriteString("\n```\n")
+	builder.WriteString(fmt.Sprintf("======== END FILE: %s ========\n\n", file))
+
+	_, err = writer.Write([]byte(builder.String()))
+	if err != nil {
+		return fmt.Errorf("failed to write content for file %s: %w", file, err)
 	}
 
 	return nil

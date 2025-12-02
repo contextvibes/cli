@@ -43,6 +43,7 @@ func (m *mockBuildExecutor) CaptureOutput(
 	_ string,
 	_ ...string,
 ) (string, string, error) {
+	//nolint:err113 // Dynamic error is appropriate here.
 	return "", "", errors.New("CaptureOutput not implemented in mock")
 }
 
@@ -50,19 +51,21 @@ func (m *mockBuildExecutor) CaptureOutput(
 func (m *mockBuildExecutor) CommandExists(commandName string) bool { return true }
 
 func (m *mockBuildExecutor) Logger() *slog.Logger {
-	// THE FIX: Return a valid logger that discards output.
 	return slog.New(slog.DiscardHandler)
 }
 
 //nolint:ireturn // Returning interface is required for mock.
 func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
 
+//nolint:unparam // Return values are used in tests.
 func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command) {
 	t.Helper()
 	tempDir := t.TempDir()
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
+	//nolint:usetesting // os.Chdir is required for test setup.
 	require.NoError(t, os.Chdir(tempDir))
+	//nolint:usetesting // os.Chdir is required for test setup.
 	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
 
 	//nolint:exhaustruct // Mock executor partial initialization is fine.
@@ -70,7 +73,6 @@ func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command)
 	execClient := exec.NewClient(mockExec)
 
 	globals.ExecClient = execClient
-	// THE FIX: Initialize the global logger with a discard handler for tests.
 	globals.AppLogger = slog.New(slog.DiscardHandler)
 
 	// Create a new command instance for each test to avoid state leakage
@@ -89,18 +91,24 @@ func runBuildCmd(cmd *cobra.Command, args []string) (string, string, error) {
 	cmd.SetErr(errBuf)
 	cmd.SetArgs(args)
 
-	err := cmd.RunE(cmd, args)
+	// Reset flags manually because we are using a global flag variable in the command implementation
+	// This is a workaround for testing Cobra commands with global flags.
+	// In a real refactor, we should move flags to a struct.
+	// For now, we rely on the fact that we are running sequentially (no t.Parallel).
+	_ = cmd.Flags().Set("output", "")
+	_ = cmd.Flags().Set("debug", "false")
+
+	err := cmd.Execute() // Use Execute instead of RunE to ensure full Cobra lifecycle including flag parsing
 
 	return outBuf.String(), errBuf.String(), err
 }
 
+//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 func TestBuildCmd(t *testing.T) {
-	t.Parallel()
-
 	dummyGoMain := []byte("package main\n\nfunc main() {}\n")
 
+	//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 	t.Run("success: standard optimized build", func(t *testing.T) {
-		t.Parallel()
 		_, execClient, cmd := setupBuildTest(t)
 		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
 		require.True(t, ok)
@@ -110,15 +118,6 @@ func TestBuildCmd(t *testing.T) {
 		cmdDir := filepath.Join("cmd", "mycoolapp")
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
-
-		// Reset flags on the command instance for each run
-		// Note: Since we are copying the command struct, we might need to reset flags if they are global
-		// But in this test setup we are relying on the fact that we are running in parallel and
-		// ideally flags should not be global. However, BuildCmd uses global flags.
-		// This is a limitation of the current CLI structure.
-		// For now, we assume sequential execution or isolated process for robust testing of globals.
-		// But since we added t.Parallel(), we might have race conditions on globals.
-		// TODO: Refactor CLI to avoid global flags for better testability.
 
 		out, _, err := runBuildCmd(cmd, []string{})
 		require.NoError(t, err)
@@ -137,8 +136,8 @@ func TestBuildCmd(t *testing.T) {
 		assert.Equal(t, expectedCommand, underlyingMock.lastCommand)
 	})
 
+	//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 	t.Run("success: debug build", func(t *testing.T) {
-		t.Parallel()
 		_, execClient, cmd := setupBuildTest(t)
 		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
 		require.True(t, ok)

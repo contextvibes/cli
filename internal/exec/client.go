@@ -1,4 +1,3 @@
-// internal/exec/client.go
 package exec
 
 import (
@@ -24,6 +23,7 @@ func (c *ExecutorClient) Execute(
 	commandName string,
 	args ...string,
 ) error {
+	//nolint:wrapcheck // Wrapping is handled by caller or executor.
 	return c.executor.Execute(ctx, dir, commandName, args...)
 }
 
@@ -34,6 +34,7 @@ func (c *ExecutorClient) CaptureOutput(
 	commandName string,
 	args ...string,
 ) (string, string, error) {
+	//nolint:wrapcheck // Wrapping is handled by caller or executor.
 	return c.executor.CaptureOutput(ctx, dir, commandName, args...)
 }
 
@@ -49,6 +50,8 @@ func (c *ExecutorClient) Logger() *slog.Logger {
 
 // UnderlyingExecutor returns the CommandExecutor used by this client.
 // This allows passing the raw executor to other components if needed.
+//
+//nolint:ireturn // Returning interface is intended.
 func (c *ExecutorClient) UnderlyingExecutor() CommandExecutor { // New Exported Getter
 	return c.executor
 }

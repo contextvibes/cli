@@ -1,4 +1,3 @@
-// internal/exec/os_executor.go
 package exec
 
 import (
@@ -19,6 +18,8 @@ type OSCommandExecutor struct {
 
 // NewOSCommandExecutor creates a new OSCommandExecutor.
 // If logger is nil, a discard logger will be used.
+//
+//nolint:ireturn // Returning interface is intended.
 func NewOSCommandExecutor(logger *slog.Logger) CommandExecutor {
 	log := logger
 	if log == nil {
@@ -28,10 +29,12 @@ func NewOSCommandExecutor(logger *slog.Logger) CommandExecutor {
 	return &OSCommandExecutor{logger: log}
 }
 
+// Logger returns the logger associated with this executor.
 func (e *OSCommandExecutor) Logger() *slog.Logger {
 	return e.logger
 }
 
+// Execute runs a command, piping stdio.
 func (e *OSCommandExecutor) Execute(
 	ctx context.Context,
 	dir string,
@@ -92,6 +95,7 @@ func (e *OSCommandExecutor) Execute(
 	return nil
 }
 
+// CaptureOutput runs a command and captures its output.
 func (e *OSCommandExecutor) CaptureOutput(
 	ctx context.Context,
 	dir string,
@@ -144,6 +148,7 @@ func (e *OSCommandExecutor) CaptureOutput(
 			slog.String("error", err.Error()),     // Log the original simpler error
 			slog.String("detailed_error", errMsg)) // Log the detailed constructed error
 
+		//nolint:err113 // Dynamic error is appropriate here.
 		return stdoutStr, stderrStr, fmt.Errorf(errMsg+": %w", err) // Wrap original error
 	}
 
@@ -157,6 +162,7 @@ func (e *OSCommandExecutor) CaptureOutput(
 	return stdoutStr, stderrStr, nil
 }
 
+// CommandExists checks if a command exists in the path.
 func (e *OSCommandExecutor) CommandExists(commandName string) bool {
 	_, err := exec.LookPath(commandName)
 	if err != nil {

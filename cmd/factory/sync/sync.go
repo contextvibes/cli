@@ -1,9 +1,10 @@
-// cmd/factory/sync/sync.go
+// Package sync provides the command to synchronize the local branch with remote.
 package sync
 
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
@@ -17,11 +18,13 @@ import (
 var syncLongDescription string
 
 // SyncCmd represents the sync command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var SyncCmd = &cobra.Command{
 	Use:     "sync",
 	Example: `  contextvibes factory sync`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -29,9 +32,10 @@ var SyncCmd = &cobra.Command{
 
 		workDir, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitCfg := git.GitClientConfig{
 			Logger:   globals.AppLogger,
 			Executor: globals.ExecClient.UnderlyingExecutor(),
@@ -40,17 +44,18 @@ var SyncCmd = &cobra.Command{
 		if err != nil {
 			presenter.Error("Failed git init: %v", err)
 
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
 		isClean, err := client.IsWorkingDirClean(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to check working directory status: %w", err)
 		}
 		if !isClean {
 			presenter.Error("Working directory has uncommitted changes.")
 			presenter.Advice("Please commit or stash your changes before syncing.")
 
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("working directory not clean")
 		}
 
@@ -67,7 +72,7 @@ var SyncCmd = &cobra.Command{
 		if !globals.AssumeYes {
 			confirmed, err := presenter.PromptForConfirmation("Proceed with sync?")
 			if err != nil {
-				return err
+				return fmt.Errorf("confirmation failed: %w", err)
 			}
 			if !confirmed {
 				presenter.Info("Sync aborted by user.")
@@ -76,20 +81,21 @@ var SyncCmd = &cobra.Command{
 			}
 		}
 
-		if err := client.PullRebase(ctx, currentBranch); err != nil {
+		err = client.PullRebase(ctx, currentBranch)
+		if err != nil {
 			presenter.Error("Error during 'git pull --rebase'. Resolve conflicts manually.")
 
-			return err
+			return fmt.Errorf("pull rebase failed: %w", err)
 		}
 
 		isAhead, err := client.IsBranchAhead(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to check if branch is ahead: %w", err)
 		}
 		if isAhead {
 			err := client.Push(ctx, currentBranch)
 			if err != nil {
-				return err
+				return fmt.Errorf("push failed: %w", err)
 			}
 		}
 
@@ -100,6 +106,7 @@ var SyncCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(syncLongDescription, nil)
 	if err != nil {

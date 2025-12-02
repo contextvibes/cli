@@ -62,6 +62,8 @@ var TestCmd = &cobra.Command{
 			presenter.Header("Python Project Tests")
 			testErr = executePythonTests(ctx, presenter, globals.ExecClient, cwd, args)
 			testExecuted = true
+		case project.Terraform, project.Pulumi, project.Unknown:
+			fallthrough
 		default:
 			presenter.Info("No specific test execution logic for project type: %s", projType)
 		}
@@ -134,6 +136,7 @@ func executePythonTests(
 		return nil
 	}
 
+	//nolint:err113 // Dynamic error is appropriate here.
 	return errors.New("no python test runner found")
 }
 

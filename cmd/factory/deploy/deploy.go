@@ -72,11 +72,12 @@ func executeTerraformDeploy(
 	planFile := "tfplan.out"
 	planFilePath := filepath.Join(dir, planFile)
 
+	//nolint:noinlineerr // Inline check is standard for os.Stat.
 	if _, err := os.Stat(planFilePath); err != nil {
 		if os.IsNotExist(err) {
 			presenter.Error("Terraform plan file '%s' not found.", planFile)
 			presenter.Advice("Please run `contextvibes factory plan` first.")
-
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("plan file not found")
 		}
 

@@ -1,4 +1,4 @@
-// cmd/craft/kickoff/kickoff.go
+// Package kickoff provides the command to start a strategic kickoff session.
 package kickoff
 
 import (
@@ -13,10 +13,13 @@ import (
 var kickoffLongDescription string
 
 // KickoffCmd represents the craft kickoff command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var KickoffCmd = &cobra.Command{
 	Use:   "kickoff",
 	Short: "Starts an AI-guided strategic project planning session.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	//nolint:revive // Unused args are expected in Cobra RunE.
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 
 		// This is the new home for the logic from the old 'kickoff --strategic'.
@@ -32,6 +35,7 @@ var KickoffCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(kickoffLongDescription, nil)
 	if err != nil {

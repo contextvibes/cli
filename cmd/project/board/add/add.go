@@ -68,6 +68,7 @@ func newProvider(
 	logger *slog.Logger,
 	cfg *config.Config,
 ) (workitem.Provider, error) {
+	//nolint:wrapcheck // Wrapping is handled by caller.
 	return wigh.New(ctx, logger, cfg)
 }
 

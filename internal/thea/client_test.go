@@ -39,15 +39,16 @@ func TestFetchManifest_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/thea-manifest.json", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
+		//nolint:musttag // Struct tags are present on Manifest struct.
 		err := json.NewEncoder(w).Encode(expectedManifest)
 		//nolint:testifylint // require is acceptable in handler for test setup failure.
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 
-	// THEAServiceConfig is defined in client.go, in the same 'thea' package
+	// ServiceConfig is defined in client.go, in the same 'thea' package
 	//nolint:exhaustruct // Partial config is sufficient for test.
-	cfg := thea.THEAServiceConfig{
+	cfg := thea.ServiceConfig{
 		ManifestURL:        server.URL + "/thea-manifest.json",
 		RawContentBaseURL:  "http://dummy-raw-base.com", // Provide a value
 		DefaultArtifactRef: "main",                      // Provide a value
@@ -72,14 +73,15 @@ func TestFetchManifest_Success(t *testing.T) {
 
 func TestFetchManifest_ServerReturns404(t *testing.T) {
 	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 
-	// THEAServiceConfig is local to the 'thea' package
+	// ServiceConfig is local to the 'thea' package
 	//nolint:exhaustruct // Partial config is sufficient for test.
-	cfg := thea.THEAServiceConfig{
+	cfg := thea.ServiceConfig{
 		ManifestURL:        server.URL + "/thea-manifest.json",
 		RawContentBaseURL:  "http://dummy-raw-base.com",
 		DefaultArtifactRef: "main",

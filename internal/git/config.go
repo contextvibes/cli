@@ -1,4 +1,3 @@
-// Package git provides a high-level client for interacting with Git repositories.
 package git
 
 import (
@@ -8,6 +7,8 @@ import (
 )
 
 // GitClientConfig configures the GitClient.
+//
+//nolint:revive // GitClientConfig is explicit and preferred here despite stutter.
 type GitClientConfig struct {
 	GitExecutable         string
 	DefaultRemoteName     string               // Will be set by cmd layer from LoadedAppConfig

@@ -1,4 +1,4 @@
-// cmd/craft/prdescription/prdescription.go
+// Package prdescription provides the command to generate PR descriptions.
 package prdescription
 
 import (

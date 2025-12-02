@@ -1,4 +1,3 @@
-// Package git provides a high-level client for interacting with Git repositories.
 package git
 
 import (
@@ -42,6 +41,7 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 
 	// Check if the configured git executable exists using the provided executor
 	if !executor.CommandExists(validatedConfig.GitExecutable) {
+		//nolint:err113 // Dynamic error is appropriate here.
 		err := fmt.Errorf(
 			"git executable '%s' not found in PATH or specified path",
 			validatedConfig.GitExecutable,
@@ -82,6 +82,7 @@ func NewClient(ctx context.Context, workDir string, config GitClientConfig) (*Gi
 			slog.String("stderr", strings.TrimSpace(stderr)),
 			slog.String("initial_workdir", effectiveWorkDir))
 
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"path '%s' is not within a Git repository (or git command '%s' failed)",
 			effectiveWorkDir,
@@ -146,21 +147,10 @@ func (c *GitClient) RemoteName() string { return c.config.DefaultRemoteName }
 // Logger returns the logger.
 func (c *GitClient) Logger() *slog.Logger { return c.logger }
 
-func (c *GitClient) runGit(ctx context.Context, args ...string) error {
-	// Logger().Debug(...) is already part of executor.Execute
-	//nolint:wrapcheck // Wrapping is handled by caller or executor.
-	return c.executor.Execute(ctx, c.repoPath, c.config.GitExecutable, args...)
-}
-
-func (c *GitClient) captureGitOutput(ctx context.Context, args ...string) (string, string, error) {
-	// Logger().Debug(...) is already part of executor.CaptureOutput
-	//nolint:wrapcheck // Wrapping is handled by caller or executor.
-	return c.executor.CaptureOutput(ctx, c.repoPath, c.config.GitExecutable, args...)
-}
-
 // GetRemoteURL retrieves the URL for a given remote name.
 func (c *GitClient) GetRemoteURL(ctx context.Context, remoteName string) (string, error) {
 	if remoteName == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", errors.New("remote name cannot be empty")
 	}
 
@@ -194,10 +184,12 @@ func (c *GitClient) GetCurrentBranchName(ctx context.Context) (string, error) {
 
 	branch := strings.TrimSpace(stdout)
 	if branch == "HEAD" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", errors.New("currently in detached HEAD state")
 	}
 
 	if branch == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", errors.New("could not determine current branch name (empty output)")
 	}
 
@@ -217,6 +209,7 @@ func (c *GitClient) AddAll(ctx context.Context) error {
 // Commit commits staged changes with a message.
 func (c *GitClient) Commit(ctx context.Context, message string) error {
 	if strings.TrimSpace(message) == "" {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return errors.New("commit message cannot be empty")
 	}
 
@@ -439,9 +432,9 @@ func (c *GitClient) ListTrackedAndCachedFiles(ctx context.Context) (string, stri
 // For now, keeping it as it was in the provided file.
 //
 //nolint:mnd // 4 and 3 are specific truncation constants.
-func TruncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
+func TruncateString(input string, maxLen int) string {
+	if len(input) <= maxLen {
+		return input
 	}
 
 	if maxLen < 4 {
@@ -449,10 +442,10 @@ func TruncateString(s string, maxLen int) string {
 			return ""
 		}
 
-		return s[:maxLen]
+		return input[:maxLen]
 	}
 
-	return s[:maxLen-3] + "..."
+	return input[:maxLen-3] + "..."
 }
 
 // GetLogAndDiffFromMergeBase finds the common ancestor with a branch and returns the log and diff since that point.
@@ -467,6 +460,7 @@ func (c *GitClient) GetLogAndDiffFromMergeBase(
 	if err != nil {
 		// This is not a fatal error; it often means the branch hasn't been pushed.
 		// Return a specific error that the caller can check for.
+		//nolint:err113 // Dynamic error is appropriate here.
 		return "", "", fmt.Errorf("remote branch '%s' not found", baseBranchRef)
 	}
 
@@ -505,4 +499,16 @@ func (c *GitClient) StashPush(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *GitClient) runGit(ctx context.Context, args ...string) error {
+	// Logger().Debug(...) is already part of executor.Execute
+	//nolint:wrapcheck // Wrapping is handled by caller or executor.
+	return c.executor.Execute(ctx, c.repoPath, c.config.GitExecutable, args...)
+}
+
+func (c *GitClient) captureGitOutput(ctx context.Context, args ...string) (string, string, error) {
+	// Logger().Debug(...) is already part of executor.CaptureOutput
+	//nolint:wrapcheck // Wrapping is handled by caller or executor.
+	return c.executor.CaptureOutput(ctx, c.repoPath, c.config.GitExecutable, args...)
 }

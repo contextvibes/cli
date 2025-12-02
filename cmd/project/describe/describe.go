@@ -119,6 +119,7 @@ var DescribeCmd = &cobra.Command{
 		}
 
 		if userPrompt == "" {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("prompt cannot be empty")
 		}
 
@@ -206,6 +207,7 @@ var DescribeCmd = &cobra.Command{
 			}
 		}
 
+		//nolint:noinlineerr // Inline check is standard.
 		if err := tools.WriteBufferToFile(describeOutputFile, &outputBuffer); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}

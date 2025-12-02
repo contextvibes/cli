@@ -36,15 +36,16 @@ func newProvider(
 ) (workitem.Provider, error) {
 	switch cfg.Project.Provider {
 	case "github":
-		return github.New(ctx, logger, cfg)
+		return github.New(ctx, logger, cfg) //nolint:wrapcheck // Factory function.
 	case "":
 		logger.DebugContext(
 			ctx,
 			"Work item provider not specified in config, defaulting to 'github'",
 		)
 
-		return github.New(ctx, logger, cfg)
+		return github.New(ctx, logger, cfg) //nolint:wrapcheck // Factory function.
 	default:
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, fmt.Errorf(
 			"unsupported work item provider '%s' specified in .contextvibes.yaml",
 			cfg.Project.Provider,
@@ -81,6 +82,7 @@ var TreeCmd = &cobra.Command{
 		if len(args) > 0 {
 			issueNumber, err := strconv.Atoi(args[0])
 			if err != nil {
+				//nolint:err113 // Dynamic error is appropriate here.
 				return fmt.Errorf("invalid issue number provided: %s", args[0])
 			}
 			presenter.Summary("Building work item tree for Epic #%d...", issueNumber)
@@ -131,6 +133,8 @@ var TreeCmd = &cobra.Command{
 }
 
 // printSummaryTree recursively prints the work item hierarchy in a compact format.
+//
+//nolint:varnamelen // 'p' is standard for presenter.
 func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
 	//nolint:errcheck // Printing to stdout is best effort.
@@ -146,8 +150,8 @@ func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 //nolint:varnamelen // 'p' is standard for presenter.
 func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
-	//nolint:errcheck // Printing to stdout is best effort.
-	p.Out().Write([]byte(indent)) // Write indent manually for the header
+	//nolint:errcheck,gosec // Printing to stdout is best effort.
+	_, _ = p.Out().Write([]byte(indent)) // Write indent manually for the header
 	internal.DisplayWorkItem(p, item)
 
 	if len(item.Comments) > 0 {
@@ -155,8 +159,8 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 		fmt.Fprintf(p.Out(), "%s--- Comments (%d) ---\n", indent, len(item.Comments))
 
 		for _, comment := range item.Comments {
-			//nolint:errcheck // Printing to stdout is best effort.
-			p.Out().Write([]byte(indent))
+			//nolint:errcheck,gosec // Printing to stdout is best effort.
+			_, _ = p.Out().Write([]byte(indent))
 			p.Header(
 				fmt.Sprintf(
 					"Comment by %s on %s",
@@ -170,8 +174,8 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 				fmt.Fprintf(p.Out(), "%s  %s\n", indent, line)
 			}
 
-			//nolint:errcheck // Printing to stdout is best effort.
-			p.Out().Write([]byte(indent))
+			//nolint:errcheck,gosec // Printing to stdout is best effort.
+			_, _ = p.Out().Write([]byte(indent))
 			p.Separator()
 		}
 	}

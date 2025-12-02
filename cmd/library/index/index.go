@@ -36,7 +36,7 @@ var ErrSkipDocument = errors.New("skip document")
 
 // DocumentMetadata represents the metadata extracted from a document.
 //
-
+//nolint:exhaustruct // Struct is populated from YAML/JSON.
 type DocumentMetadata struct {
 	ID                string   `json:"id"`
 	FileExtension     string   `json:"fileExtension"`
@@ -104,7 +104,7 @@ var IndexCmd = &cobra.Command{
 			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
 		}
 
-		//nolint:mnd // 0600 is standard file permission.
+		//nolint:mnd,noinlineerr // 0600 is standard file permission, inline check is standard.
 		if err := os.WriteFile(indexPathOut, jsonData, 0o600); err != nil {
 			return fmt.Errorf("failed to write index file to %s: %w", indexPathOut, err)
 		}
@@ -115,6 +115,7 @@ var IndexCmd = &cobra.Command{
 	},
 }
 
+//nolint:revive // Unused parameters kept for future logic.
 func processDirectory(
 	rootPath, baseDirName string,
 	_ map[string]bool,
@@ -129,8 +130,10 @@ func processDirectory(
 
 	err = filepath.WalkDir(
 		absRootPath,
+		//nolint:varnamelen // 'd' is standard for DirEntry.
 		func(currentPath string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil || d.IsDir() {
+				//nolint:nilerr // Returning nil to continue walking is intended.
 				return nil
 			}
 
@@ -171,6 +174,7 @@ func processDirectory(
 	return metadataList, nil
 }
 
+//nolint:revive // Unused parameters kept for future logic.
 func parseFrontMatterAndDerive(
 	filePath, rootPath, _ string,
 	fileInfo fs.FileInfo,
@@ -180,8 +184,8 @@ func parseFrontMatterAndDerive(
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-
-	defer func() { _ = file.Close() }()
+	//nolint:errcheck // Defer close is sufficient.
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
@@ -211,6 +215,7 @@ func parseFrontMatterAndDerive(
 	}
 
 	var fmData tempFrontMatter
+	//nolint:noinlineerr // Inline check is standard for unmarshal.
 	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil {
 		return nil, fmt.Errorf("failed to parse front matter: %w", err)
 	}

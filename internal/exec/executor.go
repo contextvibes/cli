@@ -1,4 +1,3 @@
-// internal/exec/executor.go
 package exec
 
 import (

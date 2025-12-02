@@ -1,4 +1,4 @@
-// cmd/feedback/feedback.go
+// Package feedback provides the command to submit feedback.
 package feedback
 
 import (
@@ -24,6 +24,8 @@ import (
 var feedbackLongDescription string
 
 // newProviderForRepo creates a workitem.Provider for a specific owner/repo string.
+//
+//nolint:ireturn // Returning interface is intended for provider abstraction.
 func newProviderForRepo(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -38,11 +40,14 @@ func newProviderForRepo(
 }
 
 // FeedbackCmd represents the feedback command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var FeedbackCmd = &cobra.Command{
 	Use:     "feedback [repo-alias] [title]",
 	Short:   "Submit feedback to a contextvibes repository.",
 	Example: `  contextvibes feedback "Tree command is slow"`,
-	Args:    cobra.MaximumNArgs(2),
+	//nolint:mnd // 2 arguments max.
+	Args: cobra.MaximumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
@@ -57,17 +62,20 @@ var FeedbackCmd = &cobra.Command{
 			} else {
 				title = args[0]
 			}
-		} else if len(args) == 2 {
+		} else if len(args) == 2 { //nolint:mnd // 2 arguments check.
 			repoAlias = args[0]
 			title = args[1]
 		}
 
 		targetRepo, ok := cfg.Repositories[repoAlias]
 		if !ok {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return fmt.Errorf("repository alias '%s' not found in configuration", repoAlias)
 		}
 		repoParts := strings.Split(targetRepo, "/")
+		//nolint:mnd // Expecting owner/repo.
 		if len(repoParts) != 2 {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return fmt.Errorf(
 				"invalid repository format for alias '%s': expected 'owner/repo', got '%s'",
 				repoAlias,
@@ -85,10 +93,11 @@ var FeedbackCmd = &cobra.Command{
 			)
 			err := form.Run()
 			if err != nil {
-				return err
+				return fmt.Errorf("input form failed: %w", err)
 			}
 		}
 		if strings.TrimSpace(title) == "" {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("title cannot be empty")
 		}
 
@@ -114,6 +123,7 @@ var FeedbackCmd = &cobra.Command{
 		)
 		finalBody := body + contextBlock
 
+		//nolint:exhaustruct // Partial initialization is valid for creation.
 		newItem := workitem.WorkItem{
 			Title:  title,
 			Body:   finalBody,
@@ -129,7 +139,7 @@ var FeedbackCmd = &cobra.Command{
 				targetRepo,
 			)
 
-			return err
+			return fmt.Errorf("failed to create item: %w", err)
 		}
 
 		presenter.Success("✓ Thank you! Your feedback has been submitted: %s", createdItem.URL)
@@ -138,6 +148,7 @@ var FeedbackCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(feedbackLongDescription, nil)
 	if err != nil {

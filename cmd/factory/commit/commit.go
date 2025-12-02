@@ -1,4 +1,4 @@
-// cmd/factory/commit/commit.go
+// Package commit provides the command to commit changes.
 package commit
 
 import (
@@ -19,18 +19,22 @@ import (
 //go:embed commit.md.tpl
 var commitLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var commitMessageFlag string
 
 // CommitCmd represents the commit command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CommitCmd = &cobra.Command{
 	Use:     "commit -m <message>",
 	Example: `  contextvibes factory commit -m "feat(auth): Implement OTP login"`,
 	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
 		if strings.TrimSpace(commitMessageFlag) == "" {
+			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("commit message is required via -m flag")
 		}
 
@@ -44,16 +48,19 @@ var CommitCmd = &cobra.Command{
 			}
 			re, err := regexp.Compile(pattern)
 			if err != nil {
+				//nolint:err113 // Dynamic error is appropriate here.
 				return errors.New("invalid commit message validation regex")
 			}
 			if !re.MatchString(commitMessageFlag) {
 				presenter.Error("Invalid commit message format.")
 				presenter.Advice("Message must match pattern: %s", pattern)
 
+				//nolint:err113 // Dynamic error is appropriate here.
 				return errors.New("invalid commit message format")
 			}
 		}
 
+		//nolint:exhaustruct // Partial config is sufficient.
 		gitCfg := git.GitClientConfig{
 			Logger:                globals.AppLogger,
 			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
@@ -62,16 +69,17 @@ var CommitCmd = &cobra.Command{
 		}
 		client, err := git.NewClient(ctx, ".", gitCfg)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
-		if err := client.AddAll(ctx); err != nil {
-			return err
+		err = client.AddAll(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to stage changes: %w", err)
 		}
 
 		hasStaged, err := client.HasStagedChanges(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to check staged changes: %w", err)
 		}
 		if !hasStaged {
 			presenter.Info("No changes were staged for commit.")
@@ -82,13 +90,17 @@ var CommitCmd = &cobra.Command{
 		currentBranch, _ := client.GetCurrentBranchName(ctx)
 		statusOutput, _, _ := client.GetStatusShort(ctx)
 		presenter.InfoPrefixOnly()
-		_, _ = fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
-		_, _ = fmt.Fprintf(presenter.Out(), "  Commit Message: %s\n", commitMessageFlag)
-		_, _ = fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
+		//nolint:errcheck // Printing to stdout is best effort.
+		fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
+		//nolint:errcheck // Printing to stdout is best effort.
+		fmt.Fprintf(presenter.Out(), "  Commit Message: %s\n", commitMessageFlag)
+		//nolint:errcheck // Printing to stdout is best effort.
+		fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
 
 		if !globals.AssumeYes {
 			confirmed, err := presenter.PromptForConfirmation("Proceed?")
 			if err != nil || !confirmed {
+				//nolint:err113 // Dynamic error is appropriate here.
 				return errors.New("commit aborted")
 			}
 		}
@@ -97,6 +109,7 @@ var CommitCmd = &cobra.Command{
 	},
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(commitLongDescription, nil)
 	if err != nil {

@@ -1,4 +1,4 @@
-// cmd/factory/apply/apply.go
+// Package apply provides the command to apply changes to the project.
 package apply
 
 import (
@@ -23,13 +23,17 @@ import (
 //go:embed apply.md.tpl
 var applyLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var scriptPath string
 
 // ApplyCmd represents the apply command.
+//
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var ApplyCmd = &cobra.Command{
 	Use:     "apply [--script <file>]",
 	Example: `  contextvibes factory apply --script ./plan.json`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Args:    cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
@@ -56,25 +60,34 @@ var ApplyCmd = &cobra.Command{
 
 func readInput(scriptPath string) ([]byte, string, error) {
 	if scriptPath != "" {
+		//nolint:gosec // Reading user-provided script file is intended.
 		content, err := os.ReadFile(scriptPath)
+		if err != nil {
+			return nil, "file", fmt.Errorf("failed to read script file: %w", err)
+		}
 
-		return content, "file", err
+		return content, "file", nil
 	}
 
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		//nolint:err113 // Dynamic error is appropriate here.
 		return nil, "", errors.New("no script provided via --script flag or standard input")
 	}
 
 	content, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil, "standard input", fmt.Errorf("failed to read from stdin: %w", err)
+	}
 
-	return content, "standard input", err
+	return content, "standard input", nil
 }
 
 func isJSON(data []byte) bool {
 	return bytes.HasPrefix(bytes.TrimSpace(data), []byte("{"))
 }
 
+//nolint:cyclop // Complexity is acceptable for plan handling.
 func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) error {
 	var plan apply.ChangePlan
 
@@ -82,7 +95,7 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 	if err != nil {
 		presenter.Error("Failed to parse JSON Change Plan: %v", err)
 
-		return err
+		return fmt.Errorf("failed to unmarshal plan: %w", err)
 	}
 
 	presenter.Header("--- Change Plan Summary ---")
@@ -93,10 +106,14 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 
 	if !globals.AssumeYes {
 		confirmed, err := presenter.PromptForConfirmation("Execute the structured plan?")
-		if err != nil || !confirmed {
+		if err != nil {
+			return fmt.Errorf("confirmation failed: %w", err)
+		}
+
+		if !confirmed {
 			presenter.Info("Execution aborted.")
 
-			return err
+			return nil
 		}
 	}
 
@@ -104,27 +121,30 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 		switch step.Type {
 		case "file_modification":
 			for _, changeSet := range step.Changes {
+				//nolint:gosec // Reading file to modify is intended.
 				original, _ := os.ReadFile(changeSet.FilePath)
 				current := string(original)
 
-				for _, op := range changeSet.Operations {
-					if op.Type == "create_or_overwrite" {
-						current = *op.Content
+				for _, operation := range changeSet.Operations {
+					if operation.Type == "create_or_overwrite" {
+						current = *operation.Content
 					}
 
-					if op.Type == "regex_replace" {
-						re, _ := regexp.Compile(op.FindRegex)
-						current = re.ReplaceAllString(current, op.ReplaceWith)
+					if operation.Type == "regex_replace" {
+						re, _ := regexp.Compile(operation.FindRegex)
+						current = re.ReplaceAllString(current, operation.ReplaceWith)
 					}
 				}
 
+				//nolint:mnd // 0750 is standard directory permission.
 				_ = os.MkdirAll(filepath.Dir(changeSet.FilePath), 0o750)
+				//nolint:mnd // 0600 is standard file permission.
 				_ = os.WriteFile(changeSet.FilePath, []byte(current), 0o600)
 			}
 		case "command_execution":
 			err := globals.ExecClient.Execute(ctx, ".", step.Command, step.Args...)
 			if err != nil {
-				return err
+				return fmt.Errorf("command execution failed: %w", err)
 			}
 		}
 	}
@@ -136,14 +156,19 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 
 func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptContent []byte) error {
 	presenter.Header("--- Script to be Applied ---")
-	_, _ = fmt.Fprintln(presenter.Out(), "```bash\n"+string(scriptContent)+"\n```")
+	//nolint:errcheck // Printing to stdout is best effort.
+	fmt.Fprintln(presenter.Out(), "```bash\n"+string(scriptContent)+"\n```")
 
 	if !globals.AssumeYes {
 		confirmed, err := presenter.PromptForConfirmation("Execute the shell script?")
-		if err != nil || !confirmed {
+		if err != nil {
+			return fmt.Errorf("confirmation failed: %w", err)
+		}
+
+		if !confirmed {
 			presenter.Info("Execution aborted.")
 
-			return err
+			return nil
 		}
 	}
 
@@ -154,9 +179,15 @@ func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptConte
 	_, _ = tempFile.Write(scriptContent)
 	_ = tempFile.Close()
 
-	return globals.ExecClient.Execute(ctx, ".", "bash", tempFile.Name())
+	err := globals.ExecClient.Execute(ctx, ".", "bash", tempFile.Name())
+	if err != nil {
+		return fmt.Errorf("script execution failed: %w", err)
+	}
+
+	return nil
 }
 
+//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	desc, err := cmddocs.ParseAndExecute(applyLongDescription, nil)
 	if err != nil {
