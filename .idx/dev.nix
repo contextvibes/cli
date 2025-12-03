@@ -18,6 +18,10 @@ in
   packages = with pkgs; [
     # The core language toolchain required to build and test the application.
     go_1_25
+    govulncheck
+    gitleaks
+    gotools
+
 
     # Required for CGO support (building tools like Delve and gopls).
     gcc

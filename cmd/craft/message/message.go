@@ -1,14 +1,15 @@
-// Package message provides the command to generate commit messages.
+// Package message provides the command to generate commit message prompts.
 package message
 
 import (
 	_ "embed"
 	"fmt"
-	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
+	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
+	"github.com/contextvibes/cli/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -21,46 +22,45 @@ var messageLongDescription string
 var MessageCmd = &cobra.Command{
 	Use:     "message",
 	Aliases: []string{"commit", "msg"},
-	Short:   "Generates a suggested 'factory commit' command.",
+	Short:   "Generates a prompt for an AI to write your commit message.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
-		presenter.Summary("Crafting a commit message...")
-
-		stagedDiff, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "git", "diff", "--staged")
+		// 1. Initialize Git Client
+		//nolint:exhaustruct // Partial config is sufficient.
+		gitCfg := git.GitClientConfig{
+			Logger:                globals.AppLogger,
+			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
+			DefaultMainBranchName: globals.LoadedAppConfig.Git.DefaultMainBranch,
+			Executor:              globals.ExecClient.UnderlyingExecutor(),
+		}
+		client, err := git.NewClient(ctx, ".", gitCfg)
 		if err != nil {
-			return fmt.Errorf("failed to get staged diff: %w", err)
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
-		if strings.TrimSpace(stagedDiff) == "" {
-			presenter.Info("No staged changes found to generate a commit message from.")
-			presenter.Advice("Please stage your changes using 'git add' first.")
+		// 2. Initialize Workflow Runner
+		runner := workflow.NewRunner(presenter, globals.AssumeYes)
 
-			return nil
-		}
-
-		// In a real implementation, this is where the call to an LLM would happen.
-		// We would send the 'stagedDiff' and get back a structured response.
-		// For now, we will simulate this with a placeholder.
-
-		presenter.Info("AI analysis complete. Suggested command:")
-		presenter.Newline()
-
-		// Simulated AI response:
-		simulatedSubject := "feat(craft): add placeholder for message generation"
-		//nolint:lll // Long string is expected here.
-		simulatedBody := "This change introduces the 'craft message' command but uses a hardcoded placeholder for the AI-generated commit message. The real implementation will call an LLM."
-
-		//nolint:errcheck // Printing to stdout is best effort.
-		fmt.Fprintf(
-			presenter.Out(),
-			"contextvibes factory commit -m \"%s\" -m \"%s\"\n",
-			simulatedSubject,
-			simulatedBody,
+		// 3. Define and Run Steps
+		return runner.Run(
+			ctx,
+			"Crafting Commit Message Prompt",
+			&workflow.EnsureNotMainBranchStep{
+				GitClient: client,
+				Presenter: presenter,
+			},
+			&workflow.EnsureStagedStep{
+				GitClient: client,
+				Presenter: presenter,
+				AssumeYes: globals.AssumeYes,
+			},
+			&workflow.GenerateCommitPromptStep{
+				GitClient: client,
+				Presenter: presenter,
+			},
 		)
-
-		return nil
 	},
 }
 

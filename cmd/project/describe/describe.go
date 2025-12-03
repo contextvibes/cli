@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	maxFileSizeKB     = 500
+	maxFileSizeKB = 500
 	//nolint:lll // Pattern is long.
 	treeIgnorePattern = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
 )

@@ -12,6 +12,7 @@ linters:
   # 2. Disable specific linters.
   disable:
     # --- DEPRECATED / REMOVED LINTERS ---
+    - noinlineerr         # Disabled: We prefer the standard idiom 'if err := ...; err != nil' to reduce scope.
     - wsl
 
     # --- LEVEL 1: CRITICAL BUGS & SECURITY ---
@@ -29,7 +30,6 @@ linters:
     # - err113
     # - nilerr
     # - nlreturn
-    # - noinlineerr
     # - staticcheck
     # - errcheck          # Unchecked errors
     # - nonamedreturns    # Named returns usage

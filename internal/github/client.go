@@ -177,7 +177,7 @@ func (c *Client) GetProjectByNumber(ctx context.Context, number int) (*ProjectWi
 	}
 
 	variables := map[string]any{
-		"owner":  githubv4.String(c.owner),
+		"owner": githubv4.String(c.owner),
 		//nolint:gosec // G115: Project number is unlikely to overflow int32.
 		"number": githubv4.Int(number),
 	}

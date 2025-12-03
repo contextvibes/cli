@@ -20,23 +20,31 @@ import (
 var commitLongDescription string
 
 //nolint:gochecknoglobals // Cobra flags require package-level variables.
-var commitMessageFlag string
+var commitMessages []string
 
 // CommitCmd represents the commit command.
 //
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CommitCmd = &cobra.Command{
-	Use:     "commit -m <message>",
-	Example: `  contextvibes factory commit -m "feat(auth): Implement OTP login"`,
+	Use:     "commit -m <msg> [-m <body>]",
+	Example: `  contextvibes factory commit -m "feat(auth): Add login" -m "Details about the login logic."`,
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
-		if strings.TrimSpace(commitMessageFlag) == "" {
+		if len(commitMessages) == 0 {
 			//nolint:err113 // Dynamic error is appropriate here.
 			return errors.New("commit message is required via -m flag")
 		}
+
+		// 1. Construct the full message (Subject + Body)
+		// Git standard is to separate multiple -m flags with a blank line.
+		fullMessage := strings.Join(commitMessages, "\n\n")
+
+		// 2. Validate ONLY the Subject (First line)
+		// We split by newline to isolate the subject for regex checking.
+		subject, _, _ := strings.Cut(fullMessage, "\n")
 
 		validationRule := globals.LoadedAppConfig.Validation.CommitMessage
 		validationEnabled := validationRule.Enable == nil || *validationRule.Enable
@@ -51,15 +59,17 @@ var CommitCmd = &cobra.Command{
 				//nolint:err113 // Dynamic error is appropriate here.
 				return errors.New("invalid commit message validation regex")
 			}
-			if !re.MatchString(commitMessageFlag) {
-				presenter.Error("Invalid commit message format.")
-				presenter.Advice("Message must match pattern: %s", pattern)
+			if !re.MatchString(subject) {
+				presenter.Error("Invalid commit subject format.")
+				presenter.Detail("Subject: %s", subject)
+				presenter.Advice("Subject must match pattern: %s", pattern)
 
 				//nolint:err113 // Dynamic error is appropriate here.
 				return errors.New("invalid commit message format")
 			}
 		}
 
+		// 3. Initialize Git Client
 		//nolint:exhaustruct // Partial config is sufficient.
 		gitCfg := git.GitClientConfig{
 			Logger:                globals.AppLogger,
@@ -72,8 +82,8 @@ var CommitCmd = &cobra.Command{
 			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
-		err = client.AddAll(ctx)
-		if err != nil {
+		// 4. Stage Changes
+		if err := client.AddAll(ctx); err != nil {
 			return fmt.Errorf("failed to stage changes: %w", err)
 		}
 
@@ -87,13 +97,15 @@ var CommitCmd = &cobra.Command{
 			return nil
 		}
 
+		// 5. Confirm and Commit
 		currentBranch, _ := client.GetCurrentBranchName(ctx)
 		statusOutput, _, _ := client.GetStatusShort(ctx)
+
 		presenter.InfoPrefixOnly()
 		//nolint:errcheck // Printing to stdout is best effort.
 		fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
 		//nolint:errcheck // Printing to stdout is best effort.
-		fmt.Fprintf(presenter.Out(), "  Commit Message: %s\n", commitMessageFlag)
+		fmt.Fprintf(presenter.Out(), "  Subject: %s\n", subject)
 		//nolint:errcheck // Printing to stdout is best effort.
 		fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
 
@@ -105,7 +117,7 @@ var CommitCmd = &cobra.Command{
 			}
 		}
 
-		return client.Commit(ctx, commitMessageFlag)
+		return client.Commit(ctx, fullMessage)
 	},
 }
 
@@ -118,6 +130,7 @@ func init() {
 
 	CommitCmd.Short = desc.Short
 	CommitCmd.Long = desc.Long
+	// Use StringArrayVarP to allow multiple -m flags
 	CommitCmd.Flags().
-		StringVarP(&commitMessageFlag, "message", "m", "", "Commit message (required)")
+		StringArrayVarP(&commitMessages, "message", "m", []string{}, "Commit message (can be repeated for body)")
 }

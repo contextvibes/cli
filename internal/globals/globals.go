@@ -17,5 +17,5 @@ var (
 	ExecClient      *exec.ExecutorClient
 	AssumeYes       bool
 	// AppVersion is the current version of the CLI.
-	AppVersion = "0.4.1-rc1"
+	AppVersion = "0.4.1"
 )

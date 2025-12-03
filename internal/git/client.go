@@ -428,26 +428,6 @@ func (c *GitClient) ListTrackedAndCachedFiles(ctx context.Context) (string, stri
 	return c.captureGitOutput(ctx, "ls-files", "-co", "--exclude-standard")
 }
 
-// TruncateString helper can be removed if not used, or kept if useful elsewhere.
-// For now, keeping it as it was in the provided file.
-//
-//nolint:mnd // 4 and 3 are specific truncation constants.
-func TruncateString(input string, maxLen int) string {
-	if len(input) <= maxLen {
-		return input
-	}
-
-	if maxLen < 4 {
-		if maxLen < 0 {
-			return ""
-		}
-
-		return input[:maxLen]
-	}
-
-	return input[:maxLen-3] + "..."
-}
-
 // GetLogAndDiffFromMergeBase finds the common ancestor with a branch and returns the log and diff since that point.
 //
 //nolint:nonamedreturns // Named returns are used for clarity in return signature.

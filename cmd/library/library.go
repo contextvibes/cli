@@ -4,7 +4,7 @@ package library
 import (
 	"github.com/contextvibes/cli/cmd/library/index"
 	"github.com/contextvibes/cli/cmd/library/systemprompt"
-	// "github.com/contextvibes/cli/cmd/library/thea".
+	"github.com/contextvibes/cli/cmd/library/thea" // Imported
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +19,6 @@ var LibraryCmd = &cobra.Command{
 //nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
 	LibraryCmd.AddCommand(index.IndexCmd)
-	// LibraryCmd.AddCommand(thea.TheaCmd)
+	LibraryCmd.AddCommand(thea.TheaCmd) // Uncommented/Added
 	LibraryCmd.AddCommand(systemprompt.SystemPromptCmd)
 }

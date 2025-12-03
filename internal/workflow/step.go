@@ -4,12 +4,16 @@ import "context"
 
 // PresenterInterface defines the UI methods the workflow engine needs.
 // This decouples the engine from the concrete ui.Presenter.
+//
+//nolint:interfacebloat // The presenter facade naturally requires many methods.
 type PresenterInterface interface {
 	Error(format string, a ...any)
+	Warning(format string, a ...any)
 	Info(format string, a ...any)
 	Success(format string, a ...any)
 	Detail(format string, a ...any)
 	Step(format string, a ...any)
+	Header(format string, a ...any)
 	Summary(format string, a ...any)
 	Newline()
 	PromptForConfirmation(prompt string) (bool, error)

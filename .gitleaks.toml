@@ -1,0 +1,3 @@
+[allowlist]
+  description = "Ignore generated context files"
+  paths = ['''contextvibes\.md''', '''upstream_context\.txt''']

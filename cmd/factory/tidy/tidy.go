@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+
 	//nolint:revive // Blank import for side effects (though none obvious here, keeping for safety).
 	_ "os"
 

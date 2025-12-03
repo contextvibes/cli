@@ -22,12 +22,13 @@ func ReadFileContent(filePath string) ([]byte, error) {
 // WriteBufferToFile writes the content of a bytes.Buffer to the specified file path.
 // It uses default file permissions (0600).
 // It prints informational messages about writing to os.Stdout.
-//nolint:godox // TODO is acceptable here.
 // TODO: Refactor to remove direct fmt.Printf calls.
 //
 //	Calling commands should use their Presenter for user-facing messages
 //	or a Logger for debug/trace information related to file writing.
 //	This function should focus solely on writing the file.
+//
+//nolint:godox // TODO is acceptable here.
 func WriteBufferToFile(filePath string, buf *bytes.Buffer) error {
 	// These fmt.Printf calls directly write to os.Stdout.
 	// They are currently used by cmd/diff and cmd/describe.

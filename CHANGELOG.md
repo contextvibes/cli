@@ -9,33 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [0.4.1] - 2025-12-02
 
 ### Changed
-
-### Removed
+- **Architecture Refactor:**
+  - Introduced `internal/pipeline` package for modular, testable quality checks.
+  - Introduced `internal/workflow` package for reusable, step-based CLI workflows.
+  - Refactored `cmd/product/quality` to use the new pipeline engine.
+  - Refactored `cmd/craft` commands to use the new workflow engine.
+- **Code Quality & Hygiene:**
+  - Removed dead code and unused packages (`internal/bootstrap`, `internal/contextgen`).
+  - Addressed `noinlineerr` and other linter violations.
+  - `quality` command now automatically removes the stale `_contextvibes.md` report if all checks pass.
 
 ## [0.4.0] - 2025-12-01
 
 ### Added
-- **New \`factory scrub\` Command:**
+- **New `factory scrub` Command:**
   - A "Scorched Earth" cleanup tool for the development environment.
   - Cleans Android artifacts, Go caches, Docker system (prune), Nix garbage, and user caches.
   - Includes safety prompts to prevent accidental data loss.
-- **Enhanced \`product format\` Command:**
-  - Now accepts specific file paths or directories as arguments (e.g., \`contextvibes product format cmd/root.go\`), allowing for faster feedback loops.
+- **Enhanced `product format` Command:**
+  - Now accepts specific file paths or directories as arguments (e.g., `contextvibes product format cmd/root.go`), allowing for faster feedback loops.
 - **Environment Modernization:**
   - Upgraded project foundation to **Go 1.25**.
-  - Updated Nix channel to \`stable-25.11\`.
-  - Added \`gcc\` to the environment to support CGO tools (Delve, gopls).
+  - Updated Nix channel to `stable-25.11`.
+  - Added `gcc` to the environment to support CGO tools (Delve, gopls).
 
 ### Changed
 - **Code Quality Overhaul:**
   - Addressed over 400 linter violations.
-  - Hardened \`.golangci.yml\` with stricter rules (magic numbers, error wrapping, global variables).
-  - Fixed critical bugs in \`deploy\`, \`index\`, and config loading logic (handling of nil errors).
+  - Hardened `.golangci.yml` with stricter rules (magic numbers, error wrapping, global variables).
+  - Fixed critical bugs in `deploy`, `index`, and config loading logic (handling of nil errors).
 - **Configuration:**
-  - Removed unnecessary \`replace\` directive from \`go.mod\`.
+  - Removed unnecessary `replace` directive from `go.mod`.
 
 ## [0.3.0] - 2025-08-11
 
@@ -251,7 +258,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 Link Definitions
 -->
-[Unreleased]: https://github.com/contextvibes/cli/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/contextvibes/cli/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/contextvibes/cli/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/contextvibes/cli/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/contextvibes/cli/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/contextvibes/cli/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/contextvibes/cli/compare/v0.0.5...v0.1.1
 [0.0.5]: https://github.com/contextvibes/cli/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/contextvibes/cli/compare/v0.0.3...v0.0.4

@@ -1,4 +1,3 @@
-// Package workflow defines the steps for the kickoff workflow.
 package workflow
 
 import (

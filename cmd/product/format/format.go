@@ -37,15 +37,11 @@ var FormatCmd = &cobra.Command{
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			presenter.Error("Failed to get current working directory: %v", err)
-
 			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
-			presenter.Error("Failed to detect project type: %v", err)
-
 			return fmt.Errorf("failed to detect project type: %w", err)
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
@@ -57,28 +53,53 @@ var FormatCmd = &cobra.Command{
 		case project.Go:
 			presenter.Header("Go Formatting & Lint Fixes")
 
-			// Construct arguments for golangci-lint
+			// 1. Run goimports (if available) - Best for imports
+			if globals.ExecClient.CommandExists("goimports") {
+				goimportsArgs := []string{"-w"}
+				if len(args) > 0 {
+					goimportsArgs = append(goimportsArgs, args...)
+				} else {
+					goimportsArgs = append(goimportsArgs, ".")
+				}
+
+				// Uber Style: Inline error check reduces scope
+				if err := runFormatCommand(ctx, presenter, globals.ExecClient, cwd, "goimports", goimportsArgs); err != nil {
+					formatErrors = append(formatErrors, err)
+				} else {
+					presenter.Success("✓ goimports applied.")
+				}
+			} else {
+				presenter.Warning("goimports not found. Install 'gotools' for better import management.")
+			}
+
+			// 2. Run gofmt -s (Standard simplification)
+			gofmtArgs := []string{"-s", "-w"}
+			if len(args) > 0 {
+				gofmtArgs = append(gofmtArgs, args...)
+			} else {
+				gofmtArgs = append(gofmtArgs, ".")
+			}
+
+			// Uber Style: 'err' is a new variable in this new 'if' scope
+			if err := runFormatCommand(ctx, presenter, globals.ExecClient, cwd, "gofmt", gofmtArgs); err != nil {
+				formatErrors = append(formatErrors, err)
+			} else {
+				presenter.Success("✓ gofmt -s applied.")
+			}
+
+			// 3. Run golangci-lint --fix (Deep fixes)
 			lintArgs := []string{"run", "--fix"}
 			if len(args) > 0 {
 				lintArgs = append(lintArgs, args...)
 			}
 
-			err := runFormatCommand(
-				ctx,
-				presenter,
-				globals.ExecClient,
-				cwd,
-				"golangci-lint",
-				lintArgs,
-			)
-			if err != nil {
-				presenter.Warning(
-					"'golangci-lint --fix' completed but may have found unfixable issues.",
-				)
+			// Uber Style: Again, 'err' is scoped to this block
+			if err := runFormatCommand(ctx, presenter, globals.ExecClient, cwd, "golangci-lint", lintArgs); err != nil {
+				presenter.Warning("'golangci-lint --fix' completed but may have found unfixable issues.")
 			} else {
-				presenter.Success("✓ golangci-lint completed.")
+				presenter.Success("✓ golangci-lint --fix applied.")
 			}
-			// Add other project types here later
+
 		default:
 			presenter.Info("No formatters configured for %s", projType)
 		}
@@ -109,8 +130,7 @@ func runFormatCommand(
 		return nil
 	}
 
-	err := execClient.Execute(ctx, cwd, command, args...)
-	if err != nil {
+	if err := execClient.Execute(ctx, cwd, command, args...); err != nil {
 		return fmt.Errorf("failed to execute %s: %w", command, err)
 	}
 

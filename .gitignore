@@ -1,3 +1,4 @@
+
 # IDE and OS specific
 .DS_Store
 
@@ -28,3 +29,5 @@ contextvibes_aistudio_prompt.md
 contextvibes_plan.json
 contextvibes.md
 upstream_context.txt
+_notes.txt
+_contextvibes.md

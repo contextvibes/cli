@@ -2,15 +2,16 @@
 package quality
 
 import (
-	"context"
+	"bytes"
 	_ "embed"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
-	"github.com/contextvibes/cli/internal/exec"
 	"github.com/contextvibes/cli/internal/globals"
+	"github.com/contextvibes/cli/internal/pipeline"
 	"github.com/contextvibes/cli/internal/project"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -18,6 +19,8 @@ import (
 
 //go:embed quality.md.tpl
 var qualityLongDescription string
+
+const contextFile = "_contextvibes.md"
 
 // QualityCmd represents the quality command.
 //
@@ -32,129 +35,163 @@ var QualityCmd = &cobra.Command{
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
-		presenter.Summary("Running Code Quality Checks")
+		presenter.Summary("Running Code Quality Pipeline")
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			presenter.Error("Failed to get current working directory: %v", err)
-
 			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
 		projType, err := project.Detect(cwd)
 		if err != nil {
-			presenter.Error("Failed to detect project type: %v", err)
-
 			return fmt.Errorf("failed to detect project type: %w", err)
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
+		presenter.Newline()
 
-		var criticalErrors []string
+		// Initialize Pipeline Runner
+		runner := pipeline.NewRunner(presenter, globals.ExecClient)
+		var checks []pipeline.Check
 
+		// Assemble Pipeline based on Project Type
 		switch projType {
 		case project.Go:
-			failures := executeEnhancedGoQualityChecks(ctx, presenter, globals.ExecClient)
-			if len(failures) > 0 {
-				criticalErrors = append(criticalErrors, failures...)
+			checks = []pipeline.Check{
+				&pipeline.GoModTidyCheck{},
+				&pipeline.GoVetCheck{},
+				&pipeline.GolangCILintCheck{},
+				&pipeline.GoVulnCheck{},
+				&pipeline.GitleaksCheck{},
+				&pipeline.DeadcodeCheck{},
 			}
 		case project.Terraform, project.Pulumi, project.Python, project.Unknown:
 			fallthrough
 		default:
-			presenter.Info("No specific quality checks for project type: %s", projType)
+			presenter.Info("No specific quality checks configured for %s.", projType)
 
 			return nil
 		}
 
-		presenter.Newline()
-		presenter.Header("Quality Checks Summary")
-		if len(criticalErrors) > 0 {
-			errorMsg := fmt.Sprintf("%d critical quality check(s) failed.", len(criticalErrors))
-			presenter.Error(errorMsg)
-			for _, failure := range criticalErrors {
-				presenter.Detail("- %s", failure)
-			}
+		// Execute Pipeline
+		results, err := runner.Run(ctx, checks)
 
-			//nolint:err113 // Dynamic error is appropriate here.
-			return errors.New(errorMsg)
+		// Logic: If issues found, generate report. If success, clean up stale report.
+		if err != nil || hasWarnings(results) {
+			if genErr := generateContextFile(results); genErr != nil {
+				presenter.Error("Failed to generate context file: %v", genErr)
+			} else {
+				presenter.Newline()
+				presenter.Info("Generated AI Context: %s", contextFile)
+				presenter.Advice("Pass this file to your AI to fix the issues.")
+			}
+		} else {
+			// Cleanup: If all passed, remove the stale context file if it exists.
+			// Uber Style: Inline check
+			if _, err := os.Stat(contextFile); err == nil {
+				if removeErr := os.Remove(contextFile); removeErr == nil {
+					presenter.Info("Removed stale AI Context file: %s (all checks passed)", contextFile)
+				}
+			}
 		}
+
+		if err != nil {
+			presenter.Error("Pipeline failed.")
+
+			//nolint:wrapcheck // Wrapping is handled by caller.
+			return err
+		}
+
 		presenter.Success("All quality checks passed.")
 
 		return nil
 	},
 }
 
-type qualityCheck struct {
-	Name       string
-	Command    string
-	Args       []string
-	SuccessMsg string
-	FailAdvice string
-}
-
-//nolint:funlen // Function length is acceptable for list of checks.
-func executeEnhancedGoQualityChecks(
-	ctx context.Context,
-	presenter *ui.Presenter,
-	execClient *exec.ExecutorClient,
-) []string {
-	var failures []string
-
-	goQualityChecks := []qualityCheck{
-		{
-			Name:       "Verifying Go module dependencies are tidy",
-			Command:    "go",
-			Args:       []string{"mod", "tidy"},
-			SuccessMsg: "Dependencies are tidy.",
-			FailAdvice: "Run 'go mod tidy' or 'contextvibes product format' and commit the changes.",
-		},
-		{
-			Name:       "Checking for suspicious constructs with go vet",
-			Command:    "go",
-			Args:       []string{"vet", "./..."},
-			SuccessMsg: "Code passes go vet.",
-			FailAdvice: "Run 'go vet ./...' to see and fix the reported issues.",
-		},
-		{
-			Name:       "Running static analysis with golangci-lint",
-			Command:    "golangci-lint",
-			Args:       []string{"run"},
-			SuccessMsg: "Linter passed (includes formatting checks).",
-			//nolint:lll // Advice string is long.
-			FailAdvice: "Review the linter output above to fix issues, or run 'contextvibes product format' to apply auto-fixes.",
-		},
-		{
-			Name:       "Scanning for known vulnerabilities",
-			Command:    "govulncheck",
-			Args:       []string{"./..."},
-			SuccessMsg: "No known vulnerabilities found.",
-			FailAdvice: "Review the vulnerability report above and update dependencies as needed.",
-		},
-	}
-
-	for _, check := range goQualityChecks {
-		presenter.Step("Running check: %s...", check.Name)
-
-		if !execClient.CommandExists(check.Command) {
-			errMsg := fmt.Sprintf("Required tool '%s' not found in PATH.", check.Command)
-			presenter.Error(errMsg)
-			failures = append(failures, errMsg)
-
+func hasWarnings(results []pipeline.Result) bool {
+	for _, result := range results {
+		switch result.Status {
+		case pipeline.StatusWarn, pipeline.StatusFail:
+			return true
+		case pipeline.StatusPass:
 			continue
 		}
-
-		err := execClient.Execute(ctx, ".", check.Command, check.Args...)
-		if err != nil {
-			presenter.Error("! Check failed: %s", check.Name)
-			presenter.Advice(check.FailAdvice)
-			failures = append(failures, fmt.Sprintf("'%s' failed", check.Name))
-		} else {
-			presenter.Success("✓ %s", check.SuccessMsg)
-		}
-
-		presenter.Newline()
 	}
 
-	return failures
+	return false
+}
+
+func generateContextFile(results []pipeline.Result) error {
+	var buf bytes.Buffer
+
+	// 1. The Prompt
+	buf.WriteString("# AI Task: Fix Quality Issues\n\n")
+	buf.WriteString("You are a senior software engineer. Analyze the quality report below.\n")
+	buf.WriteString("Your goal is to fix the **Linter Errors** and address the **Dead Code** warnings.\n\n")
+	buf.WriteString("## Instructions\n")
+	buf.WriteString("1.  **Analyze**: Look at the specific error messages and file paths.\n")
+	buf.WriteString("2.  **Plan**: Create a plan to resolve each issue.\n")
+	buf.WriteString("3.  **Execute**: Provide the code changes (using `cat` scripts or `sed`) to fix the codebase.\n")
+	buf.WriteString("4.  **Verify**: Remind me to run `contextvibes product quality` again.\n\n")
+
+	buf.WriteString("---\n\n")
+
+	// 2. The Report
+	buf.WriteString(fmt.Sprintf("# Quality Report (%s)\n\n", time.Now().Format(time.RFC3339)))
+
+	for _, result := range results {
+		// Use standard ContextVibes markers instead of icons
+		marker := "+"
+
+		// Use switch for status check (fixes staticcheck QF1003)
+		switch result.Status {
+		case pipeline.StatusFail:
+			marker = "!"
+		case pipeline.StatusWarn:
+			marker = "~"
+		case pipeline.StatusPass:
+			marker = "+" // Explicitly handle Pass to satisfy exhaustive
+		}
+
+		buf.WriteString(fmt.Sprintf("## %s %s\n", marker, result.Name))
+		buf.WriteString(fmt.Sprintf("**Status:** %s\n", statusToString(result.Status)))
+
+		if result.Message != "" {
+			buf.WriteString(fmt.Sprintf("**Message:** %s\n", result.Message))
+		}
+
+		if result.Details != "" {
+			buf.WriteString("\n**Details:**\n")
+			buf.WriteString("text\n")
+			buf.WriteString(strings.TrimSpace(result.Details))
+			buf.WriteString("\n\n")
+		}
+
+		if result.Error != nil {
+			buf.WriteString(fmt.Sprintf("\n**System Error:** %v\n", result.Error))
+		}
+
+		buf.WriteString("\n")
+	}
+
+	//nolint:mnd // 0600 is standard secure file permission.
+	if err := os.WriteFile(contextFile, buf.Bytes(), 0o600); err != nil {
+		return fmt.Errorf("failed to write context file: %w", err)
+	}
+
+	return nil
+}
+
+func statusToString(s pipeline.Status) string {
+	switch s {
+	case pipeline.StatusPass:
+		return "Pass"
+	case pipeline.StatusFail:
+		return "Fail"
+	case pipeline.StatusWarn:
+		return "Warning"
+	default:
+		return "Unknown"
+	}
 }
 
 //nolint:gochecknoinits // Cobra requires init() for command registration.
