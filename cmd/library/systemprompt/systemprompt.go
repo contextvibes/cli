@@ -35,7 +35,7 @@ var SystemPromptCmd = &cobra.Command{
 		loadedAppConfig := globals.LoadedAppConfig
 
 		basePath := "docs/prompts/system"
-		//nolint:gosec // Reading core prompt file is intended.
+
 		content, err := os.ReadFile(filepath.Join(basePath, "core.md"))
 		if err != nil {
 			//nolint:wrapcheck // Wrapping is handled by caller.

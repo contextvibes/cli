@@ -28,7 +28,7 @@ var fullView bool
 
 // newProvider is a factory function that returns the configured work item provider.
 //
-//nolint:ireturn // Returning interface is intended for provider abstraction.
+
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -137,8 +137,8 @@ var TreeCmd = &cobra.Command{
 //nolint:varnamelen // 'p' is standard for presenter.
 func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
-	//nolint:errcheck // Printing to stdout is best effort.
-	fmt.Fprintf(p.Out(), "%s- [%s] #%d: %s\n", indent, item.Type, item.Number, item.Title)
+
+	_, _ = fmt.Fprintf(p.Out(), "%s- [%s] #%d: %s\n", indent, item.Type, item.Number, item.Title)
 
 	for _, child := range item.Children {
 		printSummaryTree(p, child, depth+1)
@@ -150,16 +150,14 @@ func printSummaryTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 //nolint:varnamelen // 'p' is standard for presenter.
 func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 	indent := strings.Repeat("  ", depth)
-	//nolint:errcheck,gosec // Printing to stdout is best effort.
+
 	_, _ = p.Out().Write([]byte(indent)) // Write indent manually for the header
 	internal.DisplayWorkItem(p, item)
 
 	if len(item.Comments) > 0 {
-		//nolint:errcheck // Printing to stdout is best effort.
-		fmt.Fprintf(p.Out(), "%s--- Comments (%d) ---\n", indent, len(item.Comments))
+		_, _ = fmt.Fprintf(p.Out(), "%s--- Comments (%d) ---\n", indent, len(item.Comments))
 
 		for _, comment := range item.Comments {
-			//nolint:errcheck,gosec // Printing to stdout is best effort.
 			_, _ = p.Out().Write([]byte(indent))
 			p.Header(
 				fmt.Sprintf(
@@ -170,11 +168,9 @@ func printFullTree(p *ui.Presenter, item *workitem.WorkItem, depth int) {
 			)
 			// Indent the body of the comment
 			for line := range strings.SplitSeq(comment.Body, "\n") {
-				//nolint:errcheck // Printing to stdout is best effort.
-				fmt.Fprintf(p.Out(), "%s  %s\n", indent, line)
+				_, _ = fmt.Fprintf(p.Out(), "%s  %s\n", indent, line)
 			}
 
-			//nolint:errcheck,gosec // Printing to stdout is best effort.
 			_, _ = p.Out().Write([]byte(indent))
 			p.Separator()
 		}

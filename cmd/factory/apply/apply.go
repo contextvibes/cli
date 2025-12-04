@@ -121,7 +121,6 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 		switch step.Type {
 		case "file_modification":
 			for _, changeSet := range step.Changes {
-				//nolint:gosec // Reading file to modify is intended.
 				original, _ := os.ReadFile(changeSet.FilePath)
 				current := string(original)
 

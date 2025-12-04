@@ -35,8 +35,6 @@ var (
 var ErrSkipDocument = errors.New("skip document")
 
 // DocumentMetadata represents the metadata extracted from a document.
-//
-//nolint:exhaustruct // Struct is populated from YAML/JSON.
 type DocumentMetadata struct {
 	ID                string   `json:"id"`
 	FileExtension     string   `json:"fileExtension"`
@@ -115,7 +113,6 @@ var IndexCmd = &cobra.Command{
 	},
 }
 
-//nolint:revive // Unused parameters kept for future logic.
 func processDirectory(
 	rootPath, baseDirName string,
 	_ map[string]bool,
@@ -174,7 +171,6 @@ func processDirectory(
 	return metadataList, nil
 }
 
-//nolint:revive // Unused parameters kept for future logic.
 func parseFrontMatterAndDerive(
 	filePath, rootPath, _ string,
 	fileInfo fs.FileInfo,
@@ -215,7 +211,6 @@ func parseFrontMatterAndDerive(
 	}
 
 	var fmData tempFrontMatter
-	//nolint:noinlineerr // Inline check is standard for unmarshal.
 	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil {
 		return nil, fmt.Errorf("failed to parse front matter: %w", err)
 	}

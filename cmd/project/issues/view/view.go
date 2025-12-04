@@ -27,7 +27,7 @@ var withComments bool
 
 // newProvider is a factory function that returns the configured work item provider.
 //
-//nolint:ireturn // Returning interface is intended for provider abstraction.
+
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,

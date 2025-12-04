@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/contextvibes/cli/internal/exec"
 	"github.com/google/go-github/v74/github"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
@@ -19,6 +20,9 @@ import (
 //
 //nolint:gosec // This is a variable name, not a credential.
 const GHTokenEnvVar = "GITHUB_TOKEN"
+
+// PassTokenKey is the key used in the password store.
+const PassTokenKey = "github/token"
 
 var (
 	sshRemoteRegex = regexp.MustCompile(`^git@github\.com:([\w-]+)/([\w-]+)\.git$`)
@@ -37,6 +41,10 @@ var (
 	ErrRepoAlreadyExists = errors.New("repository already exists")
 	// ErrRepoNotFoundOrAuth is returned when a repository is not found or auth fails.
 	ErrRepoNotFoundOrAuth = errors.New("repository not found or token lacks permission")
+	// ErrPassCommandNotFound is returned when the 'pass' command is not available.
+	ErrPassCommandNotFound = errors.New("'pass' command not found")
+	// ErrPassOutputEmpty is returned when 'pass' returns no output.
+	ErrPassOutputEmpty = errors.New("pass output was empty")
 )
 
 // Client wraps the go-github clients for both REST and GraphQL APIs.
@@ -93,16 +101,31 @@ func ParseGitHubRemote(remoteURL string) (owner, repo string, err error) {
 	return pathParts[0], repo, nil
 }
 
-// NewClient creates a new GitHub client, authenticating using the GITHUB_TOKEN environment variable.
+// NewClient creates a new GitHub client.
+// It first checks the GITHUB_TOKEN environment variable.
+// If not found, it attempts to retrieve the token from 'pass' (github/token).
 func NewClient(ctx context.Context, logger *slog.Logger, owner, repo string) (*Client, error) {
 	token := os.Getenv(GHTokenEnvVar)
+
+	if token == "" {
+		logger.DebugContext(ctx, "GITHUB_TOKEN env var empty, attempting to retrieve from 'pass'...")
+
+		passToken, err := tryFetchTokenFromPass(ctx, logger)
+		if err == nil && passToken != "" {
+			token = passToken
+
+			logger.InfoContext(ctx, "Successfully retrieved GitHub token from 'pass'")
+		} else if err != nil {
+			logger.DebugContext(ctx, "Failed to retrieve from pass", "error", err)
+		}
+	}
+
 	if token == "" {
 		errorMsg := `
-GitHub token not found. Please create a Personal Access Token (classic) with 'repo' and 'project' scopes.
-See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+GitHub token not found. 
 
-Then, export it as an environment variable:
-export GITHUB_TOKEN="your_token_here"`
+1. Ensure you have run 'contextvibes factory setup-identity' to store your token in 'pass'.
+2. OR export it manually: export GITHUB_TOKEN="your_token_here"`
 
 		return nil, fmt.Errorf("%w: %s", ErrTokenNotFound, strings.TrimSpace(errorMsg))
 	}
@@ -123,6 +146,29 @@ export GITHUB_TOKEN="your_token_here"`
 		owner:   owner,
 		repo:    repo,
 	}, nil
+}
+
+func tryFetchTokenFromPass(ctx context.Context, logger *slog.Logger) (string, error) {
+	// Create a temporary executor just for this check
+	executor := exec.NewOSCommandExecutor(logger)
+	client := exec.NewClient(executor)
+
+	if !client.CommandExists("pass") {
+		return "", ErrPassCommandNotFound
+	}
+
+	stdout, _, err := client.CaptureOutput(ctx, ".", "pass", "show", PassTokenKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to capture pass output: %w", err)
+	}
+
+	// pass output might contain multiple lines, the first line is the secret
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) > 0 {
+		return strings.TrimSpace(lines[0]), nil
+	}
+
+	return "", ErrPassOutputEmpty
 }
 
 // ListProjects fetches the first 100 GitHub Projects (V2) for the repository's owner.

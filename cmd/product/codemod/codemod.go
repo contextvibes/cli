@@ -52,7 +52,6 @@ var CodemodCmd = &cobra.Command{
 		for _, fileChangeSet := range script {
 			presenter.Header("Processing target: %s", fileChangeSet.FilePath)
 
-			//nolint:gosec // Reading target file for modification is intended.
 			contentBytes, err := os.ReadFile(fileChangeSet.FilePath)
 			if err != nil && !os.IsNotExist(err) {
 				return fmt.Errorf("failed to read target file: %w", err)

@@ -30,7 +30,7 @@ func TestTHEAClient_Integration_FetchRealManifest(t *testing.T) {
 	cfg := thea.ServiceConfig{
 		ManifestURL:       "https://raw.githubusercontent.com/contextvibes/THEA/main/thea-manifest.json", // LIVE URL
 		RawContentBaseURL: "https://raw.githubusercontent.com/contextvibes/THEA",                         // LIVE URL base
-		//nolint:lll // Comment is long.
+
 		DefaultArtifactRef: "main", // Using main branch
 		RequestTimeout:     60 * time.Second,
 	}
@@ -93,7 +93,7 @@ func TestTHEAClient_Integration_FetchRealArtifactContent(t *testing.T) {
 
 	testArtifactID := "playbooks/project_initiation/master_strategic_kickoff_prompt" // REAL ID
 	testArtifactRef := "main"                                                        // Fetch from main branch
-	//nolint:lll // Comment is long.
+
 	expectedContentSubstring := "AI Facilitator Instructions & Persona" // REAL SUBSTRING from your kickoff prompt
 
 	//nolint:exhaustruct // Partial config is sufficient for test.

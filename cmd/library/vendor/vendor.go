@@ -1,5 +1,4 @@
-// Package exportupstream provides the command to export upstream module source code.
-package exportupstream
+package vendor
 
 import (
 	"bytes"
@@ -19,20 +18,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:embed exportupstream.md.tpl
-var exportUpstreamLongDescription string
+//go:embed vendor.md.tpl
+var vendorLongDescription string
 
 //nolint:gochecknoglobals // Cobra flags require package-level variables.
 var outputFlag string
 
-// ExportUpstreamCmd represents the export-upstream command.
+// VendorCmd represents the library vendor command.
 //
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
-var ExportUpstreamCmd = &cobra.Command{
-	Use:   "export-upstream",
-	Short: "Exports source code of upstream dependencies defined in config.",
+var VendorCmd = &cobra.Command{
+	Use:   "vendor",
+	Short: "Exports upstream dependency code as reference material.",
 	//nolint:lll // Long description.
-	Long: `Scans the Go module cache for dependencies listed in .contextvibes.yaml (under project.upstreamModules) and exports their source code to a single file for AI context.`,
+	Long: `Scans the Go module cache for dependencies listed in .contextvibes.yaml (under project.upstreamModules) and exports their source code to a single file.
+
+This treats external code as "Library" material—reference documentation for you and the AI to understand how to use those libraries.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(os.Stdout, os.Stderr)
 		ctx := context.Background()
@@ -45,11 +46,11 @@ var ExportUpstreamCmd = &cobra.Command{
 			return nil
 		}
 
-		presenter.Summary("Exporting Upstream Context")
+		presenter.Summary("Exporting Vendor Reference Context")
 		presenter.Info("Target modules: %v", modules)
 
 		var outputBuffer bytes.Buffer
-		fmt.Fprintf(&outputBuffer, "--- Upstream Context Export ---\n")
+		fmt.Fprintf(&outputBuffer, "--- Upstream Vendor Context ---\n")
 		fmt.Fprintf(&outputBuffer, "Generated at: %s\n\n", time.Now().Format(time.RFC3339))
 
 		for _, mod := range modules {
@@ -142,11 +143,11 @@ var ExportUpstreamCmd = &cobra.Command{
 		// Write to file
 		err := tools.WriteBufferToFile(outputFlag, &outputBuffer)
 		if err != nil {
-			//nolint:wrapcheck // Wrapping is handled by caller.
+
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 
-		presenter.Success("Context exported to: %s", outputFlag)
+		presenter.Success("Reference context exported to: %s", outputFlag)
 
 		return nil
 	},
@@ -176,17 +177,17 @@ func resolveModule(ctx context.Context, mod string) (string, string, error) {
 func init() {
 	// Create a default description if the template file is missing or empty during dev
 	desc := cmddocs.CommandDesc{
-		Short: "Exports source code of upstream dependencies.",
+		Short: "Exports upstream dependency code as reference.",
 		Long:  "Scans and exports upstream Go module source code defined in configuration.",
 	}
 
-	parsed, err := cmddocs.ParseAndExecute(exportUpstreamLongDescription, nil)
+	parsed, err := cmddocs.ParseAndExecute(vendorLongDescription, nil)
 	if err == nil {
 		desc = parsed
 	}
 
-	ExportUpstreamCmd.Short = desc.Short
-	ExportUpstreamCmd.Long = desc.Long
+	VendorCmd.Short = desc.Short
+	VendorCmd.Long = desc.Long
 
-	ExportUpstreamCmd.Flags().StringVarP(&outputFlag, "output", "o", "upstream_context.txt", "Output file path")
+	VendorCmd.Flags().StringVarP(&outputFlag, "output", "o", "upstream_reference.txt", "Output file path")
 }

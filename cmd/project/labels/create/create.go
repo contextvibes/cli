@@ -30,7 +30,7 @@ var (
 
 // newProvider is a factory function that returns the configured work item provider.
 //
-//nolint:ireturn // Returning interface is intended for provider abstraction.
+
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -87,7 +87,7 @@ var CreateCmd = &cobra.Command{
 		}
 
 		presenter.Summary("Creating label '%s'...", newLabel.Name)
-		//nolint:wrapcheck // Wrapping is handled by caller.
+
 		_, err = provider.CreateLabel(ctx, newLabel)
 		if err != nil {
 			presenter.Error("Failed to create label: %v", err)

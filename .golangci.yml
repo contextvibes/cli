@@ -58,7 +58,7 @@ linters:
     # - godox             # TODOs
     # - goprintffuncname  # Printf-like naming
     # - tagliatelle       # JSON struct tags
-    - nolintlint
+    # - nolintlint
 
     # --- TESTING ---
     # - testifylint
@@ -75,6 +75,8 @@ linters:
     ireturn:
       allow:
         - error
+        - github.com/contextvibes/cli/internal/workitem.Provider
+        - github.com/contextvibes/cli/internal/exec.CommandExecutor
     depguard:
       rules:
         main:

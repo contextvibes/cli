@@ -22,7 +22,7 @@ var refineLongDescription string
 
 // newProvider is a factory function that returns the configured work item provider.
 //
-//nolint:ireturn // Returning interface is intended for provider abstraction.
+
 func newProvider(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -94,7 +94,7 @@ var RefineCmd = &cobra.Command{
 			form := huh.NewForm(
 				huh.NewGroup(
 					huh.NewNote().Title(prompt).Description(item.Body),
-					//nolint:lll // Long line for options.
+
 					huh.NewSelect[string]().
 						Title("What is the correct type for this issue?").
 						Options(

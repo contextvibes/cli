@@ -39,7 +39,7 @@ func TestFetchManifest_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/thea-manifest.json", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
-		//nolint:musttag // Struct tags are present on Manifest struct.
+
 		err := json.NewEncoder(w).Encode(expectedManifest)
 		//nolint:testifylint // require is acceptable in handler for test setup failure.
 		require.NoError(t, err)

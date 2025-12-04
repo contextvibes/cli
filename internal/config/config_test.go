@@ -414,7 +414,6 @@ func runFindRepoRootTest(t *testing.T, testCase findRepoRootTestCase) {
 	mockExec := &mockExecutor{
 		CaptureOutputFunc: func(_ context.Context, _ string, commandName string, args ...string) (string, string, error) {
 			if commandName == gitCmd && args[0] == revParseCmd {
-				//nolint:err113 // Dynamic error is appropriate here.
 				if testCase.mockError != nil {
 					return "", "git error", testCase.mockError
 				}
