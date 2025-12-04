@@ -6,9 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	//nolint:revive // Blank import for side effects (though none obvious here, keeping for safety).
-	_ "os"
-
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/globals"

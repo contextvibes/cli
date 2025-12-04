@@ -2,6 +2,7 @@
 package issues
 
 import (
+	closecmd "github.com/contextvibes/cli/cmd/project/issues/close" // Imports package closecmd
 	"github.com/contextvibes/cli/cmd/project/issues/create"
 	"github.com/contextvibes/cli/cmd/project/issues/list"
 	"github.com/contextvibes/cli/cmd/project/issues/tree"
@@ -23,5 +24,6 @@ func init() {
 	IssuesCmd.AddCommand(create.CreateCmd)
 	IssuesCmd.AddCommand(list.ListCmd)
 	IssuesCmd.AddCommand(view.ViewCmd)
-	IssuesCmd.AddCommand(tree.TreeCmd) // Add the new command
+	IssuesCmd.AddCommand(tree.TreeCmd)
+	IssuesCmd.AddCommand(closecmd.CloseCmd) // Updated reference
 }

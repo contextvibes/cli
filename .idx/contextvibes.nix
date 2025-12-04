@@ -9,9 +9,9 @@ pkgs.stdenv.mkDerivation {
   # This modifies the fixed-output derivation created by fetchurl.
   src = (pkgs.fetchurl {
     # URL for the release asset.
-    url = "https://github.com/contextvibes/cli/releases/download/v0.4.1-rc3/contextvibes";
+    url = "https://github.com/contextvibes/cli/releases/download/v0.4.1/contextvibes";
     # SHA256 hash of the downloaded file.
-    sha256 = "sha256:1aa09c34c750056e78a69e84f6d7c38a0c6220e3dc46af460256f9a38978ff8a";
+    sha256 = "sha256:09db14ee2d8258aaedd66ac507c6045cb260efd6bc1acb3bbc22e59db70bdcd7";
   }).overrideAttrs (finalAttrs: previousAttrs: {
     # Enable structured attributes to allow passing complex sets.
     __structuredAttrs = true;

@@ -54,7 +54,6 @@ func (m *mockBuildExecutor) Logger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
 
-//nolint:ireturn // Returning interface is required for mock.
 func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
 
 //nolint:unparam // Return values are used in tests.

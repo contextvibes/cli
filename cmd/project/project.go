@@ -4,10 +4,11 @@ package project
 import (
 	"github.com/contextvibes/cli/cmd/project/board"
 	"github.com/contextvibes/cli/cmd/project/describe"
-	"github.com/contextvibes/cli/cmd/project/exportupstream"
 	"github.com/contextvibes/cli/cmd/project/issues"
 	"github.com/contextvibes/cli/cmd/project/labels"
+	"github.com/contextvibes/cli/cmd/project/onboard" // Added
 	"github.com/contextvibes/cli/cmd/project/plan"
+	"github.com/contextvibes/cli/cmd/project/summary"
 	"github.com/spf13/cobra"
 )
 
@@ -26,5 +27,6 @@ func init() {
 	ProjectCmd.AddCommand(plan.PlanCmd)
 	ProjectCmd.AddCommand(labels.LabelsCmd)
 	ProjectCmd.AddCommand(board.BoardCmd)
-	ProjectCmd.AddCommand(exportupstream.ExportUpstreamCmd)
+	ProjectCmd.AddCommand(summary.SummaryCmd)
+	ProjectCmd.AddCommand(onboard.OnboardCmd) // Added
 }

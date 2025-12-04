@@ -24,8 +24,6 @@ type Provider struct {
 }
 
 // NewWithClient creates a new Provider with an existing GitHub client.
-//
-//nolint:ireturn // Returning interface is intended for provider abstraction.
 func NewWithClient(client *gh.Client, logger *slog.Logger, owner, repo string) workitem.Provider {
 	return &Provider{
 		ghClient: client,
@@ -36,8 +34,6 @@ func NewWithClient(client *gh.Client, logger *slog.Logger, owner, repo string) w
 }
 
 // New creates a new Provider by discovering the repository from the local git remote.
-//
-//nolint:ireturn // Returning interface is intended for provider abstraction.
 func New(ctx context.Context, logger *slog.Logger, cfg *config.Config) (workitem.Provider, error) {
 	tempExecutor := exec.NewOSCommandExecutor(logger)
 
@@ -117,7 +113,6 @@ func (p *Provider) ListItems(
 		return nil, fmt.Errorf("failed to list github issues: %w", err)
 	}
 
-	//nolint:prealloc // Pre-allocating is good but not strictly required.
 	workItems := make([]workitem.WorkItem, 0, len(issues))
 	for _, issue := range issues {
 		if issue.IsPullRequest() {
@@ -243,7 +238,6 @@ func (p *Provider) SearchItems(ctx context.Context, query string) ([]workitem.Wo
 		return nil, fmt.Errorf("failed to search github issues: %w", err)
 	}
 
-	//nolint:prealloc // Pre-allocating is good but not strictly required.
 	workItems := make([]workitem.WorkItem, 0, len(result.Issues))
 	for _, issue := range result.Issues {
 		if issue.IsPullRequest() {
@@ -341,10 +335,8 @@ func toWorkItem(issue *github.Issue) workitem.WorkItem {
 	return item
 }
 
-// fromWorkItem is the corrected function that prevents sending 'null' for empty slices.
+// fromWorkItem converts a WorkItem to a GitHub IssueRequest.
 func fromWorkItem(item workitem.WorkItem) *github.IssueRequest {
-	// THE FIX: Ensure slices are non-nil for JSON marshaling.
-	// If the source slice is nil, we replace it with an empty, non-nil slice.
 	labels := item.Labels
 	if labels == nil {
 		labels = []string{}
@@ -363,7 +355,13 @@ func fromWorkItem(item workitem.WorkItem) *github.IssueRequest {
 		Assignees: &assignees,
 	}
 
-	// This part of the logic remains the same.
+	// Map State if present
+	if item.State != "" {
+		stateStr := strings.ToLower(string(item.State))
+		req.State = &stateStr
+	}
+
+	// Map Type to Label if needed
 	typeLabel := strings.ToLower(string(item.Type))
 	hasTypeLabel := false
 

@@ -18,8 +18,6 @@ type OSCommandExecutor struct {
 
 // NewOSCommandExecutor creates a new OSCommandExecutor.
 // If logger is nil, a discard logger will be used.
-//
-//nolint:ireturn // Returning interface is intended.
 func NewOSCommandExecutor(logger *slog.Logger) CommandExecutor {
 	log := logger
 	if log == nil {

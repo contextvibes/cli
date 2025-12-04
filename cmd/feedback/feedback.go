@@ -25,7 +25,7 @@ var feedbackLongDescription string
 
 // newProviderForRepo creates a workitem.Provider for a specific owner/repo string.
 //
-//nolint:ireturn // Returning interface is intended for provider abstraction.
+
 func newProviderForRepo(
 	ctx context.Context,
 	logger *slog.Logger,

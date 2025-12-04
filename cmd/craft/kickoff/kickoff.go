@@ -18,7 +18,7 @@ var kickoffLongDescription string
 var KickoffCmd = &cobra.Command{
 	Use:   "kickoff",
 	Short: "Starts an AI-guided strategic project planning session.",
-	//nolint:revive // Unused args are expected in Cobra RunE.
+
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 

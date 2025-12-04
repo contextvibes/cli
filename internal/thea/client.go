@@ -46,8 +46,6 @@ type Client struct {
 
 // ServiceConfig contains configuration specific to the THEA client.
 // This would be part of your main AppConfig.LoadedAppConfig.THEA.ServiceConfig or similar.
-//
-//nolint:revive // ServiceConfig is a clear name.
 type ServiceConfig struct {
 	ManifestURL        string        // Full URL to the thea-manifest.json
 	DefaultArtifactRef string        // e.g., "main" or a specific release tag like "v0.7.0"
@@ -310,7 +308,7 @@ func (c *Client) fetchManifest(ctx context.Context) (*Manifest, error) {
 	}
 
 	var manifest Manifest
-	//nolint:noinlineerr,musttag // Inline check is standard for JSON decode. Struct tags are present.
+	//nolint:noinlineerr // Inline check is standard for JSON decode.
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
 		c.logger.ErrorContext(
 			ctx,
