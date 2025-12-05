@@ -15,6 +15,7 @@ import (
 	"github.com/contextvibes/cli/cmd/factory/status"
 	"github.com/contextvibes/cli/cmd/factory/sync"
 	"github.com/contextvibes/cli/cmd/factory/tidy"
+	"github.com/contextvibes/cli/cmd/factory/tools" // Added
 	"github.com/spf13/cobra"
 )
 
@@ -41,4 +42,5 @@ func init() {
 	FactoryCmd.AddCommand(deploy.DeployCmd)
 	FactoryCmd.AddCommand(scrub.ScrubCmd)
 	FactoryCmd.AddCommand(setupidentity.SetupIdentityCmd)
+	FactoryCmd.AddCommand(tools.ToolsCmd) // Added
 }
