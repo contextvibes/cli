@@ -1,4 +1,6 @@
-# -----------------------------------------------------------------------------
+package scaffold
+
+const devNixTemplate = `# -----------------------------------------------------------------------------
 # IDX Profile: Go Container Environment (Low-Resource Optimized)
 # Version: 1.2.0 (Audited)
 # -----------------------------------------------------------------------------
@@ -8,12 +10,12 @@ let
   # 1. Define the local config path
   localConfigPath = ./local.nix;
 
-  # 2. Safely import local.nix.
+  # 2. Safely import local.nix. 
   #    Returns an empty set {} if the file is missing.
-  localEnv = if builtins.pathExists localConfigPath
-             then import localConfigPath
+  localEnv = if builtins.pathExists localConfigPath 
+             then import localConfigPath 
              else {};
-in
+in 
 {
   # Pin to Nixpkgs version (May 2025 release)
   channel = "stable-25.05";
@@ -27,6 +29,7 @@ in
 
     # --- Cloud & Containers ---
     google-cloud-sdk
+    firebase-tools
     docker
     docker-compose
 
@@ -41,8 +44,6 @@ in
     gh
 
     # --- Local Imports ---
-    # Ensure these files return a single derivation (package).
-    # If they return a list, this syntax needs changing.
     (import ./contextvibes.nix { inherit pkgs; })
     (import ./golangci-lint.nix { inherit pkgs; })
   ];
@@ -60,13 +61,13 @@ in
     CGO_ENABLED = "0"; # Default to static, override to "1" in local.nix if needed
 
     # --- Low Resource Tuning (Defaults) ---
-    # -p=1 reduces RAM usage but slows builds.
+    # -p=1 reduces RAM usage but slows builds. 
     # Override this in local.nix if you have >4GB RAM.
-    GOFLAGS = "-p=1";
-
+    GOFLAGS = "-p=1"; 
+    
     # Cap Runtime Memory to prevent OOM kills
     GOMEMLIMIT = "1024MiB";
-
+    
     # Limit OS threads to prevent starvation on small VMs
     GOMAXPROCS = "1";
 
@@ -92,3 +93,63 @@ in
     };
   };
 }
+`
+
+const contextvibesNixTemplate = `# -----------------------------------------------------------------------------
+# Package: ContextVibes CLI
+# Version: 0.6.0
+# -----------------------------------------------------------------------------
+{ pkgs }:
+
+pkgs.stdenv.mkDerivation rec {
+  name = "contextvibes-${version}";
+  version = "0.6.0";
+
+  src = pkgs.fetchurl {
+    url = "https://github.com/contextvibes/cli/releases/download/v${version}/contextvibes";
+    sha256 = "sha256:bdbf55bf902aa567851fcbbc07704b416dee85065a276a47e7df19433c5643ea";
+  };
+
+  dontUnpack = true;
+
+  installPhase = ''
+    mkdir -p $out/bin
+    install -m 755 $src $out/bin/contextvibes
+  '';
+}
+`
+
+const golangciLintNixTemplate = `# -----------------------------------------------------------------------------
+# Package: GolangCI-Lint (Precompiled)
+# Version: 1.64.5
+# -----------------------------------------------------------------------------
+{ pkgs }:
+
+pkgs.stdenv.mkDerivation rec {
+  name = "golangci-lint-bin-${version}";
+  version = "1.64.5";
+
+  src = pkgs.fetchurl {
+    url = "https://github.com/golangci/golangci-lint/releases/download/v${version}/" +
+          "golangci-lint-${version}-linux-amd64.tar.gz";
+    sha256 = "sha256-zkah8diQ57ZnJZ9wuyNil/XPh5GptrmLQbKD2Ttbbog=";
+  };
+
+  # The builder automatically enters the extracted folder, so the binary is just 'golangci-lint'
+  installPhase = ''
+    mkdir -p $out/bin
+    install -m 755 golangci-lint $out/bin/
+  '';
+}
+`
+
+const localNixTemplate = `{
+  # Identity
+  # GPG_KEY_ID = "YOUR_KEY_ID_HERE";
+
+  # Optional: Override resource limits if you are on a High-Mem instance
+  # GOMEMLIMIT = "4096MiB";
+  # GOMAXPROCS = "4";
+  # GOFLAGS = ""; # Remove the -p=1 restriction
+}
+`

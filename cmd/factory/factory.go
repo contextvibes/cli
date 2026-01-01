@@ -10,12 +10,14 @@ import (
 	init_cmd "github.com/contextvibes/cli/cmd/factory/init"
 	"github.com/contextvibes/cli/cmd/factory/kickoff"
 	"github.com/contextvibes/cli/cmd/factory/plan"
+	"github.com/contextvibes/cli/cmd/factory/scaffold"
 	"github.com/contextvibes/cli/cmd/factory/scrub"
 	"github.com/contextvibes/cli/cmd/factory/setupidentity"
 	"github.com/contextvibes/cli/cmd/factory/status"
 	"github.com/contextvibes/cli/cmd/factory/sync"
 	"github.com/contextvibes/cli/cmd/factory/tidy"
-	"github.com/contextvibes/cli/cmd/factory/tools" // Added
+	"github.com/contextvibes/cli/cmd/factory/tools"
+	"github.com/contextvibes/cli/cmd/factory/upgradecli" // Added
 	"github.com/spf13/cobra"
 )
 
@@ -42,5 +44,7 @@ func init() {
 	FactoryCmd.AddCommand(deploy.DeployCmd)
 	FactoryCmd.AddCommand(scrub.ScrubCmd)
 	FactoryCmd.AddCommand(setupidentity.SetupIdentityCmd)
-	FactoryCmd.AddCommand(tools.ToolsCmd) // Added
+	FactoryCmd.AddCommand(tools.ToolsCmd)
+	FactoryCmd.AddCommand(scaffold.ScaffoldCmd)
+	FactoryCmd.AddCommand(upgradecli.UpgradeCliCmd) // Added
 }

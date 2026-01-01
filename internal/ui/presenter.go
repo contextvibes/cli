@@ -10,6 +10,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
+
+	//nolint:depguard // isatty is standard for terminal detection.
 	"github.com/mattn/go-isatty"
 )
 
@@ -63,15 +65,11 @@ func NewPresenter(outW, errW io.Writer) *Presenter {
 }
 
 // Out returns the configured output writer (typically os.Stdout).
-//
-//nolint:ireturn // Returning interface is intended.
 func (p *Presenter) Out() io.Writer {
 	return p.outW
 }
 
 // Err returns the configured error writer (typically os.Stderr).
-//
-//nolint:ireturn // Returning interface is intended.
 func (p *Presenter) Err() io.Writer {
 	return p.errW
 }
@@ -283,7 +281,7 @@ func (p *Presenter) PromptForMultiSelect(title string, options []string) ([]stri
 // If stdin is a pipe, it opens /dev/tty for interactive input. Otherwise, it uses stdin.
 // The returned cleanup function MUST be called by the caller to close /dev/tty if it was opened.
 //
-//nolint:ireturn // Returning interface is intended.
+
 func (p *Presenter) getInteractiveReader() (io.Reader, func(), error) {
 	if !isatty.IsTerminal(os.Stdin.Fd()) {
 		tty, ttyErr := os.Open("/dev/tty")

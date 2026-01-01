@@ -1,27 +1,19 @@
-# .idx/golangci-lint.nix
-# Defines a Nix package for a specific, precompiled version of golangci-lint.
-
+# -----------------------------------------------------------------------------
+# Package: GolangCI-Lint (Precompiled)
+# Version: 2.7.2
+# -----------------------------------------------------------------------------
 { pkgs }:
 
-pkgs.stdenv.mkDerivation {
-  # --- PACKAGE METADATA ---
-  pname = "golangci-lint-bin";
-  version = "2.6.2";
+pkgs.stdenv.mkDerivation rec {
+  name = "golangci-lint-bin-${version}";
+  version = "2.7.2";
 
-  # --- SOURCE FETCHING ---
-  # WHAT: Fetch the precompiled binary archive from its GitHub release URL.
-  # WHY:  To get the tool without needing to build it from source.
   src = pkgs.fetchurl {
-    url = "https://github.com/golangci/golangci-lint/releases/download/v2.6.2/golangci-lint-2.6.2-linux-amd64.tar.gz";
-    
-    # WHAT: A cryptographic hash of the downloaded file.
-    # WHY:  Ensures the binary is exactly what we expect, providing security and reproducibility.
-    sha256 = "sha256-SZyGS1/ZhBxPqOgLXivjD3Pwhc8YbxsRH/gaJ4O33hI=";
+    url = "https://github.com/golangci/golangci-lint/releases/download/v${version}/golangci-lint-${version}-linux-amd64.tar.gz";
+    sha256 = "sha256-zkah8diQ57ZnJZ9wuyNil/XPh5GptrmLQbKD2Ttbbog=";
   };
 
-  # --- INSTALLATION SCRIPT ---
-  # WHAT: A script to copy the binary into the Nix store.
-  # WHY:  To make the executable available in the environment's PATH.
+  # The builder automatically enters the extracted folder, so the binary is just 'golangci-lint'
   installPhase = ''
     mkdir -p $out/bin
     install -m 755 golangci-lint $out/bin/

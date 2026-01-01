@@ -5,91 +5,80 @@ run:
   concurrency: 2
   modules-download-mode: readonly
 
+output:
+  # Satisfies "order the results by file"
+  sort-order:
+    - file
+    - linter
+
 linters:
-  # 1. Enable EVERY available linter
   default: all
-
-  # 2. Disable specific linters.
   disable:
-    # --- DEPRECATED / REMOVED LINTERS ---
-    - noinlineerr         # Disabled: We prefer the standard idiom 'if err := ...; err != nil' to reduce scope.
-    - wsl
+    # --- Style & Idiom (Too Opinionated) ---
+    - wsl             # Too strict; conflicts with logical grouping.
 
-    # --- LEVEL 1: CRITICAL BUGS & SECURITY ---
-    # - forcetypeassert
-    # - gosec
-
-    # --- LEVEL 2: STYLE & MODERNIZATION ---
-    # - modernize
-    # - perfsprint
-    # - revive
-    # - unused
-    # - goconst
-
-    # --- LEVEL 3: ERROR HANDLING & BEST PRACTICES ---
-    # - err113
-    # - nilerr
-    # - nlreturn
-    # - staticcheck
-    # - errcheck          # Unchecked errors
-    # - nonamedreturns    # Named returns usage
-
-    # --- LEVEL 4: COMPLEXITY & REFACTORING ---
-    # - cyclop
-    # - funlen
-    # - gocognit
-    # - maintidx
-    # - mnd
-    # - nestif
-    # - wrapcheck
-
-    # --- LEVEL 5: STRICT STANDARDS & OPINIONS ---
-    # - depguard
-    # - exhaustruct
-    # - gochecknoglobals
-    # - godoclint
-    # - ireturn
-    # - lll
-    # - varnamelen
-    # - wsl_v5
-    # - forbidigo         # Forbidden identifiers (fmt.Print, etc)
-    # - funcorder         # Function ordering
-    # - gochecknoinits    # Init functions
-    # - godox             # TODOs
-    # - goprintffuncname  # Printf-like naming
-    # - tagliatelle       # JSON struct tags
-    # - nolintlint
-
-    # --- TESTING ---
-    # - testifylint
-    # - usetesting
-    # - paralleltest      # (Added to ensure tests run without forcing parallel)
-
-    # --- NOISE / LOW VALUE ---
-    # - gocritic
-    # - thelper
-    # - unparam
-    # - exhaustive        # Exhaustive switch statements
+    # --- Style Preference ---
+    - noinlineerr     # Disabled to allow idiomatic `if err :=...`
 
   settings:
-    ireturn:
-      allow:
-        - error
-        - github.com/contextvibes/cli/internal/workitem.Provider
-        - github.com/contextvibes/cli/internal/exec.CommandExecutor
+    gofumpt:
+      extra-rules: true
+
     depguard:
       rules:
+        # Rule 1: Production Code (Main)
         main:
-          list-mode: lax
+          list-mode: strict
           files:
-            - "!**/*_a _file.go"
+            - "$all"
+            - "!$test" # Critical: Exclude test files from this strict rule
           allow:
             - $gostd
-            - github.com/OpenPeeDeeP
+            # Allow SDKs
+            - golang.org/x/oauth2
+            - github.com/spf13/cobra
+            - google.golang.org/grpc
+            - github.com/charmbracelet/huh
+            - gopkg.in/yaml.v3
+            - github.com/denormal/go-gitignore
+            - github.com/shurcooL/githubv4
+            - github.com/google/go-github/v74/github
+            - github.com/fatih/color
+            - github.com/mattn/go-isatty'
+            # Allow your project imports
+            - github.com/contextvibes/cli
           deny:
             - pkg: "math/rand$"
-              desc: use math/rand/v2
-            - pkg: "github.com/sirupsen/logrus"
-              desc: not allowed
+              desc: "Use math/rand/v2 for safer, faster generation (Go 1.22+)"
             - pkg: "github.com/pkg/errors"
-              desc: Should be replaced by standard lib errors package
+              desc: "Use stdlib errors.New, fmt.Errorf, and errors.Is/As"
+            - pkg: "github.com/sirupsen/logrus"
+              desc: "Use log/slog (stdlib) or uber-go/zap"
+
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        # --- Architecture Exemptions (Dependency Injection) ---
+        - github.com/contextvibes/cli/internal/workitem.Provider
+        - github.com/contextvibes/cli/internal/exec.CommandExecutor
+        - github.com/contextvibes/cli/internal/workflow.PresenterInterface
+
+    gosec:
+      excludes:
+        - G101 # Exclude "Hardcoded Credentials" (false positives with IaC resource names)
+
+    errorlint:
+      errorf: true
+      asserts: true
+
+    testifylint:
+      enable-all: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-dirs:
+    - vendor
