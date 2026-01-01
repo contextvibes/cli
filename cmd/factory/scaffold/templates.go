@@ -1,16 +1,6 @@
-package workflow
+package scaffold
 
-import (
-	"context"
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/contextvibes/cli/internal/exec"
-)
-
-const (
-	devNixTemplate = `# -----------------------------------------------------------------------------
+const devNixTemplate = `# -----------------------------------------------------------------------------
 # IDX Profile: Go Container Environment (Low-Resource Optimized)
 # Version: 1.2.0 (Audited)
 # -----------------------------------------------------------------------------
@@ -105,7 +95,7 @@ in
 }
 `
 
-	contextvibesNixTemplate = `# -----------------------------------------------------------------------------
+const contextvibesNixTemplate = `# -----------------------------------------------------------------------------
 # Package: ContextVibes CLI (Hybrid: Binary or Source)
 # -----------------------------------------------------------------------------
 { pkgs, 
@@ -153,7 +143,7 @@ else
   }
 `
 
-	golangciLintNixTemplate = `# -----------------------------------------------------------------------------
+const golangciLintNixTemplate = `# -----------------------------------------------------------------------------
 # Package: GolangCI-Lint (Precompiled)
 # Version: 1.64.5
 # -----------------------------------------------------------------------------
@@ -164,8 +154,8 @@ pkgs.stdenv.mkDerivation rec {
   version = "1.64.5";
 
   src = pkgs.fetchurl {
-    //nolint:lll // URL is long but necessary.
-    url = "https://github.com/golangci/golangci-lint/releases/download/v${version}/golangci-lint-${version}-linux-amd64.tar.gz";
+    url = "https://github.com/golangci/golangci-lint/releases/download/v${version}/" +
+          "golangci-lint-${version}-linux-amd64.tar.gz";
     sha256 = "sha256-zkah8diQ57ZnJZ9wuyNil/XPh5GptrmLQbKD2Ttbbog=";
   };
 
@@ -177,7 +167,7 @@ pkgs.stdenv.mkDerivation rec {
 }
 `
 
-	localNixTemplate = `{
+const localNixTemplate = `{
   # Identity
   # GPG_KEY_ID = "YOUR_KEY_ID_HERE";
 
@@ -187,118 +177,3 @@ pkgs.stdenv.mkDerivation rec {
   # GOFLAGS = ""; # Remove the -p=1 restriction
 }
 `
-)
-
-// ScaffoldIDXStep generates the .idx configuration files.
-type ScaffoldIDXStep struct {
-	Presenter PresenterInterface
-	AssumeYes bool
-}
-
-// Description returns the step description.
-func (s *ScaffoldIDXStep) Description() string {
-	return "Scaffold Project IDX Environment (.idx/)"
-}
-
-// PreCheck performs pre-flight checks.
-func (s *ScaffoldIDXStep) PreCheck(_ context.Context) error { return nil }
-
-// Execute runs the step logic.
-func (s *ScaffoldIDXStep) Execute(_ context.Context) error {
-	idxDir := ".idx"
-	//nolint:mnd // 0750 is standard dir permission.
-	if err := os.MkdirAll(idxDir, 0o750); err != nil {
-		return fmt.Errorf("failed to create .idx directory: %w", err)
-	}
-
-	files := map[string]string{
-		"dev.nix":           devNixTemplate,
-		"contextvibes.nix":  contextvibesNixTemplate,
-		"golangci-lint.nix": golangciLintNixTemplate,
-		"local.nix":         localNixTemplate,
-	}
-
-	for filename, content := range files {
-		path := filepath.Join(idxDir, filename)
-		shouldWrite := true
-
-		// Check existence
-		if _, err := os.Stat(path); err == nil {
-			if s.AssumeYes {
-				s.Presenter.Info("  ! %s exists. Overwriting (due to --yes).", filename)
-			} else {
-				confirm, _ := s.Presenter.PromptForConfirmation(fmt.Sprintf("  ? %s exists. Overwrite?", filename))
-				if !confirm {
-					s.Presenter.Info("  ~ Skipping %s.", filename)
-
-					shouldWrite = false
-				}
-			}
-		}
-
-		if shouldWrite {
-			//nolint:mnd // 0600 is standard secure file permission.
-			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-				return fmt.Errorf("failed to write %s: %w", filename, err)
-			}
-
-			s.Presenter.Success("  + Wrote %s", filename)
-		}
-	}
-
-	s.Presenter.Newline()
-	s.Presenter.Advice("Environment scaffolded. You may need to rebuild your environment for changes to take effect.")
-	s.Presenter.Advice("Edit .idx/local.nix to set your GPG_KEY_ID.")
-
-	return nil
-}
-
-// ScaffoldFirebaseStep initializes Firebase.
-type ScaffoldFirebaseStep struct {
-	ExecClient *exec.ExecutorClient
-	Presenter  PresenterInterface
-}
-
-// Description returns the step description.
-func (s *ScaffoldFirebaseStep) Description() string {
-	return "Scaffold Firebase Environment"
-}
-
-// PreCheck performs pre-flight checks.
-func (s *ScaffoldFirebaseStep) PreCheck(_ context.Context) error {
-	if !s.ExecClient.CommandExists("firebase") {
-		s.Presenter.Error("Firebase CLI not found.")
-		s.Presenter.Advice("Please rebuild your environment (dev.nix) to include 'firebase-tools'.")
-		//nolint:err113 // Dynamic error is appropriate here.
-		return errors.New("firebase-tools missing")
-	}
-
-	return nil
-}
-
-// Execute runs the step logic.
-func (s *ScaffoldFirebaseStep) Execute(ctx context.Context) error {
-	// Login Check
-	_, _, err := s.ExecClient.CaptureOutput(ctx, ".", "firebase", "projects:list", "--json")
-	if err != nil {
-		s.Presenter.Warning("You do not appear to be logged in to Firebase.")
-		s.Presenter.Step("Running 'firebase login'...")
-
-		err = s.ExecClient.Execute(ctx, ".", "firebase", "login")
-		if err != nil {
-			return fmt.Errorf("login failed: %w", err)
-		}
-	}
-
-	s.Presenter.Step("Initializing Firebase Project Structure...")
-	s.Presenter.Info("This will guide you through creating firebase.json and .firebaserc")
-
-	err = s.ExecClient.Execute(ctx, ".", "firebase", "init")
-	if err != nil {
-		return fmt.Errorf("firebase init failed: %w", err)
-	}
-
-	s.Presenter.Success("Firebase environment scaffolded successfully.")
-
-	return nil
-}
