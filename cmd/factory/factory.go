@@ -17,7 +17,7 @@ import (
 	"github.com/contextvibes/cli/cmd/factory/sync"
 	"github.com/contextvibes/cli/cmd/factory/tidy"
 	"github.com/contextvibes/cli/cmd/factory/tools"
-	"github.com/contextvibes/cli/cmd/factory/upgradecli" // Added
+	"github.com/contextvibes/cli/cmd/factory/upgradecli"
 	"github.com/spf13/cobra"
 )
 
@@ -45,6 +45,6 @@ func init() {
 	FactoryCmd.AddCommand(scrub.ScrubCmd)
 	FactoryCmd.AddCommand(setupidentity.SetupIdentityCmd)
 	FactoryCmd.AddCommand(tools.ToolsCmd)
-	FactoryCmd.AddCommand(scaffold.ScaffoldCmd)
+	FactoryCmd.AddCommand(scaffold.ScaffoldCmd)     // Added
 	FactoryCmd.AddCommand(upgradecli.UpgradeCliCmd) // Added
 }

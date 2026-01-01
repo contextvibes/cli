@@ -19,7 +19,7 @@ const (
 	// DefaultCodemodFilename is the default name for codemod scripts.
 	DefaultCodemodFilename = "codemod.json"
 	// DefaultDescribeOutputFile is the default output for the describe command.
-	DefaultDescribeOutputFile = "contextvibes.md"
+	DefaultDescribeOutputFile = "_contextvibes.md"
 	// StrategicKickoffFilename is the path to the generated kickoff protocol.
 	StrategicKickoffFilename = "docs/strategic_kickoff_protocol.md"
 	// DefaultBranchNamePattern is the default regex for branch validation.
@@ -220,7 +220,7 @@ func GetDefaultConfig() *Config {
 			ExcludePatterns: []string{
 				//nolint:lll // Regex patterns are long.
 				`(^vendor/|^\.git/|^\.terraform/|^\.venv/|^__pycache__/|^\.DS_Store|^\.pytest_cache/|^\.vscode/|node_modules/|dist/|build/)`,
-				`(\.tfstate|\.tfplan|^secrets?/|\.auto\.tfvars|ai_context\.txt|crash.*\.log|contextvibes\.md)$`,
+				`(\.tfstate|\.tfplan|^secrets?/|\.auto\.tfvars|ai_context\.txt|crash.*\.log|contextvibes\.md|_contextvibes\.md)$`,
 				`\.(exe|bin|dll|so|jar|class|o|a|zip|tar\.gz|rar|7z|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot)$`,
 			},
 		},

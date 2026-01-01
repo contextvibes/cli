@@ -10,12 +10,12 @@ let
   # 1. Define the local config path
   localConfigPath = ./local.nix;
 
-  # 2. Safely import local.nix. 
+  # 2. Safely import local.nix.
   #    Returns an empty set {} if the file is missing.
-  localEnv = if builtins.pathExists localConfigPath 
-             then import localConfigPath 
+  localEnv = if builtins.pathExists localConfigPath
+             then import localConfigPath
              else {};
-in 
+in
 {
   # Pin to Nixpkgs version (May 2025 release)
   channel = "stable-25.05";
@@ -61,13 +61,13 @@ in
     CGO_ENABLED = "0"; # Default to static, override to "1" in local.nix if needed
 
     # --- Low Resource Tuning (Defaults) ---
-    # -p=1 reduces RAM usage but slows builds. 
+    # -p=1 reduces RAM usage but slows builds.
     # Override this in local.nix if you have >4GB RAM.
-    GOFLAGS = "-p=1"; 
-    
+    GOFLAGS = "-p=1";
+
     # Cap Runtime Memory to prevent OOM kills
     GOMEMLIMIT = "1024MiB";
-    
+
     # Limit OS threads to prevent starvation on small VMs
     GOMAXPROCS = "1";
 
@@ -96,27 +96,51 @@ in
 `
 
 const contextvibesNixTemplate = `# -----------------------------------------------------------------------------
-# Package: ContextVibes CLI
-# Version: 0.6.0
+# Package: ContextVibes CLI (Hybrid: Binary or Source)
 # -----------------------------------------------------------------------------
-{ pkgs }:
+{ pkgs,
+  # Defaults (Binary Mode - Updated by 'factory upgrade-cli')
+  buildType ? "binary",
+  version ? "0.6.0",
 
-pkgs.stdenv.mkDerivation rec {
-  name = "contextvibes-${version}";
-  version = "0.6.0";
+  # Binary Specific
+  binHash ? "sha256-bdbf55bf902aa567851fcbbc07704b416dee85065a276a47e7df19433c5643ea",
 
-  src = pkgs.fetchurl {
-    url = "https://github.com/contextvibes/cli/releases/download/v${version}/contextvibes";
-    sha256 = "sha256:bdbf55bf902aa567851fcbbc07704b416dee85065a276a47e7df19433c5643ea";
-  };
+  # Source Specific (Required if buildType == "source")
+  rev ? "",
+  srcHash ? "",
+  vendorHash ? ""
+}:
 
-  dontUnpack = true;
-
-  installPhase = ''
-    mkdir -p $out/bin
-    install -m 755 $src $out/bin/contextvibes
-  '';
-}
+if buildType == "source" then
+  pkgs.buildGoModule {
+    pname = "contextvibes";
+    version = version;
+    src = pkgs.fetchFromGitHub {
+      owner = "contextvibes";
+      repo = "cli";
+      rev = rev;
+      hash = srcHash;
+    };
+    vendorHash = vendorHash;
+    doCheck = false;
+    postInstall = ''
+      mv $out/bin/cli $out/bin/contextvibes || true
+    '';
+  }
+else
+  pkgs.stdenv.mkDerivation rec {
+    name = "contextvibes-${version}";
+    src = pkgs.fetchurl {
+      url = "https://github.com/contextvibes/cli/releases/download/v${version}/contextvibes";
+      sha256 = binHash;
+    };
+    dontUnpack = true;
+    installPhase = ''
+      mkdir -p $out/bin
+      install -m 755 $src $out/bin/contextvibes
+    '';
+  }
 `
 
 const golangciLintNixTemplate = `# -----------------------------------------------------------------------------

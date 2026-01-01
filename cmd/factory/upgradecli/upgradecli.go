@@ -45,7 +45,6 @@ var UpgradeCliCmd = &cobra.Command{
 			return fmt.Errorf("failed to init github client: %w", err)
 		}
 
-		// We use the Releases API to get the latest release
 		release, _, err := ghClient.Repositories.GetLatestRelease(ctx, "contextvibes", "cli")
 		if err != nil {
 			return fmt.Errorf("failed to get latest release: %w", err)
@@ -63,7 +62,8 @@ var UpgradeCliCmd = &cobra.Command{
 		content := string(contentBytes)
 
 		// 3. Check if update needed
-		versionRegex := regexp.MustCompile(`version = "([0-9.]+)";`)
+		// Supports both old format (version = "...") and new hybrid format (version ? "...")
+		versionRegex := regexp.MustCompile(`version [?=]= "([0-9.]+)";`)
 		matches := versionRegex.FindStringSubmatch(content)
 		//nolint:mnd // Expecting full match + 1 capture group.
 		if len(matches) < 2 {
@@ -81,7 +81,6 @@ var UpgradeCliCmd = &cobra.Command{
 		presenter.Info("Current version: %s. Upgrading to %s...", currentVersion, latestVersion)
 
 		// 4. Calculate Hash (Prefetch)
-		// Construct the URL exactly as the Nix file expects it
 		downloadURL := fmt.Sprintf("https://github.com/contextvibes/cli/releases/download/v%s/contextvibes", latestVersion)
 
 		presenter.Step("Prefetching hash for %s...", downloadURL)
@@ -96,21 +95,19 @@ var UpgradeCliCmd = &cobra.Command{
 		}
 		newHash := strings.TrimSpace(hashOutput)
 
-		// nix-prefetch-url returns a base32 hash usually, but sometimes we need to ensure it's prefixed if needed.
-		// The scaffold uses "sha256:...", but nix-prefetch-url output is usually just the hash string.
-		// We will preserve the existing format if possible, or just use the raw hash which Nix accepts.
-
 		// 5. Patch the file
-		// Replace Version
-		newContent := versionRegex.ReplaceAllString(content, fmt.Sprintf(`version = "%s";`, latestVersion))
+		// Replace Version (Handle both ? and =)
+		newContent := versionRegex.ReplaceAllString(content, fmt.Sprintf(`version ? "%s";`, latestVersion))
 
 		// Replace Hash
-		// Look for sha256 = "..."
-		hashRegex := regexp.MustCompile(`sha256 = "[^"]+";`)
-		// We assume the output of nix-prefetch-url is compatible.
-		// Usually we might need to prefix "sha256:" if the tool output doesn't have it,
-		// but standard Nix fetchurl accepts the raw hash too.
-		newContent = hashRegex.ReplaceAllString(newContent, fmt.Sprintf(`sha256 = "%s";`, newHash))
+		// Handle old format (sha256 =) and new format (binHash ?)
+		if strings.Contains(newContent, "binHash ?") {
+			hashRegex := regexp.MustCompile(`binHash \? "[^"]+";`)
+			newContent = hashRegex.ReplaceAllString(newContent, fmt.Sprintf(`binHash ? "%s";`, newHash))
+		} else {
+			hashRegex := regexp.MustCompile(`sha256 = "[^"]+";`)
+			newContent = hashRegex.ReplaceAllString(newContent, fmt.Sprintf(`sha256 = "%s";`, newHash))
+		}
 
 		// 6. Write back
 		//nolint:mnd // 0600 is standard secure file permission.
