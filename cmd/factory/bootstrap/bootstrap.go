@@ -17,6 +17,9 @@ import (
 //go:embed bootstrap.md.tpl
 var bootstrapLongDescription string
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
+var installRef string
+
 // BootstrapCmd represents the factory bootstrap command.
 //
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
@@ -38,6 +41,7 @@ var BootstrapCmd = &cobra.Command{
 			},
 			&workflow.InstallSelfStep{
 				ExecClient: globals.ExecClient,
+				Ref:        installRef,
 			},
 		}
 
@@ -80,4 +84,6 @@ func init() {
 
 	BootstrapCmd.Short = desc.Short
 	BootstrapCmd.Long = desc.Long
+
+	BootstrapCmd.Flags().StringVar(&installRef, "ref", "main", "Git reference (branch/tag/hash) to install")
 }

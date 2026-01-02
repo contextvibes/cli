@@ -11,11 +11,12 @@ import (
 // InstallSelfStep installs the contextvibes CLI binary using go install.
 type InstallSelfStep struct {
 	ExecClient *exec.ExecutorClient
+	Ref        string // The git reference to install (e.g., "main", a hash, or a branch)
 }
 
 // Description returns the step description.
 func (s *InstallSelfStep) Description() string {
-	return "Install ContextVibes CLI to ~/go/bin"
+	return fmt.Sprintf("Install ContextVibes CLI (@%s) to ~/go/bin", s.Ref)
 }
 
 // PreCheck performs pre-flight checks.
@@ -30,9 +31,9 @@ func (s *InstallSelfStep) PreCheck(_ context.Context) error {
 
 // Execute runs the installation command.
 func (s *InstallSelfStep) Execute(ctx context.Context) error {
-	// We install the latest version from the repository.
-	// This ensures the user gets the most stable compiled version.
-	err := s.ExecClient.Execute(ctx, ".", "go", "install", "github.com/contextvibes/cli/cmd/contextvibes@latest")
+	// We install from the specified reference to allow testing branches/hashes.
+	target := fmt.Sprintf("github.com/contextvibes/cli/cmd/contextvibes@%s", s.Ref)
+	err := s.ExecClient.Execute(ctx, ".", "go", "install", target)
 	if err != nil {
 		return fmt.Errorf("failed to install contextvibes: %w", err)
 	}
