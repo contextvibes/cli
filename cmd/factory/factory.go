@@ -3,6 +3,7 @@ package factory
 
 import (
 	"github.com/contextvibes/cli/cmd/factory/apply"
+	"github.com/contextvibes/cli/cmd/factory/bootstrap"
 	"github.com/contextvibes/cli/cmd/factory/commit"
 	"github.com/contextvibes/cli/cmd/factory/deploy"
 	"github.com/contextvibes/cli/cmd/factory/diff"
@@ -22,15 +23,13 @@ import (
 )
 
 // FactoryCmd represents the base command for the 'factory' subcommand group.
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var FactoryCmd = &cobra.Command{
 	Use:   "factory",
 	Short: "Commands for your workflow and machinery (the 'how').",
 }
 
-//nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
+	FactoryCmd.AddCommand(bootstrap.BootstrapCmd)
 	FactoryCmd.AddCommand(init_cmd.InitCmd)
 	FactoryCmd.AddCommand(kickoff.KickoffCmd)
 	FactoryCmd.AddCommand(commit.CommitCmd)
@@ -45,6 +44,6 @@ func init() {
 	FactoryCmd.AddCommand(scrub.ScrubCmd)
 	FactoryCmd.AddCommand(setupidentity.SetupIdentityCmd)
 	FactoryCmd.AddCommand(tools.ToolsCmd)
-	FactoryCmd.AddCommand(scaffold.ScaffoldCmd)     // Added
-	FactoryCmd.AddCommand(upgradecli.UpgradeCliCmd) // Added
+	FactoryCmd.AddCommand(scaffold.ScaffoldCmd)
+	FactoryCmd.AddCommand(upgradecli.UpgradeCliCmd)
 }
