@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//nolint:gochecknoglobals // Cobra flags require package-level variables.
+//nolint:gochecknoglobals // Cobra flags require package-level variables..
 var (
 	versionFlag string
 	outputFlag  string

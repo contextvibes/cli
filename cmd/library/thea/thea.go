@@ -8,7 +8,7 @@ import (
 
 // TheaCmd represents the base command for the 'thea' subcommand group.
 //
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
+//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design..
 var TheaCmd = &cobra.Command{
 	Use:   "thea",
 	Short: "Interact with the THEA framework (fetch artifacts, etc).",
