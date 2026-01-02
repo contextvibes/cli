@@ -8,186 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/contextvibes/cli/internal/exec"
-)
-
-const (
-	devNixTemplate = `# -----------------------------------------------------------------------------
-# IDX Profile: Go Container Environment (Low-Resource Optimized)
-# Version: 1.2.0 (Audited)
-# -----------------------------------------------------------------------------
-{ pkgs, ... }:
-
-let
-  # 1. Define the local config path
-  localConfigPath = ./local.nix;
-
-  # 2. Safely import local.nix.
-  #    Returns an empty set {} if the file is missing.
-  localEnv = if builtins.pathExists localConfigPath
-             then import localConfigPath
-             else {};
-in
-{
-  # Pin to Nixpkgs version (May 2025 release)
-  channel = "stable-25.05";
-
-  packages = with pkgs; [
-    # --- Go Toolchain ---
-    go_1_25
-    gotools     # godoc, goimports, etc.
-    govulncheck # Vulnerability detection
-    gcc         # Keep this! Needed for 'go test -race' even if CGO is off by default.
-
-    # --- Cloud & Containers ---
-    google-cloud-sdk
-    firebase-tools
-    docker
-    docker-compose
-
-    # --- Security & Identity ---
-    gnupg
-    pass
-    pinentry-curses
-    gitleaks
-
-    # --- Utilities ---
-    git
-    gh
-
-    # --- Local Imports ---
-    (import ./contextvibes.nix { inherit pkgs; })
-    (import ./golangci-lint.nix { inherit pkgs; })
-  ];
-
-  # Enable Docker Daemon
-  services.docker.enable = true;
-
-  # ---------------------------------------------------------------------------
-  # Environment Configuration
-  # Logic: Defaults (Left) // Overrides (Right)
-  # ---------------------------------------------------------------------------
-  env = {
-    # --- Functional Defaults ---
-    GOPRIVATE = "github.com/duizendstra-com/*";
-    CGO_ENABLED = "0"; # Default to static, override to "1" in local.nix if needed
-
-    # --- Low Resource Tuning (Defaults) ---
-    # -p=1 reduces RAM usage but slows builds.
-    # Override this in local.nix if you have >4GB RAM.
-    GOFLAGS = "-p=1";
-
-    # Cap Runtime Memory to prevent OOM kills
-    GOMEMLIMIT = "1024MiB";
-
-    # Limit OS threads to prevent starvation on small VMs
-    GOMAXPROCS = "1";
-
-  } // localEnv; # <--- MERGE: local.nix values overwrite the defaults above
-
-  # VS Code & Workspace Lifecycle
-  idx = {
-    extensions = [
-      "golang.go"
-    ];
-
-    workspace = {
-      # Runs when the workspace starts (every time)
-      onStart = {
-        # Set GPG_TTY dynamically for the current session to enable pinentry
-        init-shell = ''
-          if ! grep -q "GPG_TTY" ~/.bashrc; then
-            echo '# GPG Signing Fix' >> ~/.bashrc
-            echo 'export GPG_TTY=$(tty)' >> ~/.bashrc
-          fi
-        '';
-      };
-    };
-  };
-}
-`
-
-	contextvibesNixTemplate = `# -----------------------------------------------------------------------------
-# Package: ContextVibes CLI (Hybrid: Binary or Source)
-# -----------------------------------------------------------------------------
-{ pkgs,
-  # Defaults (Binary Mode - Updated by 'factory upgrade-cli')
-  buildType ? "binary",
-  version ? "0.6.0",
-
-  # Binary Specific
-  binHash ? "sha256-bdbf55bf902aa567851fcbbc07704b416dee85065a276a47e7df19433c5643ea",
-
-  # Source Specific (Required if buildType == "source")
-  rev ? "",
-  srcHash ? "",
-  vendorHash ? ""
-}:
-
-if buildType == "source" then
-  pkgs.buildGoModule {
-    pname = "contextvibes";
-    version = version;
-    src = pkgs.fetchFromGitHub {
-      owner = "contextvibes";
-      repo = "cli";
-      rev = rev;
-      hash = srcHash;
-    };
-    vendorHash = vendorHash;
-    doCheck = false;
-    postInstall = ''
-      mv $out/bin/cli $out/bin/contextvibes || true
-    '';
-  }
-else
-  pkgs.stdenv.mkDerivation rec {
-    name = "contextvibes-${version}";
-    src = pkgs.fetchurl {
-      url = "https://github.com/contextvibes/cli/releases/download/v${version}/contextvibes";
-      sha256 = binHash;
-    };
-    dontUnpack = true;
-    installPhase = ''
-      mkdir -p $out/bin
-      install -m 755 $src $out/bin/contextvibes
-    '';
-  }
-`
-
-	golangciLintNixTemplate = `# -----------------------------------------------------------------------------
-# Package: GolangCI-Lint (Precompiled)
-# Version: 1.64.5
-# -----------------------------------------------------------------------------
-{ pkgs }:
-
-pkgs.stdenv.mkDerivation rec {
-  name = "golangci-lint-bin-${version}";
-  version = "1.64.5";
-
-  src = pkgs.fetchurl {
-    //nolint:lll // URL is long but necessary.
-    url = "https://github.com/golangci/golangci-lint/releases/download/v${version}/golangci-lint-${version}-linux-amd64.tar.gz";
-    sha256 = "sha256-zkah8diQ57ZnJZ9wuyNil/XPh5GptrmLQbKD2Ttbbog=";
-  };
-
-  # The builder automatically enters the extracted folder, so the binary is just 'golangci-lint'
-  installPhase = ''
-    mkdir -p $out/bin
-    install -m 755 golangci-lint $out/bin/
-  '';
-}
-`
-
-	localNixTemplate = `{
-  # Identity
-  # GPG_KEY_ID = "YOUR_KEY_ID_HERE";
-
-  # Optional: Override resource limits if you are on a High-Mem instance
-  # GOMEMLIMIT = "4096MiB";
-  # GOMAXPROCS = "4";
-  # GOFLAGS = ""; # Remove the -p=1 restriction
-}
-`
+	"github.com/contextvibes/cli/internal/scaffold"
 )
 
 // ScaffoldIDXStep generates the .idx configuration files.
@@ -198,7 +19,7 @@ type ScaffoldIDXStep struct {
 
 // Description returns the step description.
 func (s *ScaffoldIDXStep) Description() string {
-	return "Scaffold Project IDX Environment (.idx/)"
+	return "Scaffold Project IDX Environment (.idx/ and .vscode/)"
 }
 
 // PreCheck performs pre-flight checks.
@@ -206,31 +27,61 @@ func (s *ScaffoldIDXStep) PreCheck(_ context.Context) error { return nil }
 
 // Execute runs the step logic.
 func (s *ScaffoldIDXStep) Execute(_ context.Context) error {
+	provider := scaffold.NewProvider()
+
+	// 1. Scaffold .idx directory
 	idxDir := ".idx"
 	//nolint:mnd // 0750 is standard dir permission.
 	if err := os.MkdirAll(idxDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create .idx directory: %w", err)
 	}
 
-	files := map[string]string{
-		"dev.nix":           devNixTemplate,
-		"contextvibes.nix":  contextvibesNixTemplate,
-		"golangci-lint.nix": golangciLintNixTemplate,
-		"local.nix":         localNixTemplate,
+	idxFiles, err := provider.GetFiles("idx")
+	if err != nil {
+		return fmt.Errorf("failed to load idx templates: %w", err)
 	}
 
+	if err := writeScaffoldFiles(s.Presenter, s.AssumeYes, idxDir, idxFiles); err != nil {
+		return err
+	}
+
+	// 2. Scaffold .vscode directory
+	vscodeDir := ".vscode"
+	//nolint:mnd // 0750 is standard dir permission.
+	if err := os.MkdirAll(vscodeDir, 0o750); err != nil {
+		return fmt.Errorf("failed to create .vscode directory: %w", err)
+	}
+
+	vscodeFiles, err := provider.GetFiles("vscode")
+	if err != nil {
+		return fmt.Errorf("failed to load vscode templates: %w", err)
+	}
+
+	if err := writeScaffoldFiles(s.Presenter, s.AssumeYes, vscodeDir, vscodeFiles); err != nil {
+		return err
+	}
+
+	s.Presenter.Newline()
+	s.Presenter.Advice("Environment scaffolded. You may need to rebuild your environment for changes to take effect.")
+	s.Presenter.Advice("Edit .idx/local.nix to set your GPG_KEY_ID.")
+
+	return nil
+}
+
+// writeScaffoldFiles is a helper to write a map of files to a directory with confirmation.
+func writeScaffoldFiles(presenter PresenterInterface, assumeYes bool, dir string, files map[string]string) error {
 	for filename, content := range files {
-		path := filepath.Join(idxDir, filename)
+		path := filepath.Join(dir, filename)
 		shouldWrite := true
 
 		// Check existence
 		if _, err := os.Stat(path); err == nil {
-			if s.AssumeYes {
-				s.Presenter.Info("  ! %s exists. Overwriting (due to --yes).", filename)
+			if assumeYes {
+				presenter.Info("  ! %s exists. Overwriting (due to --yes).", filename)
 			} else {
-				confirm, _ := s.Presenter.PromptForConfirmation(fmt.Sprintf("  ? %s exists. Overwrite?", filename))
+				confirm, _ := presenter.PromptForConfirmation(fmt.Sprintf("  ? %s exists. Overwrite?", filename))
 				if !confirm {
-					s.Presenter.Info("  ~ Skipping %s.", filename)
+					presenter.Info("  ~ Skipping %s.", filename)
 
 					shouldWrite = false
 				}
@@ -243,13 +94,9 @@ func (s *ScaffoldIDXStep) Execute(_ context.Context) error {
 				return fmt.Errorf("failed to write %s: %w", filename, err)
 			}
 
-			s.Presenter.Success("  + Wrote %s", filename)
+			presenter.Success("  + Wrote %s", filename)
 		}
 	}
-
-	s.Presenter.Newline()
-	s.Presenter.Advice("Environment scaffolded. You may need to rebuild your environment for changes to take effect.")
-	s.Presenter.Advice("Edit .idx/local.nix to set your GPG_KEY_ID.")
 
 	return nil
 }
