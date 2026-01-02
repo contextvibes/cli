@@ -34,20 +34,22 @@ var BootstrapCmd = &cobra.Command{
 		exePath, _ := os.Executable()
 		isGoRun := strings.Contains(exePath, "go-build")
 
+		// 1. Always ensure the PATH is configured
 		steps := []workflow.Step{
 			&workflow.ConfigurePathStep{
 				Presenter: presenter,
 				AssumeYes: globals.AssumeYes,
 			},
-			&workflow.InstallSelfStep{
-				ExecClient: globals.ExecClient,
-				Ref:        installRef,
-			},
 		}
 
-		// If we are already local, we can do the heavy lifting immediately.
-		// If we are 'go run', we stop after installation to let the user refresh their shell.
-		if !isGoRun {
+		if isGoRun {
+			// 2. Stage 1: If remote, install the permanent binary
+			steps = append(steps, &workflow.InstallSelfStep{
+				ExecClient: globals.ExecClient,
+				Ref:        installRef,
+			})
+		} else {
+			// 3. Stage 2: If local, install tools and scaffold
 			steps = append(steps,
 				&workflow.InstallGoToolsStep{ExecClient: globals.ExecClient, Presenter: presenter},
 				&workflow.ScaffoldIDXStep{Presenter: presenter, AssumeYes: globals.AssumeYes},
