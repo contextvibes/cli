@@ -49,10 +49,10 @@ var BootstrapCmd = &cobra.Command{
 				Ref:        installRef,
 			})
 		} else {
-			// 3. Stage 2: If local, install tools and scaffold
+			// 3. Stage 2: If local, install tools
+			// We REMOVED ScaffoldIDXStep to keep bootstrap focused on the machine environment.
 			steps = append(steps,
 				&workflow.InstallGoToolsStep{ExecClient: globals.ExecClient, Presenter: presenter},
-				&workflow.ScaffoldIDXStep{Presenter: presenter, AssumeYes: globals.AssumeYes},
 			)
 		}
 
@@ -71,6 +71,7 @@ var BootstrapCmd = &cobra.Command{
 			presenter.Newline()
 		} else {
 			presenter.Success("Environment is fully configured and ready for use.")
+			presenter.Advice("To initialize project-specific files, run: contextvibes factory scaffold idx")
 		}
 
 		return nil
