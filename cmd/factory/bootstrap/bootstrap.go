@@ -4,8 +4,6 @@ package bootstrap
 import (
 	_ "embed"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
 	"github.com/contextvibes/cli/internal/globals"
@@ -25,54 +23,36 @@ var installRef string
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var BootstrapCmd = &cobra.Command{
 	Use:   "bootstrap",
-	Short: "Fast-track installation and environment setup.",
+	Short: "Minimal installer for the ContextVibes CLI.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
-		// Detect if we are running via 'go run' (temporary) or as a local binary
-		exePath, _ := os.Executable()
-		isGoRun := strings.Contains(exePath, "go-build")
-
-		// 1. Always ensure the PATH is configured
+		// ABSOLUTE MINIMAL STEPS: Just the PATH and the Binary.
 		steps := []workflow.Step{
 			&workflow.ConfigurePathStep{
 				Presenter: presenter,
 				AssumeYes: globals.AssumeYes,
 			},
-		}
-
-		if isGoRun {
-			// 2. Stage 1: If remote, install the permanent binary
-			steps = append(steps, &workflow.InstallSelfStep{
+			&workflow.InstallSelfStep{
 				ExecClient: globals.ExecClient,
 				Ref:        installRef,
-			})
-		} else {
-			// 3. Stage 2: If local, install tools
-			// We REMOVED ScaffoldIDXStep to keep bootstrap focused on the machine environment.
-			steps = append(steps,
-				&workflow.InstallGoToolsStep{ExecClient: globals.ExecClient, Presenter: presenter},
-			)
+			},
 		}
 
 		runner := workflow.NewRunner(presenter, globals.AssumeYes)
-		err := runner.Run(ctx, "ContextVibes Bootstrap", steps...)
+		err := runner.Run(ctx, "ContextVibes Minimal Install", steps...)
 		if err != nil {
-			return fmt.Errorf("bootstrap workflow failed: %w", err)
+			return fmt.Errorf("bootstrap failed: %w", err)
 		}
 
-		if isGoRun {
-			presenter.Newline()
-			presenter.Success("Step 1 Complete: ContextVibes is installed!")
-			presenter.Header("--- FINAL ACTION REQUIRED ---")
-			presenter.Info("Run the following to refresh your shell and finish setup:")
-			presenter.Detail("source ~/.bashrc && contextvibes factory bootstrap")
-			presenter.Newline()
-		} else {
-			presenter.Success("Environment is fully configured and ready for use.")
-			presenter.Advice("To initialize project-specific files, run: contextvibes factory scaffold idx")
-		}
+		presenter.Newline()
+		presenter.Success("ContextVibes is now installed!")
+		presenter.Header("--- NEXT STEPS ---")
+		presenter.Info("1. Refresh shell:  source ~/.bashrc")
+		presenter.Info("2. Setup tools:    contextvibes factory tools")
+		presenter.Info("3. Setup project:  contextvibes factory scaffold idx")
+		presenter.Newline()
 
 		return nil
 	},
