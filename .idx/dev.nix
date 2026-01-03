@@ -41,9 +41,8 @@ in
     gh
 
     # --- Local Imports ---
-    # Ensure these files return a single derivation (package).
-    # If they return a list, this syntax needs changing.
-    (import ./contextvibes.nix { inherit pkgs; })
+    # We pass 'overrides = localEnv' so contextvibes.nix can read variables from local.nix
+    (import ./contextvibes.nix { inherit pkgs; overrides = localEnv; })
     (import ./golangci-lint.nix { inherit pkgs; })
   ];
 
