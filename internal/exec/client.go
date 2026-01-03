@@ -50,6 +50,6 @@ func (c *ExecutorClient) Logger() *slog.Logger {
 
 // UnderlyingExecutor returns the CommandExecutor used by this client.
 // This allows passing the raw executor to other components if needed.
-func (c *ExecutorClient) UnderlyingExecutor() CommandExecutor { // New Exported Getter
+func (c *ExecutorClient) UnderlyingExecutor() CommandExecutor {
 	return c.executor
 }

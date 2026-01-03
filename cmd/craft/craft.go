@@ -5,6 +5,8 @@ import (
 	"github.com/contextvibes/cli/cmd/craft/kickoff"
 	"github.com/contextvibes/cli/cmd/craft/message"
 	"github.com/contextvibes/cli/cmd/craft/prdescription"
+	"github.com/contextvibes/cli/cmd/craft/refactor"
+	"github.com/contextvibes/cli/cmd/craft/review"
 	"github.com/spf13/cobra"
 )
 
@@ -21,4 +23,6 @@ func init() {
 	CraftCmd.AddCommand(message.MessageCmd)
 	CraftCmd.AddCommand(prdescription.PRDescriptionCmd)
 	CraftCmd.AddCommand(kickoff.KickoffCmd)
+	CraftCmd.AddCommand(refactor.RefactorCmd)
+	CraftCmd.AddCommand(review.ReviewCmd)
 }

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
+	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/tools"
@@ -32,7 +33,7 @@ var (
 const (
 	maxFileSizeKB = 500
 	//nolint:lll // Pattern is long.
-	treeIgnorePattern = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|node_modules|build|dist"
+	treeIgnorePattern = "vendor|.git|.terraform|.venv|venv|env|__pycache__|.pytest_cache|.DS_Store|.idx|.vscode|*.tfstate*|*.log|ai_context.txt|contextvibes.md|_contextvibes.md|node_modules|build|dist"
 )
 
 // DescribeCmd represents the describe command.
@@ -100,7 +101,7 @@ var DescribeCmd = &cobra.Command{
 
 		var aiExcluder gitignore.GitIgnore
 		aiExcludeFilePath := filepath.Join(cwd, ".aiexclude")
-		//nolint:gosec // Reading .aiexclude is intended.
+
 		aiExcludeContent, readErr := os.ReadFile(aiExcludeFilePath)
 		if readErr == nil {
 			aiExcluder = gitignore.New(bytes.NewReader(aiExcludeContent), cwd, nil)
@@ -228,8 +229,7 @@ func init() {
 	DescribeCmd.Short = desc.Short
 	DescribeCmd.Long = desc.Long
 	DescribeCmd.Flags().
-		StringVarP(&describeOutputFile, "output", "o", "contextvibes.md", "Path to write the context markdown file")
-	// THE FIX: This line defines the flag so Cobra knows about it.
+		StringVarP(&describeOutputFile, "output", "o", config.DefaultDescribeOutputFile, "Path to write the context markdown file")
 	DescribeCmd.Flags().
 		StringVarP(&describePromptFlag, "prompt", "p", "", "Provide the prompt text directly")
 }

@@ -115,7 +115,7 @@ This treats external code as "Library" material—reference documentation for yo
 				}
 
 				// Read content
-				//nolint:gosec // Reading source files is intended.
+
 				content, err := os.ReadFile(path)
 				if err != nil {
 					return fmt.Errorf("failed to read %s: %w", path, err)

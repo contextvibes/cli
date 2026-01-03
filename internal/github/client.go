@@ -17,8 +17,6 @@ import (
 )
 
 // GHTokenEnvVar is the environment variable name for the GitHub token.
-//
-//nolint:gosec // This is a variable name, not a credential.
 const GHTokenEnvVar = "GITHUB_TOKEN"
 
 // PassTokenKey is the key used in the password store.

@@ -99,3 +99,36 @@ This is the core toolset for the experienced craftsman. It is organized into fiv
 *   **Who is this for?** The Software Craftsman. The entire design, from the guided `library` to the powerful expert pillars, is built to empower them.
 *   **Where is this happening?** In the command-line interface—the craftsman's chosen workbench.
 
+
+---
+
+### **The Future: The Convergence Strategy**
+
+Our North Star is the dissolution of the `craft` pillar.
+
+Currently, `craft` exists as a bridge between **Intent** (what you want to do) and **Execution** (the mechanical command). It isolates the "AI Prompt Generation" into a separate step.
+
+However, as the system matures, the "Creative" and the "Mechanical" will merge. The AI will become a modifier on the deterministic action, not a separate command.
+
+#### **The "Orchestrator as API" Protocol**
+
+We do not need to build complex, brittle integrations with specific LLM providers to achieve this. We embrace the **"Orchestrator as API"** pattern.
+
+In this model, the **User (The Orchestrator)** acts as the secure, intelligent data transport layer between the CLI and the AI.
+
+1.  **The CLI Prepares:** The CLI generates the perfect context and prompt (the "Request").
+2.  **The Orchestrator Transports:** The user copies the request to the AI and copies the result back.
+3.  **The CLI Executes:** The CLI parses the AI's structured response (the "Response") and performs the action.
+
+#### **The Roadmap to Convergence**
+
+Eventually, `craft` commands will be absorbed into the deterministic pillars as flags, streamlining the mental model:
+
+| Current Workflow (Two Steps) | Future Workflow (One Concept) |
+| :--- | :--- |
+| `craft message` $\rightarrow$ `factory commit` | `factory commit --ai` |
+| `craft pr-description` $\rightarrow$ `factory finish` | `factory finish --ai` |
+| `craft refactor` $\rightarrow$ `product codemod` | `product codemod --ai` |
+| `craft kickoff` $\rightarrow$ `project plan` | `project plan --ai` |
+
+**The Goal:** One command, zero context switching, with the Orchestrator remaining in full control of the intelligence loop.

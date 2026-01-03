@@ -17,7 +17,6 @@
 .contextvibes.yaml
 notes.txt
 coverage.out
-thea/
 context_*.md
 .env
 !contextvibes.nix
@@ -31,3 +30,4 @@ contextvibes.md
 upstream_context.txt
 _notes.txt
 _contextvibes.md
+.idx/local.nix

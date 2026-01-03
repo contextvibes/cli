@@ -175,12 +175,11 @@ func parseFrontMatterAndDerive(
 	filePath, rootPath, _ string,
 	fileInfo fs.FileInfo,
 ) (*DocumentMetadata, error) {
-	//nolint:gosec // Reading file is intended.
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	//nolint:errcheck // Defer close is sufficient.
+
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)

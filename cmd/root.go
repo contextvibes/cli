@@ -56,7 +56,7 @@ var rootCmd = &cobra.Command{
 			if aiLogFileFlagValue != "" {
 				targetAILogFile = aiLogFileFlagValue
 			}
-			//nolint:gosec // G304: User-provided path for logging is intended behavior.
+
 			logFileHandle, errLogFile := os.OpenFile(
 				targetAILogFile,
 				os.O_CREATE|os.O_WRONLY|os.O_APPEND,

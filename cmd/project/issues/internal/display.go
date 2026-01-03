@@ -31,7 +31,7 @@ func DisplayWorkItem(p *ui.Presenter, item *workitem.WorkItem) {
 	}
 
 	p.Separator()
-	//nolint:errcheck // Printing to stdout is best effort.
+
 	fmt.Fprintln(p.Out(), item.Body)
 	p.Separator()
 }

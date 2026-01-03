@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	osexec "os/exec"
 	"path/filepath"
 	"strings"
 
@@ -18,23 +19,32 @@ import (
 )
 
 const (
-	dirPermSecure = 0o700
-	filePermRW    = 0o600
-	filePermRead  = 0o644
-	minKeyParts   = 5
+	dirPermSecure       = 0o700
+	filePermRW          = 0o600
+	filePermRead        = 0o644
+	minKeyParts         = 5
+	fingerprintPartIdx  = 9
+	fingerprintMinParts = 10
+)
+
+var (
+	// ErrFingerprintNotFound is returned when a GPG key fingerprint cannot be parsed.
+	ErrFingerprintNotFound = errors.New("could not determine fingerprint for key")
+	// ErrNoSecretKey is returned when no secret key is found after import.
+	ErrNoSecretKey = errors.New("no secret key found after import")
+	// ErrEmptyToken is returned when the user provides an empty token.
+	ErrEmptyToken = errors.New("token cannot be empty")
 )
 
 //go:embed setupidentity.md.tpl
 var setupIdentityLongDescription string
 
 // SetupIdentityCmd represents the setup-identity command.
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var SetupIdentityCmd = &cobra.Command{
 	Use:   "setup-identity",
 	Short: "Bootstraps the secure environment (GPG, Pass, GitHub).",
-	//nolint:lll // Long description.
-	Long: `Configures the "Chain of Trust" workflow: GPG Agent, Git signing, Password Store, and GitHub CLI authentication.`,
+	Long: `Configures the "Chain of Trust" workflow: GPG Agent, Git signing,
+Password Store, and GitHub CLI authentication.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
@@ -98,8 +108,7 @@ var SetupIdentityCmd = &cobra.Command{
 	},
 }
 
-//nolint:varnamelen // 'p' is standard for presenter.
-func configureGPGAgent(ctx context.Context, p *ui.Presenter) error {
+func configureGPGAgent(ctx context.Context, presenter *ui.Presenter) error {
 	home, _ := os.UserHomeDir()
 	gnupgDir := filepath.Join(home, ".gnupg")
 
@@ -111,33 +120,51 @@ func configureGPGAgent(ctx context.Context, p *ui.Presenter) error {
 	// Find pinentry-curses
 	out, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "which", "pinentry-curses")
 	if err != nil {
-		p.Warning("pinentry-curses not found. GPG signing might fail in terminal.")
+		presenter.Warning("pinentry-curses not found. GPG signing might fail in terminal.")
 		// Continue anyway
 	}
 
 	pinentryPath := strings.TrimSpace(out)
-	if pinentryPath != "" {
-		confPath := filepath.Join(gnupgDir, "gpg-agent.conf")
-		confContent := fmt.Sprintf("pinentry-program %s\n", pinentryPath)
-
-		err = os.WriteFile(confPath, []byte(confContent), filePermRW)
-		if err != nil {
-			return fmt.Errorf("failed to write gpg-agent.conf: %w", err)
-		}
-		// Reload agent
-		_ = globals.ExecClient.Execute(ctx, ".", "gpg-connect-agent", "reloadagent", "/bye")
-
-		p.Success("✓ GPG Agent configured with %s", pinentryPath)
+	if pinentryPath == "" {
+		return nil
 	}
+
+	confPath := filepath.Join(gnupgDir, "gpg-agent.conf")
+	newLine := fmt.Sprintf("pinentry-program %s\n", pinentryPath)
+
+	// Check if exists to avoid overwrite
+	content, err := os.ReadFile(confPath)
+	if err == nil {
+		if strings.Contains(string(content), "pinentry-program") {
+			presenter.Info("GPG Agent already configured.")
+
+			return nil
+		}
+	}
+
+	// Append mode
+	configFile, err := os.OpenFile(confPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, filePermRW)
+	if err != nil {
+		return fmt.Errorf("failed to open gpg-agent.conf: %w", err)
+	}
+	defer configFile.Close()
+
+	if _, err := configFile.WriteString(newLine); err != nil {
+		return fmt.Errorf("failed to write gpg-agent.conf: %w", err)
+	}
+
+	// Reload agent
+	_ = globals.ExecClient.Execute(ctx, ".", "gpg-connect-agent", "reloadagent", "/bye")
+
+	presenter.Success("✓ GPG Agent configured with %s", pinentryPath)
 
 	return nil
 }
 
-//nolint:varnamelen // 'p' is standard for presenter.
-func configureGitSecurity(ctx context.Context, p *ui.Presenter) error {
+func configureGitSecurity(ctx context.Context, presenter *ui.Presenter) error {
 	keyID := os.Getenv("GPG_KEY_ID")
 	if keyID == "" {
-		p.Info("GPG_KEY_ID env var not set. Skipping automatic Git signing config.")
+		presenter.Info("GPG_KEY_ID env var not set. Skipping automatic Git signing config.")
 
 		return nil
 	}
@@ -155,7 +182,7 @@ func configureGitSecurity(ctx context.Context, p *ui.Presenter) error {
 		}
 	}
 
-	p.Success("✓ Git configured to sign commits with key %s", keyID)
+	presenter.Success("✓ Git configured to sign commits with key %s", keyID)
 
 	return nil
 }
@@ -165,7 +192,6 @@ func configureBashrc(presenter *ui.Presenter) error {
 	bashrcPath := filepath.Join(home, ".bashrc")
 	marker := "# --- SECURE ENV CONFIG ---"
 
-	//nolint:gosec // Reading user bashrc is intended.
 	content, err := os.ReadFile(bashrcPath)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to read .bashrc: %w", err)
@@ -195,12 +221,11 @@ fi
 alias p='pass'
 alias g='git'
 `
-	//nolint:gosec // Writing to user's bashrc is intended.
+
 	file, err := os.OpenFile(bashrcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, filePermRead)
 	if err != nil {
 		return fmt.Errorf("failed to open .bashrc: %w", err)
 	}
-	//nolint:errcheck // Defer close is sufficient.
 	defer file.Close()
 
 	_, err = file.WriteString(block)
@@ -239,8 +264,7 @@ func importGPGKey(ctx context.Context, presenter *ui.Presenter) (string, error) 
 
 	keyID := extractKeyID(out)
 	if keyID == "" {
-		//nolint:err113 // Dynamic error is appropriate here.
-		return "", errors.New("no secret key found after import")
+		return "", ErrNoSecretKey
 	}
 
 	return keyID, nil
@@ -260,51 +284,73 @@ func extractKeyID(gpgOutput string) string {
 	return ""
 }
 
-//nolint:varnamelen // 'p' is standard for presenter.
-func trustGPGKey(ctx context.Context, p *ui.Presenter, keyID string) error {
-	p.Step("Applying 'Ultimate Trust' to key: %s", keyID)
+func trustGPGKey(ctx context.Context, presenter *ui.Presenter, keyID string) error {
+	presenter.Step("Applying 'Ultimate Trust' to key: %s", keyID)
 
-	cmdStr := fmt.Sprintf("echo -e \"5\ny\n\" | gpg --command-fd 0 --edit-key %s trust", keyID)
-
-	err := globals.ExecClient.Execute(ctx, ".", "sh", "-c", cmdStr)
+	// 1. Get Fingerprint
+	out, _, err := globals.ExecClient.CaptureOutput(ctx, ".", "gpg", "--list-keys", "--with-colons", keyID)
 	if err != nil {
-		p.Warning("Failed to automate trust setting. You may need to trust the key manually.")
+		return fmt.Errorf("failed to get key details: %w", err)
+	}
+
+	var fingerprint string
+
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.HasPrefix(line, "fpr:") {
+			parts := strings.Split(line, ":")
+			if len(parts) >= fingerprintMinParts {
+				fingerprint = parts[fingerprintPartIdx]
+
+				break
+			}
+		}
+	}
+
+	if fingerprint == "" {
+		return fmt.Errorf("%w: %s", ErrFingerprintNotFound, keyID)
+	}
+
+	// 2. Import Ownertrust
+	// Format: FINGERPRINT:6: (6 = Ultimate)
+	trustData := fingerprint + ":6:\n"
+
+	err = runWithStdin(ctx, ".", trustData, "gpg", "--import-ownertrust")
+	if err != nil {
+		presenter.Warning("Failed to automate trust setting. You may need to trust the key manually.")
 	} else {
-		p.Success("✓ Key trusted.")
+		presenter.Success("✓ Key trusted.")
 	}
 
 	return nil
 }
 
-//nolint:varnamelen // 'p' is standard for presenter.
-func initPass(ctx context.Context, p *ui.Presenter, keyID string) error {
+func initPass(ctx context.Context, presenter *ui.Presenter, keyID string) error {
 	home, _ := os.UserHomeDir()
 	passDir := filepath.Join(home, ".password-store")
 
 	_, err := os.Stat(passDir)
 	if err == nil {
-		p.Info("Password store already initialized.")
+		presenter.Info("Password store already initialized.")
 
 		return nil
 	}
 
-	p.Step("Initializing 'pass' vault...")
+	presenter.Step("Initializing 'pass' vault...")
 
 	err = globals.ExecClient.Execute(ctx, ".", "pass", "init", keyID)
 	if err != nil {
 		return fmt.Errorf("pass init failed: %w", err)
 	}
 
-	p.Success("✓ Vault initialized.")
+	presenter.Success("✓ Vault initialized.")
 
 	return nil
 }
 
-//nolint:varnamelen // 'p' is standard for presenter.
-func authenticateGitHub(ctx context.Context, p *ui.Presenter) error {
+func authenticateGitHub(ctx context.Context, presenter *ui.Presenter) error {
 	var token string
 
-	p.Newline()
+	presenter.Newline()
 
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -322,38 +368,48 @@ func authenticateGitHub(ctx context.Context, p *ui.Presenter) error {
 	}
 
 	if strings.TrimSpace(token) == "" {
-		//nolint:err113 // Dynamic error is appropriate here.
-		return errors.New("token cannot be empty")
+		return ErrEmptyToken
 	}
 
-	p.Step("Storing token in vault...")
-	// Pipe token to pass insert
-	insertCmd := "echo \"" + token + "\" | pass insert -m -f github/token"
-
-	err = globals.ExecClient.Execute(ctx, ".", "sh", "-c", insertCmd)
+	presenter.Step("Storing token in vault...")
+	// Securely pipe token to pass
+	err = runWithStdin(ctx, ".", token+"\n", "pass", "insert", "-m", "-f", "github/token")
 	if err != nil {
 		return fmt.Errorf("failed to store token in pass: %w", err)
 	}
 
-	p.Success("✓ Token stored in vault (github/token).")
+	presenter.Success("✓ Token stored in vault (github/token).")
 
-	p.Step("Authenticating GitHub CLI...")
-	// Pipe token to gh auth login
-	loginCmd := "echo \"" + token + "\" | gh auth login --with-token"
-
-	err = globals.ExecClient.Execute(ctx, ".", "sh", "-c", loginCmd)
+	presenter.Step("Authenticating GitHub CLI...")
+	// Securely pipe token to gh auth login
+	err = runWithStdin(ctx, ".", token, "gh", "auth", "login", "--with-token")
 	if err != nil {
 		return fmt.Errorf("gh auth login failed: %w", err)
 	}
 
 	_ = globals.ExecClient.Execute(ctx, ".", "gh", "auth", "setup-git")
 
-	p.Success("✓ GitHub CLI authenticated.")
+	presenter.Success("✓ GitHub CLI authenticated.")
 
 	return nil
 }
 
-//nolint:gochecknoinits // Cobra requires init() for command registration.
+// runWithStdin executes a command piping the provided input string to stdin.
+// This avoids leaking secrets in process arguments (ps aux).
+func runWithStdin(ctx context.Context, dir, input, name string, args ...string) error {
+	cmd := osexec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
+	cmd.Stdin = strings.NewReader(input)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("command %s failed: %w", name, err)
+	}
+
+	return nil
+}
+
 func init() {
 	// Create a default description if the template file is missing or empty during dev
 	desc := cmddocs.CommandDesc{

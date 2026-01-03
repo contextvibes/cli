@@ -60,7 +60,6 @@ var ApplyCmd = &cobra.Command{
 
 func readInput(scriptPath string) ([]byte, string, error) {
 	if scriptPath != "" {
-		//nolint:gosec // Reading user-provided script file is intended.
 		content, err := os.ReadFile(scriptPath)
 		if err != nil {
 			return nil, "file", fmt.Errorf("failed to read script file: %w", err)
@@ -155,7 +154,7 @@ func handleJSONPlan(ctx context.Context, presenter *ui.Presenter, data []byte) e
 
 func handleShellScript(ctx context.Context, presenter *ui.Presenter, scriptContent []byte) error {
 	presenter.Header("--- Script to be Applied ---")
-	//nolint:errcheck // Printing to stdout is best effort.
+
 	fmt.Fprintln(presenter.Out(), "```bash\n"+string(scriptContent)+"\n```")
 
 	if !globals.AssumeYes {

@@ -102,11 +102,11 @@ var CommitCmd = &cobra.Command{
 		statusOutput, _, _ := client.GetStatusShort(ctx)
 
 		presenter.InfoPrefixOnly()
-		//nolint:errcheck // Printing to stdout is best effort.
+
 		fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
-		//nolint:errcheck // Printing to stdout is best effort.
+
 		fmt.Fprintf(presenter.Out(), "  Subject: %s\n", subject)
-		//nolint:errcheck // Printing to stdout is best effort.
+
 		fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
 
 		if !globals.AssumeYes {

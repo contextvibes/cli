@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
+	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -43,6 +44,8 @@ var CleanCmd = &cobra.Command{
 			"context_commit.md",
 			"context_pr.md",
 			"context_export_project.md",
+			config.DefaultDescribeOutputFile, // _contextvibes.md
+			"contextvibes.md",                // Legacy support
 		}
 		for _, file := range filesToRemove {
 			presenter.Step("Removing file: %s...", file)
