@@ -1,0 +1,25 @@
+version: 2
+run:
+  timeout: 5m
+linters:
+  disable-all: true
+  enable:
+    - revive
+    - lll
+    - mnd
+    - varnamelen
+    - wsl
+    - nlreturn
+    - noinlineerr
+linters-settings:
+  lll:
+    line-length: 120
+  varnamelen:
+    min-name-length: 3
+    ignore-names:
+      - err
+      - ctx
+      - id
+      - db
+      - tx
+      - i

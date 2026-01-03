@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
+	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/tools"
@@ -18,8 +19,6 @@ import (
 
 //go:embed diff.md.tpl
 var diffLongDescription string
-
-const fixedDiffOutputFile = "contextvibes.md"
 
 // DiffCmd represents the diff command.
 //
@@ -32,7 +31,7 @@ var DiffCmd = &cobra.Command{
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
-		presenter.Summary("Generating Git diff summary for %s.", fixedDiffOutputFile)
+		presenter.Summary("Generating Git diff summary for %s.", config.DefaultDescribeOutputFile)
 
 		workDir, err := os.Getwd()
 		if err != nil {
@@ -91,7 +90,7 @@ var DiffCmd = &cobra.Command{
 		if !hasChanges {
 			presenter.Info("No pending changes found.")
 		} else {
-			errWrite := tools.WriteBufferToFile(fixedDiffOutputFile, &outputBuffer)
+			errWrite := tools.WriteBufferToFile(config.DefaultDescribeOutputFile, &outputBuffer)
 			if errWrite != nil {
 				//nolint:wrapcheck // Wrapping is handled by caller.
 				return errWrite

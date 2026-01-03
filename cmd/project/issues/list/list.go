@@ -116,7 +116,7 @@ var ListCmd = &cobra.Command{
 			}
 		} else {
 			for _, item := range items {
-				//nolint:errcheck // Printing to stdout is best effort.
+
 				fmt.Fprintf(presenter.Out(), "#%d [%s] %s\n", item.Number, item.State, item.Title)
 			}
 		}

@@ -9,7 +9,6 @@ import (
 // ReadFileContent reads the entire content of the file at the specified path.
 // Returns the content as a byte slice or an error if reading fails.
 func ReadFileContent(filePath string) ([]byte, error) {
-	//nolint:gosec // Generic file read helper.
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		// Wrap the error with more context.

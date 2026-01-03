@@ -2,254 +2,193 @@ package pipeline
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/exec"
 )
 
-// GoModTidyCheck verifies dependencies are tidy.
-type GoModTidyCheck struct{}
-
-// Name returns the name of the check.
-func (c *GoModTidyCheck) Name() string { return "Go Module Tidy" }
-
-// Run executes the check.
-func (c *GoModTidyCheck) Run(ctx context.Context, execClient *exec.ExecutorClient) Result {
-	if !execClient.CommandExists("go") {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "Go not found",
-			Error:   nil,
-			Advice:  "",
-			Details: "",
-		}
-	}
-
-	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "go", "mod", "tidy")
-	if err != nil {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusFail,
-			Message: "go mod tidy failed",
-			Error:   err,
-			Advice:  "Run 'go mod tidy' manually to fix dependencies.",
-			Details: stdout + stderr,
-		}
-	}
-
-	return Result{
-		Name:    c.Name(),
-		Status:  StatusPass,
-		Message: "Dependencies are tidy",
-		Error:   nil,
-		Advice:  "",
-		Details: "",
-	}
+// GoVetCheck runs go vet.
+type GoVetCheck struct {
+	Paths []string
 }
 
-// GoVetCheck runs go vet.
-type GoVetCheck struct{}
-
-// Name returns the name of the check.
 func (c *GoVetCheck) Name() string { return "Go Vet" }
 
-// Run executes the check.
 func (c *GoVetCheck) Run(ctx context.Context, execClient *exec.ExecutorClient) Result {
 	if !execClient.CommandExists("go") {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "Go not found",
-			Error:   nil,
-			Advice:  "",
-			Details: "",
-		}
+		return Result{Name: c.Name(), Status: StatusWarn, Message: "Go not found"}
 	}
 
-	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "go", "vet", "./...")
+	args := []string{"vet"}
+	if len(c.Paths) > 0 {
+		for _, p := range c.Paths {
+			if !strings.HasPrefix(p, ".") && !strings.HasPrefix(p, "/") {
+				p = "./" + p
+			}
+			args = append(args, p)
+		}
+	} else {
+		args = append(args, "./...")
+	}
+
+	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "go", args...)
 	if err != nil {
 		return Result{
 			Name:    c.Name(),
 			Status:  StatusFail,
 			Message: "go vet found issues",
 			Error:   err,
-			Advice:  "Run 'go vet ./...' to see details.",
 			Details: stdout + stderr,
 		}
 	}
 
-	return Result{
-		Name:    c.Name(),
-		Status:  StatusPass,
-		Message: "Code passes go vet",
-		Error:   nil,
-		Advice:  "",
-		Details: "",
-	}
+	return Result{Name: c.Name(), Status: StatusPass, Message: "Code passes go vet"}
 }
 
-// GolangCILintCheck runs the linter.
-type GolangCILintCheck struct{}
+// GolangCILintCheck runs the linter with a specific configuration mode.
+type GolangCILintCheck struct {
+	Paths      []string
+	ConfigType config.AssetType // The specific lens to use
+}
 
-// Name returns the name of the check.
-func (c *GolangCILintCheck) Name() string { return "GolangCI-Lint" }
+func (c *GolangCILintCheck) Name() string {
+	return "GolangCI-Lint (" + string(c.ConfigType) + ")"
+}
 
-// Run executes the check.
 func (c *GolangCILintCheck) Run(ctx context.Context, execClient *exec.ExecutorClient) Result {
 	if !execClient.CommandExists("golangci-lint") {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "golangci-lint not found",
-			Error:   nil,
-			Advice:  "Install golangci-lint for better quality checks.",
-			Details: "",
-		}
+		return Result{Name: c.Name(), Status: StatusWarn, Message: "golangci-lint not found"}
 	}
 
-	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "golangci-lint", "run")
+	args := []string{"run"}
+	var tempConfigFile string
+
+	// If a specific config type is requested (not empty/default), load it.
+	if c.ConfigType != "" {
+		configBytes, err := config.GetLanguageAsset("go", c.ConfigType)
+		if err != nil {
+			return Result{Name: c.Name(), Status: StatusFail, Message: "Failed to load config asset", Error: err}
+		}
+
+		tmpFile, err := os.CreateTemp(".", ".golangci-"+string(c.ConfigType)+"-*.yml")
+		if err != nil {
+			return Result{Name: c.Name(), Status: StatusFail, Message: "Failed to create temp config", Error: err}
+		}
+		
+		tempConfigFile = tmpFile.Name()
+		defer os.Remove(tempConfigFile)
+
+		if _, err := tmpFile.Write(configBytes); err != nil {
+			tmpFile.Close()
+			return Result{Name: c.Name(), Status: StatusFail, Message: "Failed to write temp config", Error: err}
+		}
+		tmpFile.Close()
+
+		args = append(args, "-c", tempConfigFile)
+	}
+
+	if len(c.Paths) > 0 {
+		args = append(args, c.Paths...)
+	}
+
+	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "golangci-lint", args...)
 	if err != nil {
+		if tempConfigFile != "" {
+			stderr = strings.ReplaceAll(stderr, tempConfigFile, ".golangci.yml (generated)")
+		}
 		return Result{
 			Name:    c.Name(),
 			Status:  StatusFail,
 			Message: "Linter found issues",
 			Error:   err,
-			Advice:  "Run 'contextvibes product format' to fix some issues automatically.",
 			Details: stdout + stderr,
 		}
 	}
 
-	return Result{
-		Name:    c.Name(),
-		Status:  StatusPass,
-		Message: "Linter passed",
-		Error:   nil,
-		Advice:  "",
-		Details: "",
-	}
+	return Result{Name: c.Name(), Status: StatusPass, Message: "Linter passed"}
 }
 
 // GoVulnCheck runs vulnerability scanning.
-type GoVulnCheck struct{}
+type GoVulnCheck struct {
+	Paths []string
+}
 
-// Name returns the name of the check.
 func (c *GoVulnCheck) Name() string { return "Go Vulnerability Check" }
 
-// Run executes the check.
 func (c *GoVulnCheck) Run(ctx context.Context, execClient *exec.ExecutorClient) Result {
 	if !execClient.CommandExists("govulncheck") {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "govulncheck not found",
-			Error:   nil,
-			Advice:  "Install govulncheck to scan for security vulnerabilities.",
-			Details: "",
-		}
+		return Result{Name: c.Name(), Status: StatusWarn, Message: "govulncheck not found"}
 	}
 
-	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "govulncheck", "./...")
+	args := []string{}
+	if len(c.Paths) > 0 {
+		for _, p := range c.Paths {
+			if strings.HasSuffix(p, ".go") {
+				p = filepath.Dir(p)
+			}
+			if !strings.HasPrefix(p, ".") && !strings.HasPrefix(p, "/") {
+				p = "./" + p
+			}
+			args = append(args, p)
+		}
+	} else {
+		args = append(args, "./...")
+	}
+
+	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "govulncheck", args...)
 	if err != nil {
 		return Result{
 			Name:    c.Name(),
 			Status:  StatusFail,
 			Message: "Vulnerabilities found",
 			Error:   err,
-			Advice:  "Update dependencies to resolve known vulnerabilities.",
 			Details: stdout + stderr,
 		}
 	}
 
-	return Result{
-		Name:    c.Name(),
-		Status:  StatusPass,
-		Message: "No known vulnerabilities found",
-		Error:   nil,
-		Advice:  "",
-		Details: "",
-	}
+	return Result{Name: c.Name(), Status: StatusPass, Message: "No known vulnerabilities found"}
 }
 
 // GitleaksCheck scans for secrets.
 type GitleaksCheck struct{}
 
-// Name returns the name of the check.
 func (c *GitleaksCheck) Name() string { return "Secret Scanning (gitleaks)" }
 
-// Run executes the check.
 func (c *GitleaksCheck) Run(ctx context.Context, execClient *exec.ExecutorClient) Result {
 	if !execClient.CommandExists("gitleaks") {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "gitleaks not found",
-			Error:   nil,
-			Advice:  "Install gitleaks to prevent committing secrets.",
-			Details: "",
-		}
+		return Result{Name: c.Name(), Status: StatusWarn, Message: "gitleaks not found"}
 	}
 
-	// Use -c to point to the config file we just created
-	stdout, stderr, err := execClient.CaptureOutput(
-		ctx,
-		".",
-		"gitleaks",
-		"detect",
-		"--no-git",
-		"--verbose",
-		"-c",
-		".gitleaks.toml",
-	)
+	stdout, stderr, err := execClient.CaptureOutput(ctx, ".", "gitleaks", "detect", "--no-git", "--verbose", "-c", ".gitleaks.toml")
 	if err != nil {
 		return Result{
 			Name:    c.Name(),
 			Status:  StatusFail,
 			Message: "Secrets detected!",
 			Error:   err,
-			Advice:  "Check output for leaked secrets and revoke them immediately.",
 			Details: stdout + stderr,
 		}
 	}
 
-	return Result{
-		Name:    c.Name(),
-		Status:  StatusPass,
-		Message: "No secrets detected",
-		Error:   nil,
-		Advice:  "",
-		Details: "",
-	}
+	return Result{Name: c.Name(), Status: StatusPass, Message: "No secrets detected"}
 }
 
 // DeadcodeCheck finds unreachable code.
 type DeadcodeCheck struct{}
 
-// Name returns the name of the check.
 func (c *DeadcodeCheck) Name() string { return "Dead Code Analysis" }
 
-// Run executes the check.
 func (c *DeadcodeCheck) Run(ctx context.Context, execClient *exec.ExecutorClient) Result {
 	if !execClient.CommandExists("deadcode") {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "deadcode not found",
-			Error:   nil,
-			Advice:  "Run 'go install golang.org/x/tools/cmd/deadcode@latest'",
-			Details: "",
-		}
+		return Result{Name: c.Name(), Status: StatusWarn, Message: "deadcode not found"}
 	}
 
-	stdout, _, err := execClient.CaptureOutput(ctx, ".", "deadcode", "./...")
+	stdout, _, err := execClient.CaptureOutput(ctx, ".", "deadcode", "-test", "./...")
 	if err != nil {
-		return Result{
-			Name:    c.Name(),
-			Status:  StatusWarn,
-			Message: "Dead code analysis failed",
-			Error:   err,
-			Advice:  "",
-			Details: "",
-		}
+		return Result{Name: c.Name(), Status: StatusWarn, Message: "Dead code analysis failed", Error: err}
 	}
 
 	if len(stdout) > 0 {
@@ -257,18 +196,9 @@ func (c *DeadcodeCheck) Run(ctx context.Context, execClient *exec.ExecutorClient
 			Name:    c.Name(),
 			Status:  StatusWarn,
 			Message: "Unreachable code detected",
-			Error:   nil,
-			Advice:  "Run 'deadcode ./...' to see unused functions.",
 			Details: stdout,
 		}
 	}
 
-	return Result{
-		Name:    c.Name(),
-		Status:  StatusPass,
-		Message: "No dead code detected",
-		Error:   nil,
-		Advice:  "",
-		Details: "",
-	}
+	return Result{Name: c.Name(), Status: StatusPass, Message: "No dead code detected"}
 }

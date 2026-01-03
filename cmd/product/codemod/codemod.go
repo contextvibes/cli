@@ -37,7 +37,6 @@ var CodemodCmd = &cobra.Command{
 			scriptToLoad = "codemod.json"
 		}
 
-		//nolint:gosec // Reading user-provided script file is intended.
 		scriptData, err := os.ReadFile(scriptToLoad)
 		if err != nil {
 			return fmt.Errorf("failed to read codemod script '%s': %w", scriptToLoad, err)

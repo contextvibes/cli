@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/contextvibes/cli/internal/cmddocs"
+	"github.com/contextvibes/cli/internal/config"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/pipeline"
 	"github.com/contextvibes/cli/internal/project"
@@ -22,18 +23,38 @@ var qualityLongDescription string
 
 const contextFile = "_contextvibes.md"
 
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
+var (
+	qualityMode string
+)
+
 // QualityCmd represents the quality command.
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var QualityCmd = &cobra.Command{
-	Use:           "quality",
-	Example:       `  contextvibes product quality`,
-	Args:          cobra.NoArgs,
+	Use:           "quality [paths...]",
+	Example:       `  contextvibes product quality --mode essential  # Run basic checks (default)
+  contextvibes product quality --mode strict     # Run all checks
+  contextvibes product quality --mode security   # Run security checks only
+  contextvibes product quality --mode complexity # Run complexity checks only
+  contextvibes product quality --mode style      # Run style checks only`,
+	Args:          cobra.ArbitraryArgs,
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
+
+		// --- Argument Guard ---
+		// Prevent users from accidentally passing modes as path arguments.
+		knownModes := map[string]bool{
+			"essential": true, "strict": true, "security": true, "complexity": true, "style": true,
+		}
+		for _, arg := range args {
+			if knownModes[arg] {
+				presenter.Error("'%s' is a mode, not a path.", arg)
+				presenter.Advice("Did you mean to use the flag?  --mode %s", arg)
+				return fmt.Errorf("invalid argument '%s'", arg)
+			}
+		}
 
 		presenter.Summary("Running Code Quality Pipeline")
 
@@ -47,28 +68,59 @@ var QualityCmd = &cobra.Command{
 			return fmt.Errorf("failed to detect project type: %w", err)
 		}
 		presenter.Info("Detected project type: %s", presenter.Highlight(string(projType)))
+		presenter.Info("Mode: %s", presenter.Highlight(qualityMode))
+		
+		if len(args) > 0 {
+			presenter.Info("Targeting paths: %v", args)
+		}
 		presenter.Newline()
 
 		// Initialize Pipeline Runner
 		runner := pipeline.NewRunner(presenter, globals.ExecClient)
 		var checks []pipeline.Check
 
-		// Assemble Pipeline based on Project Type
+		// Assemble Pipeline based on Project Type and Mode
 		switch projType {
 		case project.Go:
-			checks = []pipeline.Check{
-				&pipeline.GoModTidyCheck{},
-				&pipeline.GoVetCheck{},
-				&pipeline.GolangCILintCheck{},
-				&pipeline.GoVulnCheck{},
-				&pipeline.GitleaksCheck{},
-				&pipeline.DeadcodeCheck{},
+			switch qualityMode {
+			case "security":
+				checks = append(checks,
+					&pipeline.GolangCILintCheck{Paths: args, ConfigType: config.AssetLintSecurity},
+					&pipeline.GoVulnCheck{Paths: args},
+					&pipeline.GitleaksCheck{},
+				)
+			case "complexity":
+				// Complexity mode now strictly checks code structure metrics
+				checks = append(checks,
+					&pipeline.GolangCILintCheck{Paths: args, ConfigType: config.AssetLintComplexity},
+				)
+			case "style":
+				checks = append(checks,
+					&pipeline.GolangCILintCheck{Paths: args, ConfigType: config.AssetLintStyle},
+				)
+			case "strict":
+				checks = append(checks,
+					&pipeline.GoVetCheck{Paths: args},
+					&pipeline.GolangCILintCheck{Paths: args, ConfigType: config.AssetLintStrict},
+					&pipeline.GoVulnCheck{Paths: args},
+					&pipeline.GitleaksCheck{},
+					&pipeline.DeadcodeCheck{},
+				)
+			case "essential":
+				fallthrough
+			default:
+				// Default behavior: Use local .golangci.yml (empty ConfigType)
+				checks = append(checks,
+					&pipeline.GoVetCheck{Paths: args},
+					&pipeline.GolangCILintCheck{Paths: args, ConfigType: ""}, 
+					&pipeline.GoVulnCheck{Paths: args},
+				)
 			}
+
 		case project.Terraform, project.Pulumi, project.Python, project.Unknown:
 			fallthrough
 		default:
 			presenter.Info("No specific quality checks configured for %s.", projType)
-
 			return nil
 		}
 
@@ -85,8 +137,6 @@ var QualityCmd = &cobra.Command{
 				presenter.Advice("Pass this file to your AI to fix the issues.")
 			}
 		} else {
-			// Cleanup: If all passed, remove the stale context file if it exists.
-			// Uber Style: Inline check
 			if _, err := os.Stat(contextFile); err == nil {
 				if removeErr := os.Remove(contextFile); removeErr == nil {
 					presenter.Info("Removed stale AI Context file: %s (all checks passed)", contextFile)
@@ -96,13 +146,10 @@ var QualityCmd = &cobra.Command{
 
 		if err != nil {
 			presenter.Error("Pipeline failed.")
-
-			//nolint:wrapcheck // Wrapping is handled by caller.
 			return err
 		}
 
 		presenter.Success("All quality checks passed.")
-
 		return nil
 	},
 }
@@ -116,14 +163,12 @@ func hasWarnings(results []pipeline.Result) bool {
 			continue
 		}
 	}
-
 	return false
 }
 
 func generateContextFile(results []pipeline.Result) error {
 	var buf bytes.Buffer
 
-	// 1. The Prompt
 	buf.WriteString("# AI Task: Fix Quality Issues\n\n")
 	buf.WriteString("You are a senior software engineer. Analyze the quality report below.\n")
 	buf.WriteString("Your goal is to fix the **Linter Errors** and address the **Dead Code** warnings.\n\n")
@@ -132,24 +177,18 @@ func generateContextFile(results []pipeline.Result) error {
 	buf.WriteString("2.  **Plan**: Create a plan to resolve each issue.\n")
 	buf.WriteString("3.  **Execute**: Provide the code changes (using `cat` scripts or `sed`) to fix the codebase.\n")
 	buf.WriteString("4.  **Verify**: Remind me to run `contextvibes product quality` again.\n\n")
-
 	buf.WriteString("---\n\n")
-
-	// 2. The Report
 	buf.WriteString(fmt.Sprintf("# Quality Report (%s)\n\n", time.Now().Format(time.RFC3339)))
 
 	for _, result := range results {
-		// Use standard ContextVibes markers instead of icons
 		marker := "+"
-
-		// Use switch for status check (fixes staticcheck QF1003)
 		switch result.Status {
 		case pipeline.StatusFail:
 			marker = "!"
 		case pipeline.StatusWarn:
 			marker = "~"
 		case pipeline.StatusPass:
-			marker = "+" // Explicitly handle Pass to satisfy exhaustive
+			marker = "+"
 		}
 
 		buf.WriteString(fmt.Sprintf("## %s %s\n", marker, result.Name))
@@ -169,7 +208,6 @@ func generateContextFile(results []pipeline.Result) error {
 		if result.Error != nil {
 			buf.WriteString(fmt.Sprintf("\n**System Error:** %v\n", result.Error))
 		}
-
 		buf.WriteString("\n")
 	}
 
@@ -203,4 +241,6 @@ func init() {
 
 	QualityCmd.Short = desc.Short
 	QualityCmd.Long = desc.Long
+
+	QualityCmd.Flags().StringVarP(&qualityMode, "mode", "m", "essential", "Quality check mode: essential, strict, security, complexity, style")
 }

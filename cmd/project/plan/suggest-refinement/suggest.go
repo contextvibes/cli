@@ -90,7 +90,7 @@ var SuggestRefinementCmd = &cobra.Command{
 
 		if outputFile == "" {
 			// If no output file, print to stdout
-			//nolint:errcheck // Printing to stdout is best effort here.
+
 			fmt.Fprint(presenter.Out(), prompt)
 		} else {
 			//nolint:gosec,mnd // Writing to user-specified file is intended, 0644 is standard.
