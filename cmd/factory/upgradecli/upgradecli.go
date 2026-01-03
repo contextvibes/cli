@@ -54,7 +54,7 @@ var UpgradeCliCmd = &cobra.Command{
 		presenter.Info("Latest version: %s", latestVersion)
 
 		// 2. Read current file
-		//nolint:gosec // Reading local config file.
+
 		contentBytes, err := os.ReadFile(nixFilePath)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", nixFilePath, err)

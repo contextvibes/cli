@@ -251,7 +251,6 @@ func LoadConfig(filePath string) (*Config, error) {
 		return nil, nil
 	}
 
-	//nolint:gosec // Reading config file is intended behavior.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file '%s': %w", filePath, err)

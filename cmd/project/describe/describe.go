@@ -101,7 +101,7 @@ var DescribeCmd = &cobra.Command{
 
 		var aiExcluder gitignore.GitIgnore
 		aiExcludeFilePath := filepath.Join(cwd, ".aiexclude")
-		//nolint:gosec // Reading .aiexclude is intended.
+
 		aiExcludeContent, readErr := os.ReadFile(aiExcludeFilePath)
 		if readErr == nil {
 			aiExcluder = gitignore.New(bytes.NewReader(aiExcludeContent), cwd, nil)

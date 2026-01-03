@@ -45,7 +45,7 @@ var RefactorCmd = &cobra.Command{
 		// 2. Read and Format File Content
 		var codeContent strings.Builder
 		for _, filePath := range args {
-			//nolint:gosec // Reading user-provided file is intended.
+
 			content, err := os.ReadFile(filePath)
 			if err != nil {
 				return fmt.Errorf("failed to read file '%s': %w", filePath, err)

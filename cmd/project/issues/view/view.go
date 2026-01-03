@@ -92,7 +92,7 @@ var ViewCmd = &cobra.Command{
 
 		// The view command is still responsible for displaying comments
 		if withComments {
-			//nolint:errcheck // Printing to stdout is best effort.
+
 			fmt.Fprintf(presenter.Out(), "\n--- Comments (%d) ---\n\n", len(item.Comments))
 			for _, comment := range item.Comments {
 				presenter.Header(
@@ -102,7 +102,7 @@ var ViewCmd = &cobra.Command{
 						comment.CreatedAt.Format("2006-01-02"),
 					),
 				)
-				//nolint:errcheck // Printing to stdout is best effort.
+
 				fmt.Fprintln(presenter.Out(), comment.Body)
 				presenter.Separator()
 			}

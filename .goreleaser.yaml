@@ -1,0 +1,49 @@
+version: 2
+
+project_name: contextvibes
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/contextvibes
+    binary: contextvibes
+    ldflags:
+      - -s -w
+      - -X github.com/contextvibes/cli/cmd/version.Version={{.Version}}
+      - -X github.com/contextvibes/cli/cmd/version.Commit={{.Commit}}
+      - -X github.com/contextvibes/cli/cmd/version.Date={{.Date}}
+      - -X github.com/contextvibes/cli/cmd/version.BuiltBy=goreleaser
+
+archives:
+  - format: tar.gz
+    # this name template makes the tarballs look like:
+    # contextvibes_1.0.0_linux_amd64.tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

@@ -103,7 +103,7 @@ var CreateCmd = &cobra.Command{
 		if issueTitle == "" {
 			form := huh.NewForm(
 				huh.NewGroup(
-					//nolint:lll // Long line for options.
+
 					huh.NewSelect[string]().Title("What kind of issue is this?").
 						Options(
 							huh.NewOption("Task", "Task"),

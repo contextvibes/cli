@@ -32,7 +32,8 @@ func (s *InstallSelfStep) PreCheck(_ context.Context) error {
 // Execute runs the installation command.
 func (s *InstallSelfStep) Execute(ctx context.Context) error {
 	// We install from the specified reference to allow testing branches/hashes.
-	target := fmt.Sprintf("github.com/contextvibes/cli/cmd/contextvibes@%s", s.Ref)
+	target := "github.com/contextvibes/cli/cmd/contextvibes@" + s.Ref
+
 	err := s.ExecClient.Execute(ctx, ".", "go", "install", target)
 	if err != nil {
 		return fmt.Errorf("failed to install contextvibes: %w", err)

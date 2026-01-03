@@ -165,7 +165,6 @@ func configureBashrc(presenter *ui.Presenter) error {
 	bashrcPath := filepath.Join(home, ".bashrc")
 	marker := "# --- SECURE ENV CONFIG ---"
 
-	//nolint:gosec // Reading user bashrc is intended.
 	content, err := os.ReadFile(bashrcPath)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to read .bashrc: %w", err)
@@ -195,12 +194,12 @@ fi
 alias p='pass'
 alias g='git'
 `
-	//nolint:gosec // Writing to user's bashrc is intended.
+
 	file, err := os.OpenFile(bashrcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, filePermRead)
 	if err != nil {
 		return fmt.Errorf("failed to open .bashrc: %w", err)
 	}
-	//nolint:errcheck // Defer close is sufficient.
+
 	defer file.Close()
 
 	_, err = file.WriteString(block)

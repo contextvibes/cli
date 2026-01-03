@@ -20,6 +20,22 @@ linters:
     # --- Style Preference ---
     - noinlineerr     # Disabled to allow idiomatic `if err :=...`
 
+  exclusions:
+    generated: strict
+    warn-unused: true
+    presets:
+      # - comments
+      # - std-error-handling
+      # - common-false-positives
+      # - legacy
+    rules:
+      - path: "cmd/version/version.go"
+        linters:
+          - gochecknoinits
+          - exhaustruct
+          - gochecknoglobals
+          - errcheck
+
   settings:
     gofumpt:
       extra-rules: true
@@ -44,7 +60,7 @@ linters:
             - github.com/shurcooL/githubv4
             - github.com/google/go-github/v74/github
             - github.com/fatih/color
-            - github.com/mattn/go-isatty'
+            - github.com/mattn/go-isatty
             # Allow your project imports
             - github.com/contextvibes/cli
           deny:

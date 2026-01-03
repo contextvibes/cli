@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
 
-	//nolint:depguard // isatty is standard for terminal detection.
 	"github.com/mattn/go-isatty"
 )
 
