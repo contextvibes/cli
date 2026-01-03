@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/contextvibes/cli/internal/globals"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
 // These variables are set via -ldflags during the build process.
-// Example: -ldflags "-X github.com/contextvibes/cli/cmd/version.Commit=$(git rev-parse HEAD)".
 var (
+	Version = "dev"
 	Commit  = "none"
 	Date    = "unknown"
 	BuiltBy = "unknown"
@@ -43,14 +42,14 @@ var VersionCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		// 1. Handle Short Flag
 		if shortFlag {
-			fmt.Fprintln(cmd.OutOrStdout(), globals.AppVersion)
+			fmt.Fprintln(cmd.OutOrStdout(), Version)
 
 			return nil
 		}
 
 		// 2. Construct Data
 		info := Info{
-			Version:   globals.AppVersion,
+			Version:   Version,
 			Commit:    Commit,
 			Date:      Date,
 			GoVersion: runtime.Version(),
