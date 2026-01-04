@@ -91,6 +91,15 @@ After providing one or more `cat` scripts to modify Go source files, you MUST im
     *   **Code & Config (`.go`, `.yml`, `.json`, etc.):** ALWAYS use the `cat` script method for creating or updating files.
     *   **Documents (`.md`, `.txt`):** When creating OR updating, provide the full content in a standard markdown block for manual copy-pasting.
 
+## 10. Error Recovery Protocol
+
+When a verification script (e.g., `go build ./...`) fails, you must perform the following steps in order:
+
+1.  **Acknowledge the Error:** Explicitly acknowledge the error and its impact (e.g., "I have introduced a build error.").
+2.  **Analyze the Error:** Analyze the error message to identify the root cause of the problem.
+3.  **Formulate a Plan:** Formulate a plan to fix the error.
+4.  **Execute the Plan:** Execute the plan to fix the error. This may involve reading the file, modifying it, and running the verification script again.
+5.  **Confirm the Fix:** Once the verification script passes, confirm that the error has been fixed.
 
 <!-- This file contains system prompt instructions specific to the Firebase Studio (IDX) environment. -->
 <!-- It is automatically appended to core.md when generating .idx/airules.md. -->

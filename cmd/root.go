@@ -11,6 +11,7 @@ import (
 	"github.com/contextvibes/cli/cmd/factory"
 	"github.com/contextvibes/cli/cmd/feedback"
 	"github.com/contextvibes/cli/cmd/library"
+	"github.com/contextvibes/cli/cmd/mcp"
 	"github.com/contextvibes/cli/cmd/product"
 	"github.com/contextvibes/cli/cmd/project"
 	"github.com/contextvibes/cli/cmd/version"
@@ -56,7 +57,7 @@ var rootCmd = &cobra.Command{
 			if aiLogFileFlagValue != "" {
 				targetAILogFile = aiLogFileFlagValue
 			}
-			//nolint:gosec // G304: User-provided path for logging is intended behavior.
+
 			logFileHandle, errLogFile := os.OpenFile(
 				targetAILogFile,
 				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
@@ -108,13 +109,18 @@ func init() {
 		StringVar(&aiLogFileFlagValue, "ai-log-file", "", "AI (JSON) log file path")
 	rootCmd.PersistentFlags().BoolVarP(&assumeYes, "yes", "y", false, "Assume 'yes' to all prompts")
 
-	rootCmd.AddCommand(project.ProjectCmd)
-	rootCmd.AddCommand(product.ProductCmd)
-	rootCmd.AddCommand(factory.FactoryCmd)
-	rootCmd.AddCommand(library.LibraryCmd)
+	// Define Command Groups
+	rootCmd.AddGroup(&cobra.Group{ID: "core", Title: "Core Pillars"})
+
+	// Add subcommands
+	rootCmd.AddCommand(project.NewProjectCmd())
+	rootCmd.AddCommand(product.NewProductCmd())
+	rootCmd.AddCommand(factory.NewFactoryCmd())
+	rootCmd.AddCommand(library.NewLibraryCmd())
 	rootCmd.AddCommand(craft.CraftCmd)
-	rootCmd.AddCommand(feedback.FeedbackCmd)
+	rootCmd.AddCommand(feedback.NewFeedbackCmd())
 	rootCmd.AddCommand(version.VersionCmd)
+	rootCmd.AddCommand(mcp.NewMcpCmd())
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {

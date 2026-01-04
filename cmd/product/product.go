@@ -12,21 +12,56 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ProductCmd represents the base command for the 'product' subcommand group.
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
-var ProductCmd = &cobra.Command{
-	Use:   "product",
-	Short: "Commands for the product you are building (the 'what').",
-}
+// NewProductCmd creates and configures the `product` command.
+func NewProductCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "product",
+		Short:   "Commands for the product you are building (the 'what').",
+		Long:    `The product commands provide tools for building, testing, and ensuring the quality of your codebase.`,
+		Example: "contextvibes product --help",
+		GroupID: "core",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
 
-//nolint:gochecknoinits // Cobra requires init() for command registration.
-func init() {
-	ProductCmd.AddCommand(build.BuildCmd)
-	ProductCmd.AddCommand(test.TestCmd)
-	ProductCmd.AddCommand(quality.QualityCmd)
-	ProductCmd.AddCommand(format.FormatCmd)
-	ProductCmd.AddCommand(clean.CleanCmd)
-	ProductCmd.AddCommand(run.RunCmd)
-	ProductCmd.AddCommand(codemod.CodemodCmd)
+		// Boilerplate
+		Aliases:                    []string{},
+		SuggestFor:                 []string{},
+		ValidArgs:                  []string{},
+		ValidArgsFunction:          nil,
+		Args:                       nil,
+		ArgAliases:                 []string{},
+		BashCompletionFunction:     "",
+		Deprecated:                 "",
+		Annotations:                nil,
+		Version:                    "",
+		PersistentPreRun:           nil,
+		PersistentPreRunE:          nil,
+		PreRun:                     nil,
+		PostRun:                    nil,
+		PostRunE:                   nil,
+		PersistentPostRun:          nil,
+		PersistentPostRunE:         nil,
+		FParseErrWhitelist:         cobra.FParseErrWhitelist{},
+		CompletionOptions:          cobra.CompletionOptions{},
+		TraverseChildren:           false,
+		Hidden:                     false,
+		SilenceErrors:              true,
+		SilenceUsage:               true,
+		DisableFlagParsing:         false,
+		DisableAutoGenTag:          true,
+		DisableFlagsInUseLine:      false,
+		DisableSuggestions:         false,
+		SuggestionsMinimumDistance: 0,
+	}
+
+	cmd.AddCommand(build.BuildCmd)
+	cmd.AddCommand(test.TestCmd)
+	cmd.AddCommand(quality.NewQualityCmd())
+	cmd.AddCommand(format.FormatCmd)
+	cmd.AddCommand(clean.CleanCmd)
+	cmd.AddCommand(run.NewRunCmd())
+	cmd.AddCommand(codemod.CodemodCmd)
+
+	return cmd
 }

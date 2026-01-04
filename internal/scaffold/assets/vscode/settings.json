@@ -1,0 +1,59 @@
+{
+    "IDX.aI.enableInlineCompletion": true,
+    "IDX.aI.enableCodebaseIndexing": true,
+    "workbench.startupEditor": "none",
+    "workbench.layoutControl.enabled": false,
+    "window.commandCenter": false,
+    "workbench.activityBar.location": "top",
+    "workbench.iconTheme": "monospace",
+    "workbench.preferredDarkColorTheme": "Tomorrow Night Blue",
+    "workbench.preferredLightColorTheme": "Monospace Light",
+    "window.autoDetectColorScheme": true,
+    "editor.fontFamily": "JetBrains Mono, Menlo, Monaco, Courier New, monospace",
+    "editor.fontSize": 13,
+    "editor.fontWeight": "normal",
+    "editor.lineHeight": 1.5,
+    "editor.letterSpacing": 0,
+    "editor.renderWhitespace": "boundary",
+    "editor.guides.highlightActiveIndentation": true,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.markdownlint": "explicit"
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/dist": true,
+        "**/build": true
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": false,
+    "git.useEditorAsCommitInput": true,
+    "diffEditor.ignoreTrimWhitespace": true,
+    "terminal.integrated.fontSize": 13,
+    "terminal.integrated.localEchoEnabled": "off",
+    "terminal.integrated.localEchoLatencyThreshold": -1,
+    "go.buildTags": "integration manual",
+    "go.toolsEnvVars": {
+        "CGO_ENABLED": "0"
+    },
+    "go.testTimeout": "120s",
+    "go.testEnvFile": ".env",
+    "go.testFlags": [
+        "-v"
+    ]
+}

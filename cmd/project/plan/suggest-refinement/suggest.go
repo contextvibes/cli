@@ -90,8 +90,8 @@ var SuggestRefinementCmd = &cobra.Command{
 
 		if outputFile == "" {
 			// If no output file, print to stdout
-			//nolint:errcheck // Printing to stdout is best effort here.
-			fmt.Fprint(presenter.Out(), prompt)
+
+			_, _ = fmt.Fprint(presenter.Out(), prompt)
 		} else {
 			//nolint:gosec,mnd // Writing to user-specified file is intended, 0644 is standard.
 			err := os.WriteFile(outputFile, []byte(prompt), 0o644)
@@ -111,39 +111,39 @@ var SuggestRefinementCmd = &cobra.Command{
 func generateAIPrompt(items []workitem.WorkItem) string {
 	var buffer bytes.Buffer
 
-	fmt.Fprintln(&buffer, "# AI Prompt: Scrum Master Backlog Refinement")
-	fmt.Fprintln(&buffer, "\n## Your Role & Goal")
-	fmt.Fprintln(
+	_, _ = fmt.Fprintln(&buffer, "# AI Prompt: Scrum Master Backlog Refinement")
+	_, _ = fmt.Fprintln(&buffer, "\n## Your Role & Goal")
+	_, _ = fmt.Fprintln(
 		&buffer,
 		"You are an expert Scrum Master. Your goal is to analyze the following list of unclassified GitHub issues. For each issue, you must decide if it is an **Epic**, **Story**, **Task**, **Bug**, or **Chore**. Based on your decision, you will generate a `bash` script that uses the `gh` CLI to apply the correct label to each issue.",
 	)
 
-	fmt.Fprintln(&buffer, "\n## Rules")
-	fmt.Fprintln(
+	_, _ = fmt.Fprintln(&buffer, "\n## Rules")
+	_, _ = fmt.Fprintln(
 		&buffer,
 		"1.  **Analyze Content**: Base your decision on the title and body of each issue.",
 	)
-	fmt.Fprintln(
+	_, _ = fmt.Fprintln(
 		&buffer,
 		"2.  **Use `gh` CLI**: The output script MUST use the format `gh issue edit <number> --add-label <type>` for each issue.",
 	)
-	fmt.Fprintln(
+	_, _ = fmt.Fprintln(
 		&buffer,
 		"3.  **Script Only**: Your final output MUST be a single, runnable `bash` script block and nothing else.",
 	)
-	fmt.Fprintln(
+	_, _ = fmt.Fprintln(
 		&buffer,
 		"4.  **Be Decisive**: Do not skip any issues. Assign a type to every issue provided.",
 	)
 
-	fmt.Fprintln(&buffer, "\n## Unclassified Issues for Review")
-	fmt.Fprintln(&buffer, "---")
+	_, _ = fmt.Fprintln(&buffer, "\n## Unclassified Issues for Review")
+	_, _ = fmt.Fprintln(&buffer, "---")
 
 	for _, item := range items {
-		fmt.Fprintf(&buffer, "\n### Issue #%d: %s\n", item.Number, item.Title)
-		fmt.Fprintln(&buffer, "```")
-		fmt.Fprintln(&buffer, item.Body)
-		fmt.Fprintln(&buffer, "```")
+		_, _ = fmt.Fprintf(&buffer, "\n### Issue #%d: %s\n", item.Number, item.Title)
+		_, _ = fmt.Fprintln(&buffer, "```")
+		_, _ = fmt.Fprintln(&buffer, item.Body)
+		_, _ = fmt.Fprintln(&buffer, "```")
 	}
 
 	return buffer.String()

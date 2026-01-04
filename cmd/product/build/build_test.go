@@ -18,8 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var errCaptureOutputNotImplemented = errors.New("CaptureOutput not implemented in mock")
+
 type mockBuildExecutor struct {
-	ExecuteFunc func(ctx context.Context, dir string, commandName string, args ...string) error
+	ExecuteFunc func(ctx context.Context, dir, commandName string, args ...string) error
 	lastCommand []string
 }
 
@@ -43,46 +45,39 @@ func (m *mockBuildExecutor) CaptureOutput(
 	_ string,
 	_ ...string,
 ) (string, string, error) {
-	//nolint:err113 // Dynamic error is appropriate here.
-	return "", "", errors.New("CaptureOutput not implemented in mock")
+	return "", "", errCaptureOutputNotImplemented
 }
 
-//nolint:revive // Unused parameter is expected in mock.
-func (m *mockBuildExecutor) CommandExists(commandName string) bool { return true }
+func (m *mockBuildExecutor) CommandExists(_ string) bool { return true }
 
 func (m *mockBuildExecutor) Logger() *slog.Logger {
-	return slog.New(slog.DiscardHandler)
+	return slog.New(slog.NewTextHandler(os.Stderr, nil))
 }
 
-func (m *mockBuildExecutor) UnderlyingExecutor() exec.CommandExecutor { return m }
+func (m *mockBuildExecutor) UnderlyingExecutor() *mockBuildExecutor { return m }
 
-//nolint:unparam // Return values are used in tests.
-func setupBuildTest(t *testing.T) (string, *exec.ExecutorClient, *cobra.Command) {
+func setupBuildTest(t *testing.T) (*exec.ExecutorClient, *cobra.Command) {
 	t.Helper()
-	tempDir := t.TempDir()
-	originalWd, err := os.Getwd()
-	require.NoError(t, err)
-	//nolint:usetesting // os.Chdir is required for test setup.
-	require.NoError(t, os.Chdir(tempDir))
-	//nolint:usetesting // os.Chdir is required for test setup.
-	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
 
-	//nolint:exhaustruct // Mock executor partial initialization is fine.
-	mockExec := &mockBuildExecutor{}
+	t.Chdir(t.TempDir())
+
+	mockExec := &mockBuildExecutor{
+		ExecuteFunc: nil,
+		lastCommand: nil,
+	}
 	execClient := exec.NewClient(mockExec)
 
 	globals.ExecClient = execClient
-	globals.AppLogger = slog.New(slog.DiscardHandler)
+	globals.AppLogger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	// Create a new command instance for each test to avoid state leakage
 	cmd := *build.BuildCmd // Make a copy
 	cmd.SetContext(context.Background())
 
-	return tempDir, execClient, &cmd
+	return execClient, &cmd
 }
 
-//nolint:unparam // Return values are used in tests.
-func runBuildCmd(cmd *cobra.Command, args []string) (string, string, error) {
+func runBuildCmd(cmd *cobra.Command, args []string) (string, error) {
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
 
@@ -99,16 +94,18 @@ func runBuildCmd(cmd *cobra.Command, args []string) (string, string, error) {
 
 	err := cmd.Execute() // Use Execute instead of RunE to ensure full Cobra lifecycle including flag parsing
 
-	return outBuf.String(), errBuf.String(), err
+	return outBuf.String(), err
 }
 
-//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 func TestBuildCmd(t *testing.T) {
+	t.Parallel()
+
 	dummyGoMain := []byte("package main\n\nfunc main() {}\n")
 
-	//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 	t.Run("success: standard optimized build", func(t *testing.T) {
-		_, execClient, cmd := setupBuildTest(t)
+		t.Parallel()
+
+		execClient, cmd := setupBuildTest(t)
 		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
 		require.True(t, ok)
 
@@ -118,7 +115,7 @@ func TestBuildCmd(t *testing.T) {
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
 
-		out, _, err := runBuildCmd(cmd, []string{})
+		out, err := runBuildCmd(cmd, []string{})
 		require.NoError(t, err)
 
 		assert.Contains(t, out, "Build successful")
@@ -135,9 +132,10 @@ func TestBuildCmd(t *testing.T) {
 		assert.Equal(t, expectedCommand, underlyingMock.lastCommand)
 	})
 
-	//nolint:paralleltest // BuildCmd uses global flags which are not thread-safe.
 	t.Run("success: debug build", func(t *testing.T) {
-		_, execClient, cmd := setupBuildTest(t)
+		t.Parallel()
+
+		execClient, cmd := setupBuildTest(t)
 		underlyingMock, ok := execClient.UnderlyingExecutor().(*mockBuildExecutor)
 		require.True(t, ok)
 
@@ -147,7 +145,7 @@ func TestBuildCmd(t *testing.T) {
 		require.NoError(t, os.MkdirAll(cmdDir, 0o750))
 		require.NoError(t, os.WriteFile(filepath.Join(cmdDir, "main.go"), dummyGoMain, 0o600))
 
-		out, _, err := runBuildCmd(cmd, []string{"--debug"}) // Pass flag to args
+		out, err := runBuildCmd(cmd, []string{"--debug"}) // Pass flag to args
 		require.NoError(t, err)
 
 		assert.Contains(t, out, "Compiling with debug symbols.")

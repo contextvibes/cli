@@ -54,12 +54,12 @@ var StatusCmd = &cobra.Command{
 			presenter.Info("Working tree is clean.")
 		} else {
 			presenter.InfoPrefixOnly()
-			//nolint:errcheck // Printing to stdout is best effort.
-			fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):")
+
+			_, _ = fmt.Fprintln(presenter.Out(), "  Current Changes (--short format):")
 			scanner := bufio.NewScanner(strings.NewReader(trimmedStdout))
 			for scanner.Scan() {
-				//nolint:errcheck // Printing to stdout is best effort.
-				fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
+
+				_, _ = fmt.Fprintf(presenter.Out(), "    %s\n", scanner.Text())
 			}
 			presenter.Newline()
 		}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "contextvibes": {
+      "label": "ContextVibes",
+      "command": "/home/user/cli/contextvibes",
+      "args": [
+        "mcp"
+      ],
+      "enabled": true
+    }
+  }
+}

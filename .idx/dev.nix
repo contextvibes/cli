@@ -1,49 +1,93 @@
-# .idx/dev.nix
-# Defines the complete, reproducible development environment for the project using Nix.
-
+# -----------------------------------------------------------------------------
+# IDX Profile: Go Container Environment (Low-Resource Optimized)
+# Version: 1.2.0 (Audited)
+# -----------------------------------------------------------------------------
 { pkgs, ... }:
 
 let
-  # Imports custom package definitions to keep the main environment configuration clean and modular.
-  contextvibes = import ./contextvibes.nix { pkgs = pkgs; };
-  golangci-lint = import ./golangci-lint.nix { pkgs = pkgs; };
+  # 1. Define the local config path
+  localConfigPath = ./local.nix;
 
+  # 2. Safely import local.nix.
+  #    Returns an empty set {} if the file is missing.
+  localEnv = if builtins.pathExists localConfigPath
+             then import localConfigPath
+             else {};
 in
 {
-  # Pins the environment to the November 2025 release to guarantee that all developers
-  # and CI pipelines operate with the exact same tool versions.
+  # Pin to Nixpkgs version (May 2025 release)
   channel = "stable-25.05";
 
-  # Installs the specific system-level tools required for the development workflow.
   packages = with pkgs; [
-    # The core language toolchain required to build and test the application.
+    # --- Go Toolchain ---
     go_1_25
-    govulncheck
-    gitleaks
-    gotools
+    gotools     # godoc, goimports, etc.
+    govulncheck # Vulnerability detection
+    gcc         # Keep this! Needed for 'go test -race' even if CGO is off by default.
 
+    # --- Cloud & Containers ---
+    google-cloud-sdk
+    docker
+    docker-compose
 
-    # Required for CGO support (building tools like Delve and gopls).
-    gcc
-
-    # Tools for managing source code history and interacting with GitHub.
-    gh
-    git
-
-    # Utilities for managing GPG keys and secrets, enabling signed commits and secure identity.
-    pass
+    # --- Security & Identity ---
     gnupg
+    pass
     pinentry-curses
+    gitleaks
 
-    # Custom CLI tools specific to this project's workflow and code quality standards.
-    contextvibes
-    golangci-lint
+    # --- Utilities ---
+    git
+    gh
+
+    # --- Local Imports ---
+    # We pass 'overrides = localEnv' so contextvibes.nix can read variables from local.nix
+    (import ./contextvibes.nix { inherit pkgs; overrides = localEnv; })
+    (import ./golangci-lint.nix { inherit pkgs; })
   ];
 
-  # Configures the VS Code editor environment to automatically provide Go language support upon startup.
+  # Enable Docker Daemon
+  services.docker.enable = true;
+
+  # ---------------------------------------------------------------------------
+  # Environment Configuration
+  # Logic: Defaults (Left) // Overrides (Right)
+  # ---------------------------------------------------------------------------
+  env = {
+    # --- Functional Defaults ---
+    GOPRIVATE = "github.com/duizendstra-com/*";
+    CGO_ENABLED = "0"; # Default to static, override to "1" in local.nix if needed
+
+    # --- Low Resource Tuning (Defaults) ---
+    # -p=1 reduces RAM usage but slows builds.
+    # Override this in local.nix if you have >4GB RAM.
+    GOFLAGS = "-p=1";
+
+    # Cap Runtime Memory to prevent OOM kills
+    GOMEMLIMIT = "1024MiB";
+
+    # Limit OS threads to prevent starvation on small VMs
+    GOMAXPROCS = "1";
+
+  } // localEnv; # <--- MERGE: local.nix values overwrite the defaults above
+
+  # VS Code & Workspace Lifecycle
   idx = {
     extensions = [
       "golang.go"
     ];
+
+    workspace = {
+      # Runs when the workspace starts (every time)
+      onStart = {
+        # Set GPG_TTY dynamically for the current session to enable pinentry
+        init-shell = ''
+          if ! grep -q "GPG_TTY" ~/.bashrc; then
+            echo '# GPG Signing Fix' >> ~/.bashrc
+            echo 'export GPG_TTY=$(tty)' >> ~/.bashrc
+          fi
+        '';
+      };
+    };
   };
 }

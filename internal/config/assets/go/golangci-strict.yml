@@ -1,0 +1,38 @@
+version: 2
+run:
+  timeout: 10m
+  modules-download-mode: readonly
+output:
+  sort-order: [file, linter]
+linters:
+  default: all
+  disable:
+    - wsl
+    - noinlineerr
+  settings:
+    depguard:
+      rules:
+        main:
+          list-mode: strict
+          files: ["$all", "!$test"]
+          allow:
+            - $gostd
+            - golang.org/x/oauth2
+            - github.com/spf13/cobra
+            - google.golang.org/grpc
+            - github.com/charmbracelet/huh
+            - gopkg.in/yaml.v3
+            - github.com/denormal/go-gitignore
+            - github.com/shurcooL/githubv4
+            - github.com/google/go-github/v74/github
+            - github.com/fatih/color
+            - github.com/mattn/go-isatty
+            - github.com/contextvibes/cli
+    gosec:
+      excludes:
+        - G101 # Hardcoded Credentials
+        - G304 # File inclusion via variable
+    errcheck:
+      # Regex to match lines starting with 'defer' and ending in 'Close()'
+      # exclude-files-matching:
+      #   - "^\\s*defer\\s+.*\\.Close\\(\\)\\s*$"

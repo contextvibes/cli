@@ -66,7 +66,7 @@ func (s *ConfigurePathStep) Execute(_ context.Context) error {
 	}
 
 	rcFile := filepath.Join(home, ".bashrc")
-	//nolint:gosec // Reading user config is intended.
+
 	contentBytes, err := os.ReadFile(rcFile)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to read %s: %w", rcFile, err)
@@ -104,8 +104,10 @@ func (s *ConfigurePathStep) Execute(_ context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to open %s: %w", rcFile, err)
 	}
-	//nolint:errcheck // Defer close is sufficient.
-	defer bashrcFile.Close()
+
+	defer func() {
+		_ = bashrcFile.Close()
+	}()
 
 	if _, err := bashrcFile.WriteString("\n# Go Tools (Local overrides System/Nix)\n" + targetLine + "\n"); err != nil {
 		return fmt.Errorf("failed to write to %s: %w", rcFile, err)

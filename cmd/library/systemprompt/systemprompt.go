@@ -46,7 +46,7 @@ var SystemPromptCmd = &cobra.Command{
 		finalPrompt.Write(content)
 
 		if systemPromptTarget != "" {
-			//nolint:gosec // Reading target prompt file based on user input is intended.
+
 			targetContent, err := os.ReadFile(filepath.Join(basePath, systemPromptTarget+".md"))
 			if err != nil {
 				//nolint:wrapcheck // Wrapping is handled by caller.
@@ -66,8 +66,8 @@ var SystemPromptCmd = &cobra.Command{
 		}
 
 		if outputPath == "-" {
-			//nolint:errcheck // Printing to stdout is best effort.
-			fmt.Fprint(presenter.Out(), finalPrompt.String())
+
+			_, _ = fmt.Fprint(presenter.Out(), finalPrompt.String())
 		} else {
 			//nolint:mnd // 0600 is standard file permission.
 			err := os.WriteFile(outputPath, []byte(finalPrompt.String()), 0o600)

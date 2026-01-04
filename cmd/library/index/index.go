@@ -21,18 +21,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	filePermUserRW = 0o600
+	magicNumber    = 100
+)
+
 //go:embed index.md.tpl
 var indexLongDescription string
 
-//nolint:gochecknoglobals // Cobra flags require package-level variables.
 var (
-	indexPathTHEA     string
-	indexPathTemplate string
-	indexPathOut      string
+	// ErrSkipDocument is returned when a document should be skipped during indexing.
+	ErrSkipDocument = errors.New("skip document")
 )
-
-// ErrSkipDocument is returned when a document should be skipped during indexing.
-var ErrSkipDocument = errors.New("skip document")
 
 // DocumentMetadata represents the metadata extracted from a document.
 type DocumentMetadata struct {
@@ -50,6 +50,7 @@ type DocumentMetadata struct {
 	SourceFilePath    string   `json:"sourceFilePath"`
 }
 
+// tempFrontMatter is used for unmarshalling the YAML front matter.
 type tempFrontMatter struct {
 	Title             string   `yaml:"title"`
 	ArtifactVersion   string   `yaml:"artifactVersion"`
@@ -62,130 +63,181 @@ type tempFrontMatter struct {
 	Tags              []string `yaml:"tags"`
 }
 
-// IndexCmd represents the index command
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
-var IndexCmd = &cobra.Command{
-	Use:     "index --thea-path <path> --template-path <path> [-o <output-file>]",
-	Example: `  contextvibes library index --thea-path ../THEA/docs -o manifest.json`,
-	Args:    cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		logger := globals.AppLogger
+// NewIndexCmd creates and configures the `index` command.
+func NewIndexCmd() *cobra.Command {
+	// Use local variables for flags to avoid global state.
+	var indexPathTHEA, indexPathTemplate, indexPathOut string
 
-		var allMetadata []DocumentMetadata
-		processedFiles := make(map[string]bool)
+	cmd := &cobra.Command{
+		Use:     "index --thea-path <path> --template-path <path> [-o <output-file>]",
+		Short:   "Indexes documentation files into a JSON manifest.",
+		Example: `  contextvibes library index --thea-path ../THEA/docs -o manifest.json`,
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Pass flag values to the actual run function.
+			return runIndex(cmd, indexPathTHEA, indexPathTemplate, indexPathOut)
+		},
+		// Boilerplate
+		GroupID:                    "",
+		Long:                       "", // Will be set from embedded doc
+		Aliases:                    []string{},
+		SuggestFor:                 []string{},
+		ValidArgs:                  []string{},
+		ValidArgsFunction:          nil,
+		ArgAliases:                 []string{},
+		BashCompletionFunction:     "",
+		Deprecated:                 "",
+		Annotations:                nil,
+		Version:                    "",
+		PersistentPreRun:           nil,
+		PersistentPreRunE:          nil,
+		PreRun:                     nil,
+		PreRunE:                    nil,
+		Run:                        nil,
+		PostRun:                    nil,
+		PostRunE:                   nil,
+		PersistentPostRun:          nil,
+		PersistentPostRunE:         nil,
+		FParseErrWhitelist:         cobra.FParseErrWhitelist{UnknownFlags: true},
+		CompletionOptions:          cobra.CompletionOptions{DisableDefaultCmd: true},
+		TraverseChildren:           false,
+		Hidden:                     false,
+		SilenceErrors:              true,
+		SilenceUsage:               true,
+		DisableFlagParsing:         false,
+		DisableAutoGenTag:          true,
+		DisableFlagsInUseLine:      false,
+		DisableSuggestions:         false,
+		SuggestionsMinimumDistance: 0,
+	}
 
-		if indexPathTHEA != "" {
-			theaMetadata, err := processDirectory(indexPathTHEA, "THEA", processedFiles, logger)
-			if err != nil {
-				presenter.Error("Error processing THEA directory: %v", err)
-			}
-			allMetadata = append(allMetadata, theaMetadata...)
-		}
+	desc, err := cmddocs.ParseAndExecute(indexLongDescription, nil)
+	if err == nil {
+		cmd.Long = desc.Long
+	}
 
-		if indexPathTemplate != "" {
-			templateMetadata, err := processDirectory(
-				indexPathTemplate,
-				"Template",
-				processedFiles,
-				logger,
-			)
-			if err != nil {
-				presenter.Error("Error processing Template directory: %v", err)
-			}
-			allMetadata = append(allMetadata, templateMetadata...)
-		}
+	cmd.Flags().StringVar(&indexPathTHEA, "thea-path", "", "Path to the THEA directory to index.")
+	cmd.Flags().StringVar(&indexPathTemplate, "template-path", "", "Path to the template directory to index.")
+	cmd.Flags().StringVarP(&indexPathOut, "output", "o", "project_manifest.json", "Output path for the JSON manifest.")
 
-		jsonData, err := json.MarshalIndent(allMetadata, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
-		}
-
-		//nolint:mnd,noinlineerr // 0600 is standard file permission, inline check is standard.
-		if err := os.WriteFile(indexPathOut, jsonData, 0o600); err != nil {
-			return fmt.Errorf("failed to write index file to %s: %w", indexPathOut, err)
-		}
-
-		presenter.Success("Successfully created document manifest at: %s", indexPathOut)
-
-		return nil
-	},
+	return cmd
 }
 
-func processDirectory(
-	rootPath, baseDirName string,
-	_ map[string]bool,
-	logger *slog.Logger,
-) ([]DocumentMetadata, error) {
+// runIndex executes the core logic of the index command.
+func runIndex(cmd *cobra.Command, theaPath, templatePath, outPath string) error {
+	presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
+	logger := globals.AppLogger
+
+	allMetadata := make([]DocumentMetadata, 0, magicNumber)
+
+	if theaPath != "" {
+		theaMetadata, err := processDirectory(theaPath, logger)
+		if err != nil {
+			presenter.Error("Error processing THEA directory: %v", err)
+		}
+
+		allMetadata = append(allMetadata, theaMetadata...)
+	}
+
+	if templatePath != "" {
+		templateMetadata, err := processDirectory(templatePath, logger)
+		if err != nil {
+			presenter.Error("Error processing Template directory: %v", err)
+		}
+
+		allMetadata = append(allMetadata, templateMetadata...)
+	}
+
+	jsonData, err := json.MarshalIndent(allMetadata, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
+	}
+
+	if err := os.WriteFile(outPath, jsonData, filePermUserRW); err != nil {
+		return fmt.Errorf("failed to write index file to %s: %w", outPath, err)
+	}
+
+	presenter.Success("Successfully created document manifest at: %s", outPath)
+
+	return nil
+}
+
+// processDirectory walks a directory and parses metadata from markdown files.
+func processDirectory(rootPath string, logger *slog.Logger) ([]DocumentMetadata, error) {
 	var metadataList []DocumentMetadata
 
 	absRootPath, err := filepath.Abs(rootPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path: %w", err)
+		return nil, fmt.Errorf("failed to get absolute path for %s: %w", rootPath, err)
 	}
 
-	err = filepath.WalkDir(
-		absRootPath,
-		//nolint:varnamelen // 'd' is standard for DirEntry.
-		func(currentPath string, d fs.DirEntry, walkErr error) error {
-			if walkErr != nil || d.IsDir() {
-				//nolint:nilerr // Returning nil to continue walking is intended.
-				return nil
-			}
+	err = filepath.WalkDir(absRootPath, func(currentPath string, dirEntry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr // Stop walking on file system errors.
+		}
 
-			if !(strings.HasSuffix(d.Name(), ".md")) {
-				return nil
-			}
+		if dirEntry.IsDir() || !strings.HasSuffix(dirEntry.Name(), ".md") {
+			return nil // Continue walking.
+		}
 
-			fileInfo, _ := d.Info()
-			docMeta, parseErr := parseFrontMatterAndDerive(
-				currentPath,
-				absRootPath,
-				baseDirName,
-				fileInfo,
-			)
+		fileInfo, err := dirEntry.Info()
+		if err != nil {
+			logger.Warn("Failed to get file info, skipping", "path", currentPath, "error", err)
 
-			if errors.Is(parseErr, ErrSkipDocument) {
-				return nil
-			}
+			return nil // Continue walking.
+		}
 
-			if parseErr != nil {
-				// Log warning but continue walking
-				logger.Warn("Failed to parse document", "path", currentPath, "error", parseErr)
+		docMeta, parseErr := parseFrontMatterAndDerive(currentPath, absRootPath, fileInfo)
+		if errors.Is(parseErr, ErrSkipDocument) {
+			return nil // Intentionally skip this document and continue.
+		}
 
-				return nil
-			}
+		if parseErr != nil {
+			logger.Warn("Failed to parse document, skipping", "path", currentPath, "error", parseErr)
 
-			if docMeta != nil {
-				metadataList = append(metadataList, *docMeta)
-			}
+			return nil // Continue walking.
+		}
 
-			return nil
-		},
-	)
+		metadataList = append(metadataList, *docMeta)
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error walking directory: %w", err)
+		return nil, fmt.Errorf("error walking directory %s: %w", rootPath, err)
 	}
 
 	return metadataList, nil
 }
 
-func parseFrontMatterAndDerive(
-	filePath, rootPath, _ string,
-	fileInfo fs.FileInfo,
-) (*DocumentMetadata, error) {
-	//nolint:gosec // Reading file is intended.
+// parseFrontMatterAndDerive opens a file and orchestrates the parsing of its metadata.
+func parseFrontMatterAndDerive(filePath, rootPath string, fileInfo fs.FileInfo) (*DocumentMetadata, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("opening file: %w", err)
 	}
-	//nolint:errcheck // Defer close is sufficient.
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	defer func() { _ = file.Close() }()
 
-	var frontMatterLines []string
+	frontMatterLines, found := extractFrontMatter(bufio.NewScanner(file))
+	if !found {
+		return nil, ErrSkipDocument
+	}
+
+	fmData, err := parseFrontMatterData(frontMatterLines)
+	if err != nil {
+		return nil, fmt.Errorf("parsing front matter YAML: %w", err)
+	}
+
+	if strings.TrimSpace(fmData.Title) == "" {
+		return nil, ErrSkipDocument // Skip if title is missing.
+	}
+
+	return buildDocumentMetadata(fmData, filePath, rootPath, fileInfo)
+}
+
+// extractFrontMatter scans a file line-by-line to find and return the front matter content.
+func extractFrontMatter(scanner *bufio.Scanner) ([]string, bool) {
+	var lines []string
 
 	inFrontMatter := false
 
@@ -194,60 +246,58 @@ func parseFrontMatterAndDerive(
 		if strings.TrimSpace(line) == "---" {
 			if !inFrontMatter {
 				inFrontMatter = true
-
-				continue
+			} else {
+				// End of front matter found.
+				return lines, true
 			}
-
-			break
-		}
-
-		if inFrontMatter {
-			frontMatterLines = append(frontMatterLines, line)
+		} else if inFrontMatter {
+			lines = append(lines, line)
 		}
 	}
 
-	if !inFrontMatter || len(frontMatterLines) == 0 {
-		return nil, ErrSkipDocument
-	}
+	// Reached end of file.
+	return lines, inFrontMatter
+}
 
+// parseFrontMatterData unmarshals the raw front matter lines into a struct.
+func parseFrontMatterData(frontMatterLines []string) (*tempFrontMatter, error) {
 	var fmData tempFrontMatter
-	if err := yaml.Unmarshal([]byte(strings.Join(frontMatterLines, "\n")), &fmData); err != nil {
-		return nil, fmt.Errorf("failed to parse front matter: %w", err)
+
+	yamlContent := strings.Join(frontMatterLines, "\n")
+	if err := yaml.Unmarshal([]byte(yamlContent), &fmData); err != nil {
+		return nil, fmt.Errorf("unmarshalling yaml: %w", err)
 	}
 
-	if strings.TrimSpace(fmData.Title) == "" {
-		return nil, ErrSkipDocument
+	return &fmData, nil
+}
+
+// buildDocumentMetadata constructs the final metadata object from parsed and derived data.
+func buildDocumentMetadata(
+	fmData *tempFrontMatter,
+	filePath,
+	rootPath string,
+	fileInfo fs.FileInfo,
+) (*DocumentMetadata, error) {
+	relPath, err := filepath.Rel(rootPath, filePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not determine relative path: %w", err)
 	}
 
-	relPath, _ := filepath.Rel(rootPath, filePath)
 	ext := filepath.Ext(relPath)
 	id := strings.TrimSuffix(relPath, ext)
 
-	//nolint:exhaustruct // Partial initialization is sufficient.
-	docMeta := &DocumentMetadata{
-		ID:               id,
-		FileExtension:    strings.TrimPrefix(ext, "."),
-		Title:            fmData.Title,
-		LastModifiedDate: fileInfo.ModTime().UTC().Format(time.RFC3339),
-		// ... (other fields) ...
-	}
-
-	return docMeta, nil
-}
-
-//nolint:gochecknoinits // Cobra requires init() for command registration.
-func init() {
-	desc, err := cmddocs.ParseAndExecute(indexLongDescription, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	IndexCmd.Short = desc.Short
-	IndexCmd.Long = desc.Long
-	IndexCmd.Flags().
-		StringVar(&indexPathTHEA, "thea-path", "", "Path to the THEA directory to index.")
-	IndexCmd.Flags().
-		StringVar(&indexPathTemplate, "template-path", "", "Path to the template directory to index.")
-	IndexCmd.Flags().
-		StringVarP(&indexPathOut, "output", "o", "project_manifest.json", "Output path for the JSON manifest.")
+	return &DocumentMetadata{
+		ID:                id,
+		FileExtension:     strings.TrimPrefix(ext, "."),
+		Title:             fmData.Title,
+		LastModifiedDate:  fileInfo.ModTime().UTC().Format(time.RFC3339),
+		ArtifactVersion:   fmData.ArtifactVersion,
+		Summary:           fmData.Summary,
+		UsageGuidance:     fmData.UsageGuidance,
+		Owner:             fmData.Owner,
+		CreatedDate:       fmData.CreatedDate,
+		DefaultTargetPath: fmData.DefaultTargetPath,
+		Tags:              fmData.Tags,
+		SourceFilePath:    relPath,
+	}, nil
 }

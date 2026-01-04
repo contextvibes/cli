@@ -116,8 +116,8 @@ var SummaryCmd = &cobra.Command{
 			presenter.Info("No active epics found.")
 		} else {
 			for _, item := range limit(epics, maxEpicsToList) {
-				//nolint:errcheck // Printing to stdout is best effort.
-				fmt.Fprintf(presenter.Out(), "  • #%d: %s\n", item.Number, item.Title)
+
+				_, _ = fmt.Fprintf(presenter.Out(), "  • #%d: %s\n", item.Number, item.Title)
 			}
 		}
 
@@ -126,8 +126,7 @@ var SummaryCmd = &cobra.Command{
 }
 
 func printItem(p *ui.Presenter, item workitem.WorkItem) {
-	//nolint:errcheck // Printing to stdout is best effort.
-	fmt.Fprintf(p.Out(), "  - [#%d] %s\n", item.Number, item.Title)
+	_, _ = fmt.Fprintf(p.Out(), "  - [#%d] %s\n", item.Number, item.Title)
 }
 
 func limit(items []workitem.WorkItem, limitCount int) []workitem.WorkItem {

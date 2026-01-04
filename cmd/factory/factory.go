@@ -3,6 +3,7 @@ package factory
 
 import (
 	"github.com/contextvibes/cli/cmd/factory/apply"
+	"github.com/contextvibes/cli/cmd/factory/bootstrap"
 	"github.com/contextvibes/cli/cmd/factory/commit"
 	"github.com/contextvibes/cli/cmd/factory/deploy"
 	"github.com/contextvibes/cli/cmd/factory/diff"
@@ -10,37 +11,62 @@ import (
 	init_cmd "github.com/contextvibes/cli/cmd/factory/init"
 	"github.com/contextvibes/cli/cmd/factory/kickoff"
 	"github.com/contextvibes/cli/cmd/factory/plan"
+	"github.com/contextvibes/cli/cmd/factory/scaffold"
 	"github.com/contextvibes/cli/cmd/factory/scrub"
 	"github.com/contextvibes/cli/cmd/factory/setupidentity"
+	"github.com/contextvibes/cli/cmd/factory/squash"
 	"github.com/contextvibes/cli/cmd/factory/status"
 	"github.com/contextvibes/cli/cmd/factory/sync"
 	"github.com/contextvibes/cli/cmd/factory/tidy"
-	"github.com/contextvibes/cli/cmd/factory/tools" // Added
+	"github.com/contextvibes/cli/cmd/factory/tools"
+	"github.com/contextvibes/cli/cmd/factory/upgradecli"
 	"github.com/spf13/cobra"
 )
 
-// FactoryCmd represents the base command for the 'factory' subcommand group.
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
-var FactoryCmd = &cobra.Command{
-	Use:   "factory",
-	Short: "Commands for your workflow and machinery (the 'how').",
+// NewFactoryCmd creates and configures the `factory` command and its subcommands.
+func NewFactoryCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "factory",
+		Short: "Commands for your workflow and machinery (the 'how').",
+		Long: `The factory commands provide the tools to manage the mechanics of your
+development workflow. These are the commands that are typically chained
+together by higher-level commands.`,
+		Example:       "contextvibes factory --help",
+		GroupID:       "core",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Help()
+		},
+	}
+
+	// Define Command Groups and add subcommands
+	cmd.AddGroup(&cobra.Group{ID: "factory", Title: "Factory Operations"})
+	addSubCommands(cmd)
+
+	return cmd
 }
 
-//nolint:gochecknoinits // Cobra requires init() for command registration.
-func init() {
-	FactoryCmd.AddCommand(init_cmd.InitCmd)
-	FactoryCmd.AddCommand(kickoff.KickoffCmd)
-	FactoryCmd.AddCommand(commit.CommitCmd)
-	FactoryCmd.AddCommand(status.StatusCmd)
-	FactoryCmd.AddCommand(diff.DiffCmd)
-	FactoryCmd.AddCommand(sync.SyncCmd)
-	FactoryCmd.AddCommand(finish.FinishCmd)
-	FactoryCmd.AddCommand(tidy.TidyCmd)
-	FactoryCmd.AddCommand(plan.PlanCmd)
-	FactoryCmd.AddCommand(apply.ApplyCmd)
-	FactoryCmd.AddCommand(deploy.DeployCmd)
-	FactoryCmd.AddCommand(scrub.ScrubCmd)
-	FactoryCmd.AddCommand(setupidentity.SetupIdentityCmd)
-	FactoryCmd.AddCommand(tools.ToolsCmd) // Added
+// addSubCommands is a helper to keep the NewFactoryCmd cleaner.
+func addSubCommands(cmd *cobra.Command) {
+	cmd.AddCommand(
+		bootstrap.BootstrapCmd,
+		init_cmd.InitCmd,
+		kickoff.KickoffCmd,
+		commit.CommitCmd,
+		status.StatusCmd,
+		diff.DiffCmd,
+		sync.SyncCmd,
+		finish.FinishCmd,
+		tidy.TidyCmd,
+		plan.PlanCmd,
+		apply.ApplyCmd,
+		deploy.DeployCmd,
+		scrub.ScrubCmd,
+		setupidentity.NewSetupIdentityCmd(),
+		tools.ToolsCmd,
+		scaffold.ScaffoldCmd,
+		upgradecli.UpgradeCliCmd,
+		squash.NewSquashCmd(),
+	)
 }

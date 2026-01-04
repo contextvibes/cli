@@ -20,51 +20,69 @@ import (
 //go:embed run.md.tpl
 var runLongDescription string
 
-// RunCmd represents the run command.
-//
-//nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
-var RunCmd = &cobra.Command{
-	Use:     "run",
-	Example: `  contextvibes product run`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
-		ctx := cmd.Context()
+// NewRunCmd creates and configures the `run` command.
+func NewRunCmd() *cobra.Command {
+	desc, err := cmddocs.ParseAndExecute(runLongDescription, nil)
+	if err != nil {
+		panic(err)
+	}
 
-		presenter.Header("--- Example Runner ---")
+	cmd := &cobra.Command{
+		Use:               "run",
+		Short:             desc.Short,
+		Long:              desc.Long,
+		Example:           `  contextvibes product run`,
+		RunE:              runE,
+		DisableAutoGenTag: true,
+	}
 
-		examples, err := findRunnableExamples(".")
-		if err != nil {
-			return err
-		}
-		if len(examples) == 0 {
-			presenter.Warning("No runnable examples found in the './examples' directory.")
+	return cmd
+}
 
-			return nil
-		}
+func runE(cmd *cobra.Command, _ []string) error {
+	presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
+	ctx := cmd.Context()
 
-		choice, err := presenter.PromptForSelect("Please select an example to run:", examples)
-		if err != nil || choice == "" {
-			return nil // User aborted
-		}
+	presenter.Header("--- Example Runner ---")
 
-		err = runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice)
-		if err != nil {
-			//nolint:err113 // Dynamic error is appropriate here.
-			return errors.New("prerequisite verification failed")
-		}
+	examples, err := findRunnableExamples(".")
+	if err != nil {
+		return err
+	}
 
-		presenter.Newline()
-		presenter.Step("Executing example: %s...", presenter.Highlight(choice))
-		err = globals.ExecClient.Execute(ctx, ".", "go", "run", "./"+choice)
-		if err != nil {
-			//nolint:err113 // Dynamic error is appropriate here.
-			return errors.New("example execution failed")
-		}
-
-		globals.AppLogger.InfoContext(ctx, "Successfully launched example", "example_path", choice)
+	if len(examples) == 0 {
+		presenter.Warning("No runnable examples found in the './examples' directory.")
 
 		return nil
-	},
+	}
+
+	choice, err := presenter.PromptForSelect("Please select an example to run:", examples)
+	if err != nil {
+		return fmt.Errorf("failed to prompt for selection: %w", err)
+	}
+
+	if choice == "" {
+		return nil // User aborted selection
+	}
+
+	err = runVerificationChecks(ctx, presenter, globals.ExecClient, globals.LoadedAppConfig, choice)
+	if err != nil {
+		//nolint:err113 // Dynamic error is appropriate here.
+		return errors.New("prerequisite verification failed")
+	}
+
+	presenter.Newline()
+	presenter.Step("Executing example: %s...", presenter.Highlight(choice))
+
+	err = globals.ExecClient.Execute(ctx, ".", "go", "run", "./"+choice)
+	if err != nil {
+		//nolint:err113 // Dynamic error is appropriate here.
+		return errors.New("example execution failed")
+	}
+
+	globals.AppLogger.InfoContext(ctx, "Successfully launched example", "example_path", choice)
+
+	return nil
 }
 
 func runVerificationChecks(
@@ -131,15 +149,4 @@ func findRunnableExamples(rootDir string) ([]string, error) {
 	}
 
 	return examples, nil
-}
-
-//nolint:gochecknoinits // Cobra requires init() for command registration.
-func init() {
-	desc, err := cmddocs.ParseAndExecute(runLongDescription, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	RunCmd.Short = desc.Short
-	RunCmd.Long = desc.Long
 }

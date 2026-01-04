@@ -481,6 +481,53 @@ func (c *GitClient) StashPush(ctx context.Context) error {
 	return nil
 }
 
+// GetMergeBase finds the common ancestor between HEAD and the target branch.
+func (c *GitClient) GetMergeBase(ctx context.Context, targetBranch string) (string, error) {
+	out, _, err := c.captureGitOutput(ctx, "merge-base", "HEAD", targetBranch)
+	if err != nil {
+		return "", fmt.Errorf("failed to find merge base with %s: %w", targetBranch, err)
+	}
+
+	return strings.TrimSpace(out), nil
+}
+
+// ResetSoft moves the current HEAD to the target commit, leaving changes staged.
+func (c *GitClient) ResetSoft(ctx context.Context, targetCommit string) error {
+	err := c.runGit(ctx, "reset", "--soft", targetCommit)
+	if err != nil {
+		return fmt.Errorf("git reset --soft failed: %w", err)
+	}
+
+	return nil
+}
+
+// ForcePushLease performs a safe force push.
+func (c *GitClient) ForcePushLease(ctx context.Context, branch string) error {
+	remote := c.RemoteName()
+
+	err := c.runGit(ctx, "push", "--force-with-lease", remote, branch)
+	if err != nil {
+		return fmt.Errorf("git push --force-with-lease failed: %w", err)
+	}
+
+	return nil
+}
+
+// GetCommitCount returns the number of commits between two references (e.g., "main..HEAD").
+func (c *GitClient) GetCommitCount(ctx context.Context, rangeSpec string) (int, error) {
+	out, _, err := c.captureGitOutput(ctx, "rev-list", "--count", rangeSpec)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count commits: %w", err)
+	}
+
+	var count int
+	if _, err := fmt.Sscanf(strings.TrimSpace(out), "%d", &count); err != nil {
+		return 0, fmt.Errorf("failed to parse commit count: %w", err)
+	}
+
+	return count, nil
+}
+
 func (c *GitClient) runGit(ctx context.Context, args ...string) error {
 	// Logger().Debug(...) is already part of executor.Execute
 	//nolint:wrapcheck // Wrapping is handled by caller or executor.
