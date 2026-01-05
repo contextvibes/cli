@@ -12,6 +12,7 @@ import (
 	"github.com/contextvibes/cli/internal/codemod"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
+	"github.com/contextvibes/cli/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -19,19 +20,37 @@ import (
 var codemodLongDescription string
 
 //nolint:gochecknoglobals // Cobra flags require package-level variables.
-var codemodScriptPath string
+var (
+	codemodScriptPath string
+	aiAssist          bool
+)
 
 // CodemodCmd represents the codemod command.
 //
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CodemodCmd = &cobra.Command{
-	Use: "codemod [--script <file.json>]",
-	Example: `  contextvibes product codemod # Looks for codemod.json
-  contextvibes product codemod --script ./my_refactor_script.json`,
-	Args: cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	Use: "codemod [files...] [--script <file.json>] | --ai",
+	Example: `  contextvibes product codemod --script ./plan.json
+  contextvibes product codemod cmd/main.go --ai`,
+	Args: cobra.ArbitraryArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
+		ctx := cmd.Context()
 
+		// 1. Handle AI Mode (Generate Prompt)
+		if aiAssist {
+			runner := workflow.NewRunner(presenter, globals.AssumeYes)
+			return runner.Run(
+				ctx,
+				"Generating AI Refactoring Prompt",
+				&workflow.GenerateRefactorPromptStep{
+					Files:     args,
+					Presenter: presenter,
+				},
+			)
+		}
+
+		// 2. Standard Codemod Logic (Apply Script)
 		scriptToLoad := codemodScriptPath
 		if scriptToLoad == "" {
 			scriptToLoad = "codemod.json"
@@ -66,7 +85,10 @@ var CodemodCmd = &cobra.Command{
 						return fmt.Errorf("invalid regex '%s': %w", op.FindRegex, err)
 					}
 					currentContent = re.ReplaceAllString(currentContent, op.ReplaceWith)
-					// Add other operations here
+				case "create_or_overwrite":
+					if op.Content != nil {
+						currentContent = *op.Content
+					}
 				}
 			}
 
@@ -101,4 +123,6 @@ func init() {
 	CodemodCmd.Long = desc.Long
 	CodemodCmd.Flags().
 		StringVarP(&codemodScriptPath, "script", "s", "", "Path to the JSON codemod script file")
+	CodemodCmd.Flags().
+		BoolVar(&aiAssist, "ai", false, "Generate a prompt for an AI to refactor the specified files")
 }

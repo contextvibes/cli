@@ -20,10 +20,10 @@ builds:
     binary: contextvibes
     ldflags:
       - -s -w
-      - -X github.com/contextvibes/cli/cmd/version.Version={{.Version}}
-      - -X github.com/contextvibes/cli/cmd/version.Commit={{.Commit}}
-      - -X github.com/contextvibes/cli/cmd/version.Date={{.Date}}
-      - -X github.com/contextvibes/cli/cmd/version.BuiltBy=goreleaser
+      - -X github.com/contextvibes/cli/internal/build.Version={{.Version}}
+      - -X github.com/contextvibes/cli/internal/build.Commit={{.Commit}}
+      - -X github.com/contextvibes/cli/internal/build.Date={{.Date}}
+      - -X github.com/contextvibes/cli/internal/build.BuiltBy=goreleaser
 
 archives:
   - format: tar.gz

@@ -13,6 +13,7 @@ import (
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
+	"github.com/contextvibes/cli/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -20,30 +21,66 @@ import (
 var commitLongDescription string
 
 //nolint:gochecknoglobals // Cobra flags require package-level variables.
-var commitMessages []string
+var (
+	commitMessages []string
+	aiAssist       bool
+)
 
 // CommitCmd represents the commit command.
 //
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var CommitCmd = &cobra.Command{
-	Use:     "commit -m <msg> [-m <body>]",
-	Example: `  contextvibes factory commit -m "feat(auth): Add login" -m "Details about the login logic."`,
-	Args:    cobra.NoArgs,
+	Use: "commit -m <msg> [-m <body>] | --ai",
+	Example: `  contextvibes factory commit -m "feat(auth): Add login"
+  contextvibes factory commit --ai`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
-		if len(commitMessages) == 0 {
-			//nolint:err113 // Dynamic error is appropriate here.
-			return errors.New("commit message is required via -m flag")
+		// 1. Initialize Git Client
+		//nolint:exhaustruct // Partial config is sufficient.
+		gitCfg := git.GitClientConfig{
+			Logger:                globals.AppLogger,
+			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
+			DefaultMainBranchName: globals.LoadedAppConfig.Git.DefaultMainBranch,
+			Executor:              globals.ExecClient.UnderlyingExecutor(),
+		}
+		client, err := git.NewClient(ctx, ".", gitCfg)
+		if err != nil {
+			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
 
-		// 1. Construct the full message (Subject + Body)
-		// Git standard is to separate multiple -m flags with a blank line.
-		fullMessage := strings.Join(commitMessages, "\n\n")
+		// 2. Handle AI Mode
+		if aiAssist {
+			runner := workflow.NewRunner(presenter, globals.AssumeYes)
+			return runner.Run(
+				ctx,
+				"Generating AI Commit Prompt",
+				&workflow.EnsureNotMainBranchStep{
+					GitClient: client,
+					Presenter: presenter,
+				},
+				&workflow.EnsureStagedStep{
+					GitClient: client,
+					Presenter: presenter,
+					AssumeYes: globals.AssumeYes,
+				},
+				&workflow.GenerateCommitPromptStep{
+					GitClient: client,
+					Presenter: presenter,
+				},
+			)
+		}
 
-		// 2. Validate ONLY the Subject (First line)
-		// We split by newline to isolate the subject for regex checking.
+		// 3. Standard Commit Logic
+		if len(commitMessages) == 0 {
+			//nolint:err113 // Dynamic error is appropriate here.
+			return errors.New("commit message is required via -m flag (or use --ai)")
+		}
+
+		// Construct the full message (Subject + Body)
+		fullMessage := strings.Join(commitMessages, "\n\n")
 		subject, _, _ := strings.Cut(fullMessage, "\n")
 
 		validationRule := globals.LoadedAppConfig.Validation.CommitMessage
@@ -69,20 +106,7 @@ var CommitCmd = &cobra.Command{
 			}
 		}
 
-		// 3. Initialize Git Client
-		//nolint:exhaustruct // Partial config is sufficient.
-		gitCfg := git.GitClientConfig{
-			Logger:                globals.AppLogger,
-			DefaultRemoteName:     globals.LoadedAppConfig.Git.DefaultRemote,
-			DefaultMainBranchName: globals.LoadedAppConfig.Git.DefaultMainBranch,
-			Executor:              globals.ExecClient.UnderlyingExecutor(),
-		}
-		client, err := git.NewClient(ctx, ".", gitCfg)
-		if err != nil {
-			return fmt.Errorf("failed to initialize git client: %w", err)
-		}
-
-		// 4. Stage Changes
+		// Stage Changes
 		if err := client.AddAll(ctx); err != nil {
 			return fmt.Errorf("failed to stage changes: %w", err)
 		}
@@ -93,20 +117,16 @@ var CommitCmd = &cobra.Command{
 		}
 		if !hasStaged {
 			presenter.Info("No changes were staged for commit.")
-
 			return nil
 		}
 
-		// 5. Confirm and Commit
+		// Confirm and Commit
 		currentBranch, _ := client.GetCurrentBranchName(ctx)
 		statusOutput, _, _ := client.GetStatusShort(ctx)
 
 		presenter.InfoPrefixOnly()
-
 		_, _ = fmt.Fprintf(presenter.Out(), "  Branch: %s\n", currentBranch)
-
 		_, _ = fmt.Fprintf(presenter.Out(), "  Subject: %s\n", subject)
-
 		_, _ = fmt.Fprintf(presenter.Out(), "  Staged Changes:\n%s\n", statusOutput)
 
 		if !globals.AssumeYes {
@@ -130,7 +150,8 @@ func init() {
 
 	CommitCmd.Short = desc.Short
 	CommitCmd.Long = desc.Long
-	// Use StringArrayVarP to allow multiple -m flags
 	CommitCmd.Flags().
 		StringArrayVarP(&commitMessages, "message", "m", []string{}, "Commit message (can be repeated for body)")
+	CommitCmd.Flags().
+		BoolVar(&aiAssist, "ai", false, "Generate a prompt for an AI to write the commit message")
 }

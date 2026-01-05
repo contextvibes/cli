@@ -10,11 +10,15 @@ import (
 	"github.com/contextvibes/cli/internal/git"
 	"github.com/contextvibes/cli/internal/globals"
 	"github.com/contextvibes/cli/internal/ui"
+	"github.com/contextvibes/cli/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
 //go:embed finish.md.tpl
 var finishLongDescription string
+
+//nolint:gochecknoglobals // Cobra flags require package-level variables.
+var aiAssist bool
 
 // FinishCmd represents the finish command.
 //
@@ -24,8 +28,6 @@ var FinishCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
-
-		presenter.Summary("Finishing work on the current branch.")
 
 		//nolint:exhaustruct // Partial config is sufficient.
 		gitClient, err := git.NewClient(
@@ -39,6 +41,26 @@ var FinishCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to initialize git client: %w", err)
 		}
+
+		// 1. Handle AI Mode
+		if aiAssist {
+			runner := workflow.NewRunner(presenter, globals.AssumeYes)
+			return runner.Run(
+				ctx,
+				"Generating AI PR Description Prompt",
+				&workflow.EnsureNotMainBranchStep{
+					GitClient: gitClient,
+					Presenter: presenter,
+				},
+				&workflow.GeneratePRDescriptionPromptStep{
+					GitClient: gitClient,
+					Presenter: presenter,
+				},
+			)
+		}
+
+		// 2. Standard Finish Logic
+		presenter.Summary("Finishing work on the current branch.")
 
 		currentBranch, err := gitClient.GetCurrentBranchName(ctx)
 		if err != nil {
@@ -91,4 +113,6 @@ func init() {
 
 	FinishCmd.Short = desc.Short
 	FinishCmd.Long = desc.Long
+	FinishCmd.Flags().
+		BoolVar(&aiAssist, "ai", false, "Generate a prompt for an AI to write the PR description")
 }

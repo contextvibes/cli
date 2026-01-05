@@ -1,10 +1,28 @@
-cat <<EOF > CHANGELOG.md
 # Changelog
 
 All notable changes to the **Context Vibes CLI** project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [Unreleased]
+
+### Deprecated
+- **\`craft\` Command Pillar:** The \`craft\` command group has been deprecated. Its functionality has been integrated directly into the core \`factory\` and \`product\` commands to streamline the workflow.
+
+### Added
+- **AI-Assisted Flags (`--ai`):** Added a global-style \`--ai\` flag to key commands to generate optimized prompts for external AI assistants:
+  - \`factory commit --ai\`: Replaces \`craft message\`. Generates a Conventional Commit message prompt based on staged changes.
+  - \`factory finish --ai\`: Replaces \`craft pr-description\`. Generates a Pull Request description prompt based on branch diffs.
+  - \`product quality --ai\`: Replaces \`craft review\`. Generates a Code Review prompt for the codebase.
+  - \`product codemod --ai\`: Replaces \`craft refactor\`. Generates a Refactoring Plan prompt for specific files.
+- **Strategic Kickoff Integration:**
+  - \`factory kickoff --strategic\`: Replaces \`craft kickoff\`. Generates the master protocol for an AI-guided strategic project kickoff.
+
+### Changed
+- **Workflow Architecture:** Refactored internal workflow steps to be reusable across different commands, enabling the "AI as a feature" model.
 
 ---
 
@@ -265,7 +283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 Link Definitions
 -->
-[Unreleased]: https://github.com/contextvibes/cli/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/contextvibes/cli/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/contextvibes/cli/compare/v0.4.1...v0.6.0
 [0.4.1]: https://github.com/contextvibes/cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/contextvibes/cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/contextvibes/cli/compare/v0.2.0...v0.3.0
@@ -276,4 +295,3 @@ Link Definitions
 [0.0.3]: https://github.com/contextvibes/cli/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/contextvibes/cli/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/contextvibes/cli/releases/tag/v0.0.1
-EOF

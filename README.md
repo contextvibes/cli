@@ -26,10 +26,10 @@ Context Vibes is a command-line tool designed to streamline common development t
 * **Consistency:** Provides a unified interface and terminal output style for frequent actions (`commit`, `sync`, `deploy`, etc.).
 * **Automation:** Simplifies multi-step processes and provides non-interactive options via the global `--yes` flag. Designed for use in scripts or by AI agents.
 * **AI Integration:**
-  * Generates a `contextvibes.md` context file (`describe`, `diff`) suitable for AI prompts.
-  * The `kickoff --strategic` command generates a master prompt file to guide an AI-facilitated strategic project kickoff.
-  * Produces structured terminal output suitable for human review or direct AI parsing.
-  * Generates a detailed JSON trace log (default: `contextvibes_ai_trace.log`, configurable) for deeper AI analysis or debugging.
+  * **AI-Assisted Workflows:** Use the `--ai` flag on core commands (`commit`, `finish`, `quality`, `codemod`) to generate optimized prompts for your AI assistant.
+  * **Context Generation:** Generates a `contextvibes.md` context file (`describe`, `diff`) suitable for AI prompts.
+  * **Strategic Planning:** The `kickoff --strategic` command generates a master prompt to guide an AI-facilitated strategic project kickoff.
+  * **Traceability:** Produces structured terminal output and a detailed JSON trace log (default: `contextvibes_ai_trace.log`) for deeper AI analysis.
 * **Clarity & Safety:** Uses distinct output formats and requires confirmation for state-changing operations (unless `--yes` is specified).
 * **Configurability:** Supports a `.contextvibes.yaml` file for customizing default behaviors (Git, validation rules, logging, AI interaction preferences). See the [Configuration Reference](docs/reference/configuration_reference.md) for details.
 
@@ -37,12 +37,17 @@ Context Vibes is a command-line tool designed to streamline common development t
 
 * **AI Context Generation:** `describe`, `diff`.
 * **Enhanced Git Workflow Automation:**
-  * `kickoff`: Dual-mode for AI-assisted strategic project kickoff prompt generation OR daily development branch creation.
-  * `commit`, `sync`, `wrapup`, `status` (Configurable branch/commit rules).
+  * `kickoff`: Starts a new task. Use `--strategic` for AI-assisted project planning.
+  * `commit`: Stages and commits changes. Use `--ai` to generate a commit message prompt.
+  * `finish`: Pushes and creates a PR. Use `--ai` to generate a PR description prompt.
+  * `sync`, `status`, `tidy`.
 * **Infrastructure as Code (IaC) Wrappers:** `plan`, `deploy`, `init` (Terraform/Pulumi).
-* **Code Quality & Formatting:** `quality`, `format` (Go, Python, Terraform).
+* **Code Quality & Formatting:**
+  * `quality`: Runs static analysis. Use `--ai` to generate a code review prompt.
+  * `format`: Formats code (Go, Python, Terraform).
+* **Code Modification:**
+  * `codemod`: Applies programmatic changes. Use `--ai` to generate a refactoring prompt.
 * **Project Testing & Versioning:** `test`, `version`.
-* **Code Modification:** `codemod` (from JSON scripts).
 
 *(For detailed information on each command, see the [Command Reference](docs/reference/command_reference.md).)*
 
@@ -91,16 +96,16 @@ contextvibes [command] [flags] # Run a command
 
 ```bash
 # Initiate a strategic project kickoff (generates a master prompt for your AI)
-contextvibes kickoff --strategic
+contextvibes factory kickoff --strategic
 
-# (After AI session and creating summary) Mark strategic kickoff as complete
-contextvibes kickoff --mark-strategic-complete
+# Generate an AI prompt to write your commit message
+contextvibes factory commit --ai
+
+# Generate an AI prompt to review your code
+contextvibes product quality --ai
 
 # Describe the project for an AI (prompts for task description)
-contextvibes describe -o my_context.md
-
-# Run project tests (e.g., for a Go project, passing -v flag)
-contextvibes test -v
+contextvibes project describe -o my_context.md
 ```
 
 ## Documentation

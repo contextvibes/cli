@@ -1,4 +1,3 @@
-// Package version provides the version command.
 package version
 
 import (
@@ -6,19 +5,13 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/contextvibes/cli/internal/build"
+	"github.com/contextvibes/cli/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-// These variables are set via -ldflags during the build process.
-var (
-	Version = "dev"
-	Commit  = "none"
-	Date    = "unknown"
-	BuiltBy = "unknown"
-)
-
-// Info represents the build information.
+// Info represents the serializable build information.
 type Info struct {
 	Version   string `json:"version"   yaml:"version"`
 	Commit    string `json:"commit"    yaml:"commit"`
@@ -29,10 +22,7 @@ type Info struct {
 	BuiltBy   string `json:"builtBy"   yaml:"builtBy"`
 }
 
-// VersionCmd represents the version command.
-var VersionCmd = NewVersionCmd()
-
-// NewVersionCmd creates and configures the `version` command.
+// NewVersionCmd creates and configures the version command.
 func NewVersionCmd() *cobra.Command {
 	var (
 		shortFlag bool
@@ -40,52 +30,12 @@ func NewVersionCmd() *cobra.Command {
 		yamlFlag  bool
 	)
 
+	//nolint:exhaustruct // Cobra commands rely on zero-value defaults for most fields.
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the version and build information",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// 1. Handle Short Flag
-			if shortFlag {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), Version)
-
-				return nil
-			}
-
-			// 2. Construct Data
-			info := Info{
-				Version:   Version,
-				Commit:    Commit,
-				Date:      Date,
-				GoVersion: runtime.Version(),
-				OS:        runtime.GOOS,
-				Arch:      runtime.GOARCH,
-				BuiltBy:   BuiltBy,
-			}
-
-			// 3. Handle JSON Flag
-			if jsonFlag {
-				enc := json.NewEncoder(cmd.OutOrStdout())
-				enc.SetIndent("", "  ")
-
-				return enc.Encode(info)
-			}
-
-			// 4. Handle YAML Flag
-			if yamlFlag {
-				enc := yaml.NewEncoder(cmd.OutOrStdout())
-
-				return enc.Encode(info)
-			}
-
-			// 5. Default Human-Readable Output
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "ContextVibes CLI\n")
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Version:    %s\n", info.Version)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Commit:     %s\n", info.Commit)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Built:      %s\n", info.Date)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Go Version: %s\n", info.GoVersion)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  OS/Arch:    %s/%s\n", info.OS, info.Arch)
-
-			return nil
+			return runVersion(cmd, shortFlag, jsonFlag, yamlFlag)
 		},
 	}
 
@@ -94,4 +44,58 @@ func NewVersionCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&yamlFlag, "yaml", false, "Output in YAML format")
 
 	return cmd
+}
+
+// runVersion handles the execution logic, separated to satisfy funlen linter.
+func runVersion(cmd *cobra.Command, short, jsonF, yamlF bool) error {
+	// 1. Handle Short Flag (Raw output for scripts)
+	if short {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), build.Version)
+
+		return nil
+	}
+
+	// 2. Construct Data
+	info := Info{
+		Version:   build.Version,
+		Commit:    build.Commit,
+		Date:      build.Date,
+		GoVersion: runtime.Version(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+		BuiltBy:   build.BuiltBy,
+	}
+
+	// 3. Handle JSON Flag
+	if jsonF {
+		enc := json.NewEncoder(cmd.OutOrStdout())
+		enc.SetIndent("", "  ")
+
+		if err := enc.Encode(info); err != nil {
+			return fmt.Errorf("failed to encode version info to JSON: %w", err)
+		}
+		return nil
+	}
+
+	// 4. Handle YAML Flag
+	if yamlF {
+		enc := yaml.NewEncoder(cmd.OutOrStdout())
+
+		if err := enc.Encode(info); err != nil {
+			return fmt.Errorf("failed to encode version info to YAML: %w", err)
+		}
+		return nil
+	}
+
+	// 5. Default Human-Readable Output (Styled)
+	presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
+
+	presenter.Header("ContextVibes CLI")
+	presenter.Detail("Version:    %s", info.Version)
+	presenter.Detail("Commit:     %s", info.Commit)
+	presenter.Detail("Built:      %s", info.Date)
+	presenter.Detail("Go Version: %s", info.GoVersion)
+	presenter.Detail("OS/Arch:    %s/%s", info.OS, info.Arch)
+
+	return nil
 }

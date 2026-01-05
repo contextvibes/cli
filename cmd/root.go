@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/contextvibes/cli/cmd/craft"
 	"github.com/contextvibes/cli/cmd/factory"
 	"github.com/contextvibes/cli/cmd/feedback"
 	"github.com/contextvibes/cli/cmd/library"
@@ -100,8 +99,8 @@ var (
 
 //nolint:gochecknoinits // Cobra requires init() for command registration.
 func init() {
-	// Set the version for the --version flag
-	rootCmd.Version = globals.AppVersion
+	// Note: rootCmd.Version is intentionally NOT set to avoid the default --version flag.
+	// We use the 'version' subcommand instead.
 
 	rootCmd.PersistentFlags().
 		StringVar(&logLevelAIValue, "log-level-ai", "debug", "AI (JSON) file log level")
@@ -117,10 +116,9 @@ func init() {
 	rootCmd.AddCommand(product.NewProductCmd())
 	rootCmd.AddCommand(factory.NewFactoryCmd())
 	rootCmd.AddCommand(library.NewLibraryCmd())
-	rootCmd.AddCommand(craft.CraftCmd)
 	rootCmd.AddCommand(feedback.NewFeedbackCmd())
-	rootCmd.AddCommand(version.VersionCmd)
 	rootCmd.AddCommand(mcp.NewMcpCmd())
+	rootCmd.AddCommand(version.NewVersionCmd())
 }
 
 func parseLogLevel(levelStr string, defaultLevel slog.Level) slog.Level {

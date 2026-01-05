@@ -17,18 +17,35 @@ import (
 var kickoffLongDescription string
 
 //nolint:gochecknoglobals // Cobra flags require package-level variables.
-var branchNameFlag string
+var (
+	branchNameFlag string
+	strategicFlag  bool
+)
 
 // KickoffCmd represents the kickoff command.
 //
 //nolint:exhaustruct,gochecknoglobals // Cobra commands are defined with partial structs and globals by design.
 var KickoffCmd = &cobra.Command{
-	Use:  "kickoff [--branch <branch-name>]",
-	Args: cobra.NoArgs,
+	Use:   "kickoff [--branch <branch-name>] | --strategic",
+	Short: "Starts a new task (daily) or a new project (strategic).",
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		presenter := ui.NewPresenter(cmd.OutOrStdout(), cmd.ErrOrStderr())
 		ctx := cmd.Context()
 
+		// 1. Handle Strategic Mode
+		if strategicFlag {
+			runner := workflow.NewRunner(presenter, globals.AssumeYes)
+			return runner.Run(
+				ctx,
+				"Initiating Strategic Kickoff",
+				&workflow.GenerateStrategicKickoffPromptStep{
+					Presenter: presenter,
+				},
+			)
+		}
+
+		// 2. Standard Daily Kickoff Logic
 		//nolint:exhaustruct // Partial config is sufficient.
 		gitClient, err := git.NewClient(ctx, ".", git.GitClientConfig{
 			Logger:                globals.AppLogger,
@@ -84,4 +101,6 @@ func init() {
 	KickoffCmd.Long = desc.Long
 	KickoffCmd.Flags().
 		StringVarP(&branchNameFlag, "branch", "b", "", "Name for the new feature branch")
+	KickoffCmd.Flags().
+		BoolVar(&strategicFlag, "strategic", false, "Generate a master prompt for an AI-guided strategic kickoff session")
 }

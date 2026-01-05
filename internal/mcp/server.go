@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/contextvibes/cli/internal/globals"
+	"github.com/contextvibes/cli/internal/build"
 	"github.com/mark3labs/mcp-go/mcp"    //nolint:depguard
 	"github.com/mark3labs/mcp-go/server" //nolint:depguard
 )
@@ -18,7 +18,7 @@ type Server struct {
 func NewServer() *Server {
 	s := server.NewMCPServer(
 		"ContextVibes",
-		globals.AppVersion,
+		build.Version,
 		server.WithLogging(),
 	)
 
