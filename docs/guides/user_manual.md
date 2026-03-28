@@ -51,6 +51,17 @@ We encourage you to familiarize yourself with the commands relevant to your work
 
 The ContextVibes CLI follows standard command-line patterns.
 
+### GitHub CLI (`gh`) Integration
+
+While `contextvibes` automates many local development tasks, the GitHub CLI (`gh`) is a powerful complementary tool for managing remote GitHub interactions. We recommend using them together for a seamless workflow:
+
+*   **Finding Tasks:** Use `gh issue list` to identify issues before using `contextvibes kickoff` to create a feature branch.
+*   **Referencing Issues:** When using `contextvibes commit`, always reference the issue number (e.g., `#123`) to maintain clear links between your commits and the issue tracker.
+*   **Submitting PRs:** `contextvibes finish` pushes your local changes and simplifies the PR creation process. You can then use `gh pr create` or `gh pr view` to manage the PR review lifecycle.
+*   **Development Workflow:** `gh issue develop #<issue-number>` is a great way to start work, creating a branch and linking it to an issue before running `contextvibes` commands.
+
+*Remember: `contextvibes` manages your local development loop (Git, testing, quality), while `gh` excels at managing your GitHub-centric remote interactions.*
+
 *   **Executing Commands:**
     ```bash
     contextvibes [command] [subcommand] [arguments] [flags]
